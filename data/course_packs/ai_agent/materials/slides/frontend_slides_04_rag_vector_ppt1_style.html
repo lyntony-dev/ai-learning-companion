@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mira-preview-type" content="html-ppt" />
+  <meta name="mira-aspect-ratio" content="16:9" />
+  <title>Module 04 · RAG 与向量数据库</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Archivo:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+
+/* === DESIGN TOKENS === */
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #111827;
+  --bg-panel: rgba(22, 27, 34, 0.92);
+  --bg-panel-2: rgba(13, 17, 23, 0.78);
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-dim: #64748b;
+  --accent: #39d353;
+  --accent-2: #58a6ff;
+  --accent-3: #d29922;
+  --danger: #ff7b72;
+  --border: rgba(139, 148, 158, 0.28);
+  --border-strong: rgba(57, 211, 83, 0.42);
+  --grid-line: rgba(139, 148, 158, 0.08);
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+  --font-display: "Archivo", sans-serif;
+  --font-body: "JetBrains Mono", monospace;
+  --font-mono: "JetBrains Mono", monospace;
+  --slide-padding: clamp(2.8rem, 5vw, 5.2rem);
+  --radius: clamp(1rem, 1.8vw, 1.6rem);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-normal: 700ms;
+}
+
+/* === RESET AND VIEWPORT FITTING === */
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg-primary); color: var(--text-primary); font-family: var(--font-body); overflow-x: hidden; }
+html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+body { position: relative; }
+.slide { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; scroll-snap-align: start; display: flex; flex-direction: column; position: relative; background: radial-gradient(circle at 15% 12%, rgba(57,211,83,0.10), transparent 30%), radial-gradient(circle at 78% 18%, rgba(88,166,255,0.10), transparent 28%), linear-gradient(135deg, var(--bg-primary), #05070a 72%); }
+.slide::before { content: ""; position: absolute; inset: 0; background-image: linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px); background-size: clamp(2.6rem, 6vw, 5.2rem) clamp(2.6rem, 6vw, 5.2rem); mask-image: radial-gradient(circle at center, black 0%, transparent 78%); pointer-events: none; }
+.slide::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 4px); opacity: 0.36; pointer-events: none; }
+.slide-content { flex: 1; display: flex; flex-direction: column; justify-content: center; max-height: 100%; overflow: hidden; padding: var(--slide-padding); padding-top: clamp(3.1rem, 8vh, 5.5rem); padding-bottom: clamp(2.2rem, 6vh, 4.6rem); position: relative; z-index: 1; }
+.topline { position: absolute; z-index: 5; top: clamp(1rem, 2.2vh, 1.6rem); left: var(--slide-padding); right: var(--slide-padding); display: flex; justify-content: space-between; align-items: center; color: var(--text-dim); font-size: clamp(0.56rem, 0.85vw, 0.76rem); letter-spacing: 0.14em; text-transform: uppercase; }
+.topline span:first-child { color: var(--accent); }
+
+/* === TYPOGRAPHY === */
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.045em; }
+h1 { font-size: clamp(3.2rem, 8vw, 7.6rem); line-height: 0.9; text-transform: uppercase; }
+h1 span, h2 span { color: var(--accent); text-shadow: 0 0 26px rgba(57,211,83,0.22); }
+h2 { font-size: clamp(2.15rem, 5.2vw, 5.2rem); line-height: 0.95; text-transform: uppercase; }
+h3 { font-size: clamp(1rem, 1.55vw, 1.5rem); line-height: 1.05; }
+p, li { font-size: clamp(0.72rem, 1.02vw, 0.98rem); line-height: 1.58; color: var(--text-secondary); }
+.eyebrow { color: var(--accent); font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; font-size: clamp(0.58rem, 0.85vw, 0.78rem); }
+.subtitle { margin-top: clamp(1rem, 2vh, 1.8rem); max-width: 58ch; font-size: clamp(0.88rem, 1.25vw, 1.22rem); }
+.section-heading { display: grid; gap: clamp(0.6rem, 1.2vh, 1rem); max-width: 78rem; margin-bottom: clamp(1.1rem, 3vh, 2.3rem); }
+.section-heading p:last-child { max-width: 72ch; }
+
+/* === LAYOUTS === */
+.hero-grid, .split, .split-even { display: grid; gap: clamp(1.2rem, 3vw, 2.6rem); align-items: center; }
+.hero-grid { grid-template-columns: minmax(0, 1.15fr) minmax(18rem, 0.85fr); }
+.split { grid-template-columns: minmax(0, 0.92fr) minmax(20rem, 1.08fr); }
+.split-even { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.balanced-stage .split, .balanced-stage .split-even, .balanced-stage .hero-grid { min-height: clamp(23rem, 62vh, 34rem); align-items: center; }
+.card-stage .cards-2, .card-stage .cards-3, .card-stage .cards-4, .card-stage .quiz-grid { align-items: stretch; min-height: clamp(16rem, 46vh, 25rem); }
+.code-stage .split { min-height: clamp(22rem, 62vh, 34rem); }
+
+/* === COMPONENTS === */
+.tag-row { display: flex; flex-wrap: wrap; gap: clamp(0.45rem, 1vw, 0.75rem); margin-top: clamp(1.2rem, 2.4vh, 2rem); }
+.tag-row span { border: 1px solid var(--border-strong); color: var(--accent); border-radius: 999px; padding: 0.48em 0.75em; font-size: clamp(0.56rem, 0.8vw, 0.72rem); background: rgba(57,211,83,0.07); }
+.terminal-panel, .card, .compare > div, .matrix > div, .quiz-grid > div { border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); box-shadow: var(--shadow); overflow: hidden; }
+.terminal-head { min-height: clamp(2rem, 4.2vh, 2.8rem); display: flex; align-items: center; gap: 0.75rem; padding: 0 clamp(0.9rem, 1.5vw, 1.3rem); border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: clamp(0.58rem, 0.82vw, 0.76rem); }
+.traffic { display: flex; gap: 0.42rem; }
+.traffic span { width: clamp(0.48rem, 0.7vw, 0.65rem); aspect-ratio: 1; border-radius: 50%; background: var(--text-dim); }
+.traffic span:nth-child(1) { background: var(--danger); } .traffic span:nth-child(2) { background: var(--accent-3); } .traffic span:nth-child(3) { background: var(--accent); }
+.terminal-body { padding: clamp(1rem, 2vw, 1.6rem); }
+.hero-panel .terminal-body { display: grid; gap: clamp(0.7rem, 1.5vh, 1.05rem); }
+.metric { display: flex; justify-content: space-between; gap: 1rem; border-bottom: 1px dashed rgba(139,148,158,0.18); padding-bottom: 0.55rem; }
+.metric span { color: var(--text-dim); font-size: clamp(0.62rem, 0.9vw, 0.8rem); } .metric strong { color: var(--text-primary); font-size: clamp(0.68rem, 1vw, 0.92rem); }
+.prompt-line, .formula { color: var(--accent); font-weight: 800; font-size: clamp(0.78rem, 1.2vw, 1.05rem); }
+.big-query { display: grid; place-items: center; min-height: clamp(13rem, 32vh, 20rem); color: var(--accent); font-size: clamp(1.2rem, 3vw, 2.4rem); font-weight: 800; text-align: center; }
+.big-query span { display: block; color: var(--text-dim); font-size: clamp(0.58rem, 0.9vw, 0.8rem); margin-top: 1rem; }
+.cards-2, .cards-3, .cards-4, .compare, .matrix, .quiz-grid { display: grid; gap: clamp(0.85rem, 1.6vw, 1.35rem); }
+.cards-2, .compare { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.matrix, .quiz-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card { position: relative; padding: clamp(1rem, 2vw, 1.55rem); display: grid; align-content: start; gap: clamp(0.55rem, 1.2vh, 0.85rem); }
+.card h3 { color: var(--text-primary); } .card p { color: var(--text-secondary); }
+.num { position: absolute; right: clamp(0.8rem, 1.4vw, 1.15rem); bottom: clamp(0.75rem, 1.2vw, 1rem); color: rgba(57,211,83,0.18); font-family: var(--font-display); font-size: clamp(1.8rem, 4vw, 3.8rem); font-weight: 900; line-height: 1; }
+.bullet-list { margin: clamp(0.8rem, 1.5vh, 1.2rem) 0 0; padding: 0; display: grid; gap: clamp(0.48rem, 1vh, 0.8rem); list-style: none; }
+.bullet-list li { position: relative; padding-left: 1.2rem; }
+.bullet-list li::before { content: ">"; position: absolute; left: 0; color: var(--accent); }
+.callout, .formula { margin-top: clamp(1rem, 2.2vh, 1.6rem); border: 1px solid var(--border-strong); border-radius: var(--radius); padding: clamp(0.85rem, 1.6vw, 1.25rem); background: rgba(57,211,83,0.07); color: var(--text-primary); }
+.compare > div { padding: clamp(1rem, 2vw, 1.6rem); }
+.compare h3 { color: var(--accent); margin-bottom: clamp(0.7rem, 1.5vh, 1.1rem); }
+.timeline { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: clamp(0.7rem, 1.2vw, 1rem); }
+.timeline > div, .matrix > div, .quiz-grid > div { padding: clamp(0.9rem, 1.6vw, 1.3rem); display: grid; gap: clamp(0.45rem, 1vh, 0.7rem); }
+.timeline b, .matrix b, .quiz-grid b { color: var(--accent); font-size: clamp(0.62rem, 0.9vw, 0.82rem); letter-spacing: 0.12em; text-transform: uppercase; }
+.timeline span, .matrix span, .quiz-grid span { color: var(--text-primary); font-weight: 800; font-size: clamp(0.76rem, 1.05vw, 0.98rem); }
+.timeline em, .matrix em { color: var(--text-secondary); font-style: normal; font-size: clamp(0.58rem, 0.82vw, 0.74rem); line-height: 1.5; }
+.code-block { margin: 0; white-space: pre-wrap; color: var(--text-primary); font-family: var(--font-mono); font-size: clamp(0.58rem, 0.78vw, 0.74rem); line-height: 1.52; max-height: clamp(18rem, 62vh, 34rem); overflow: hidden; }
+.short-code .code-block, .terminal-panel.short-code .code-block { max-height: clamp(12rem, 34vh, 20rem); }
+.checklist p { color: var(--text-primary); margin: 0.28rem 0; }
+
+/* === DIAGRAMS === */
+.diagram { position: relative; min-height: clamp(16rem, 51vh, 28rem); border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(circle at 50% 50%, rgba(57,211,83,0.08), transparent 62%), rgba(13,17,23,0.72); overflow: hidden; padding: clamp(1rem, 2vw, 2rem); }
+.diagram-svg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.diagram-svg path { fill: none; stroke: rgba(139,148,158,0.56); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.diagram-svg .arrow-fill { fill: rgba(139,148,158,0.82); stroke: none; }
+.diagram-svg .arrow-fill-accent { fill: rgba(57,211,83,0.94); stroke: none; }
+.diagram-svg path.arrow { stroke: rgba(139,148,158,0.68); }
+.diagram-svg path.arrow-accent { stroke: rgba(57,211,83,0.84); }
+.diagram-svg path.accent { stroke: rgba(57,211,83,0.76); }
+.diagram-svg path.grid-axis { stroke: rgba(139,148,158,0.36); }
+.diagram-svg circle { fill: var(--accent); filter: drop-shadow(0 0 10px rgba(57,211,83,0.55)); }
+.diagram-svg circle.blue { fill: var(--accent-2); filter: drop-shadow(0 0 10px rgba(88,166,255,0.5)); }
+.diagram-svg path.cluster { fill: rgba(57,211,83,0.06); stroke: rgba(57,211,83,0.34); }
+.diagram-svg path.cluster.blue { fill: rgba(88,166,255,0.06); stroke: rgba(88,166,255,0.34); }
+.node { position: absolute; z-index: 2; display: grid; place-items: center; text-align: center; border: 1px solid var(--border-strong); background: rgba(22,27,34,0.94); color: var(--text-primary); border-radius: clamp(0.75rem, 1.4vw, 1.2rem); padding: clamp(0.42rem, 0.8vw, 0.68rem); font-size: clamp(0.54rem, 0.82vw, 0.74rem); box-shadow: 0 0 28px rgba(57,211,83,0.08); }
+.node.compact { width: clamp(5.25rem, 10vw, 7.4rem); height: clamp(2.55rem, 6.1vh, 3.65rem); }
+.node.soft { width: clamp(6rem, 12vw, 9rem); min-height: clamp(2.2rem, 5vh, 3.2rem); }
+.node.blue { border-color: rgba(88,166,255,0.42); }
+.flow-arrow { position: absolute; z-index: 3; display: grid; place-items: center; width: clamp(1.35rem, 2.2vw, 2rem); height: clamp(1.35rem, 2.2vw, 2rem); color: rgba(139,148,158,0.95); font-family: var(--font-mono); font-size: clamp(1.05rem, 2vw, 1.75rem); font-weight: 900; line-height: 1; border: 1px solid rgba(139,148,158,0.18); border-radius: 999px; background: rgba(13,17,23,0.72); text-shadow: 0 0 12px rgba(139,148,158,0.34); pointer-events: none; }
+.flow-arrow.accent { color: var(--accent); border-color: rgba(57,211,83,0.34); background: rgba(57,211,83,0.07); text-shadow: 0 0 16px rgba(57,211,83,0.46); }
+.diagram-label { position: absolute; z-index: 3; font-family: var(--font-mono); font-size: clamp(0.46rem, 0.68vw, 0.62rem); line-height: 1; letter-spacing: 0.04em; color: var(--text-secondary); background: rgba(13,17,23,0.82); border: 1px solid rgba(139,148,158,0.18); border-radius: 999px; padding: 0.28em 0.52em; pointer-events: none; }
+.dot-node { position: absolute; z-index: 2; width: clamp(0.8rem, 1.2vw, 1.1rem); aspect-ratio: 1; border-radius: 50%; background: var(--accent); box-shadow: 0 0 18px rgba(57,211,83,0.45); }
+
+/* === CONTROLS AND ANIMATION === */
+.progress-track { position: fixed; z-index: 20; left: 0; right: 0; top: 0; height: 3px; background: rgba(139,148,158,0.15); }
+.progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 320ms var(--ease-out-expo); }
+.nav-dots { position: fixed; z-index: 20; right: clamp(0.7rem, 1.4vw, 1.2rem); top: 50%; transform: translateY(-50%); display: grid; gap: clamp(0.32rem, 0.7vh, 0.5rem); }
+.nav-dot { width: clamp(0.42rem, 0.72vw, 0.62rem); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(139,148,158,0.5); background: rgba(13,17,23,0.8); padding: 0; cursor: pointer; }
+.nav-dot.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 14px rgba(57,211,83,0.45); }
+.reveal, .reveal-left, .reveal-scale, .reveal-blur { opacity: 1; transform: translate(0,0) scale(1); filter: blur(0); transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo), filter var(--duration-normal) var(--ease-out-expo); }
+.js-ready .reveal { opacity: 0; transform: translateY(clamp(1rem, 2vw, 1.7rem)); }
+.js-ready .reveal-left { opacity: 0; transform: translateX(calc(-1 * clamp(1rem, 3vw, 2.6rem))); }
+.js-ready .reveal-scale { opacity: 0; transform: scale(0.94); }
+.js-ready .reveal-blur { opacity: 0; filter: blur(clamp(0.25rem, 0.8vw, 0.65rem)); }
+.js-ready .slide.visible .reveal, .js-ready .slide.visible .reveal-left, .js-ready .slide.visible .reveal-scale, .js-ready .slide.visible .reveal-blur { opacity: 1; transform: translate(0,0) scale(1); filter: blur(0); }
+
+/* === RESPONSIVE SAFETY === */
+@media (max-height: 700px) { :root { --slide-padding: clamp(2rem, 4vw, 4rem); } p, li { line-height: 1.42; } .diagram { min-height: clamp(13rem, 48vh, 22rem); } .code-block { line-height: 1.38; } }
+@media (max-height: 600px) { h1 { font-size: clamp(2.6rem, 7vw, 5.8rem); } h2 { font-size: clamp(1.8rem, 4.6vw, 4rem); } .cards-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .timeline { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .hero-grid, .split, .split-even { grid-template-columns: 1fr; } .cards-3, .cards-4, .matrix, .quiz-grid, .timeline { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nav-dots { display: none; } }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+  </style>
+</head>
+<body>
+  <div class="progress-track"><div class="progress-bar"></div></div>
+  <div class="nav-dots" aria-label="Slide navigation"></div>
+
+<!-- === SLIDE 01 === -->
+<section class="slide title-slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>AI Agent 开发系列</span><span>01 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="hero-grid">
+      <div class="hero-copy reveal-left">
+        <p class="eyebrow">MODULE 04 · RAG & VECTOR DATABASE</p>
+        <h1>RAG 与<br><span>向量数据库</span></h1>
+        <p class="subtitle">从 BM25 关键词检索到 Agentic RAG，构建生产级知识增强系统</p>
+        <div class="tag-row"><span>BM25</span><span>Vector Search</span><span>Hybrid + RRF</span><span>Agentic RAG</span></div>
+      </div>
+      <div class="terminal-panel hero-panel reveal-scale">
+        <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>course.config</span></div>
+        <div class="terminal-body">
+          <div class="metric"><span>课时</span><strong>3.5h · 155min</strong></div><div class="metric"><span>页数</span><strong>24 slides</strong></div><div class="metric"><span>前置</span><strong>Module 1–3</strong></div><div class="metric"><span>定位</span><strong>Capstone Module</strong></div>
+          <div class="prompt-line">$ rag build --retrieval hybrid --agentic true</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 02 === -->
+<section class="slide timeline-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Learning Map</span><span>02 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">OVERVIEW</p><h2>本课大纲</h2><p>先建立检索基础，再进入向量数据库与完整 RAG Pipeline，最后把前 3 个模块合并成 Agentic RAG。</p></div>
+    <div class="timeline reveal-scale">
+      <div><b>Part 1</b><span>RAG 基础</span><em>知识局限 → RAG → Fine-tuning 对比</em></div>
+      <div><b>Part 2</b><span>检索基础</span><em>BM25 → Embedding → ANN → Hybrid + RRF</em></div>
+      <div><b>Part 3</b><span>向量数据库</span><em>分块 → Chroma → 选型对比</em></div>
+      <div><b>Part 4</b><span>RAG 实战</span><em>Pipeline → LangChain → 查询构建 → 评估</em></div>
+      <div><b>Part 5</b><span>进阶架构</span><em>Agentic RAG → 生产化</em></div>
+    </div>
+    <div class="callout reveal">核心哲学：BM25 负责精确匹配，Vector Search 负责语义召回，生产级系统通常需要 Hybrid Search。</div>
+
+  </div>
+</section>
+<!-- === SLIDE 03 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Problem Framing</span><span>03 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">PROBLEM</p><h2>大模型的知识局限</h2><p>LLM 擅长推理与生成，但不等于拥有可验证、实时、企业私域的知识。</p></div>
+    <div class="cards-3 reveal-scale">
+      <div class="card "><h3>幻觉问题</h3><p>模型基于概率生成，如果缺少事实来源，可能一本正经地编造论文、数字或结论。</p><span class="num">01</span></div><div class="card "><h3>时效性问题</h3><p>训练数据存在截止日期，新闻、政策、价格、最新论文等信息天然滞后。</p><span class="num">02</span></div><div class="card "><h3>领域知识缺失</h3><p>公司内部文档、产品 API、业务流程、员工手册通常不在训练语料中。</p><span class="num">03</span></div>
+    </div>
+    <div class="callout reveal">RAG 的核心目标：让 LLM 从“闭卷考试”变成“带资料作答”。</div>
+
+  </div>
+</section>
+<!-- === SLIDE 04 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Concept</span><span>04 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="split-even">
+      <div class="section-heading reveal-left"><p class="eyebrow">RAG</p><h2>什么是 RAG？</h2><p>Retrieval-Augmented Generation 是“先检索，再生成”的知识增强架构。</p></div>
+      <div class="diagram pipeline reveal-scale">
+        <svg class="diagram-svg" viewBox="0 0 1000 400" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <marker id="arrow4" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L8,3 L0,6 Z" fill="rgba(139,148,158,0.82)" />
+            </marker>
+            <marker id="arrow4Accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+              <path d="M0,0 L8,3 L0,6 Z" fill="rgba(57,211,83,0.94)" />
+            </marker>
+          </defs>
+          <!-- main flow: left to right -->
+          <path d="M160 145 L280 145" class="arrow" marker-end="url(#arrow4)" />
+          <path d="M440 145 L560 145" class="arrow" marker-end="url(#arrow4)" />
+          <path d="M720 145 L840 145" class="arrow" marker-end="url(#arrow4)" />
+          <!-- retriever queries KB (down) -->
+          <path d="M360 175 L360 260" class="arrow-accent" marker-end="url(#arrow4Accent)" />
+          <!-- KB returns evidence to Context Builder (curve up-right) -->
+          <path d="M430 290 C520 290, 580 220, 600 175" class="arrow-accent" marker-end="url(#arrow4Accent)" />
+        </svg>
+        <div class="node compact" style="left:5%;top:30%">User Query</div>
+        <div class="node compact" style="left:28%;top:30%">Retriever</div>
+        <div class="node compact" style="left:53%;top:30%">Context Builder</div>
+        <div class="node compact" style="left:80%;top:30%">LLM Answer</div>
+        <div class="node compact" style="left:28%;top:68%">Knowledge Base</div>
+        <div class="diagram-label" style="left:16%;top:25%">1 · query</div>
+        <div class="diagram-label" style="left:36%;top:52%">2 · search</div>
+        <div class="diagram-label" style="left:50%;top:64%">3 · evidence</div>
+        <div class="diagram-label" style="left:46%;top:25%">4 · augment</div>
+        <div class="diagram-label" style="left:72%;top:25%">5 · generate</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 05 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Strategy Choice</span><span>05 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">COMPARE</p><h2>RAG vs Fine-tuning</h2><p>两者不是替代关系：RAG 解决“知识注入”，Fine-tuning 更适合“行为塑形”。</p></div>
+    <div class="compare reveal-scale">
+      <div><h3>RAG</h3><ul class="bullet-list"><li>知识更新快：替换文档即可</li><li>可追溯：回答可附引用来源</li><li>适合企业知识库、客服、搜索问答</li><li>挑战：检索质量和上下文组织</li></ul></div>
+      <div><h3>Fine-tuning</h3><ul class="bullet-list"><li>稳定改变模型风格与任务模式</li><li>适合格式化输出、领域术语、分类策略</li><li>更新成本更高，需要训练与评估闭环</li><li>挑战：不适合频繁注入事实知识</li></ul></div>
+    </div>
+    <div class="callout reveal">实践建议：知识变化频繁先选 RAG；输出行为不稳定再考虑微调。</div>
+
+  </div>
+</section>
+<!-- === SLIDE 06 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Lexical Retrieval</span><span>06 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="split">
+      <div class="section-heading reveal-left"><p class="eyebrow">BM25</p><h2>关键词检索</h2><p>BM25 是搜索系统的经典基线，适合精准词匹配、型号、代码、专有名词。</p><ul class="bullet-list"><li>TF：词在文档中出现越多，相关性越高</li><li>IDF：越稀有的词，区分度越强</li><li>Length Norm：避免长文档天然占优</li><li>弱点：不理解语义同义表达</li></ul></div>
+      <div class="terminal-panel reveal-scale">
+        <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>bm25.query</span></div>
+        <div class="terminal-body big-query">"iPhone 15 Pro Max"<br><span>exact terms · high precision · low semantic recall</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 07 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Embedding</span><span>07 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">VECTOR</p><h2>文本向量化：Embedding</h2><p>Embedding 将文本映射到高维向量空间，让“语义相近”的文本在空间中距离更近。</p></div>
+    <div class="diagram vector-space reveal-scale">
+      <svg class="diagram-svg" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M90 300 L910 300 M120 330 L120 45" class="grid-axis" />
+        <circle cx="270" cy="140" r="8" /><circle cx="320" cy="158" r="8" /><circle cx="360" cy="120" r="8" />
+        <circle cx="675" cy="185" r="8" class="blue" /><circle cx="720" cy="150" r="8" class="blue" /><circle cx="760" cy="205" r="8" class="blue" />
+        <path d="M250 130 C300 70, 390 75, 420 145 C380 220, 285 220, 250 130" class="cluster" />
+        <path d="M645 170 C690 105, 790 110, 820 195 C765 260, 680 250, 645 170" class="cluster blue" />
+      </svg>
+      <div class="node soft" style="left:16%;top:18%">“退货政策”</div>
+      <div class="node soft" style="left:22%;top:48%">“如何退款”</div>
+      <div class="node soft blue" style="left:62%;top:25%">“向量数据库”</div>
+      <div class="node soft blue" style="left:68%;top:56%">“ANN 索引”</div>
+      <div class="diagram-label" style="left:24%;top:10%">semantic neighborhood</div>
+      <div class="diagram-label" style="left:66%;top:12%">technical concepts</div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 08 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Similarity</span><span>08 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">SIMILARITY</p><h2>向量相似度计算</h2><p>相似度函数决定“哪个文档更接近查询”，常见选择包括 Cosine、Dot Product 与 Euclidean Distance。</p></div>
+    <div class="cards-3 reveal-scale">
+      <div class="card "><h3>Cosine Similarity</h3><p>关注向量方向，常用于归一化文本向量；适合比较语义角度。</p><span class="num">cos</span></div><div class="card "><h3>Dot Product</h3><p>同时受方向与长度影响，常见于向量数据库和模型服务的默认打分。</p><span class="num">dot</span></div><div class="card "><h3>Euclidean</h3><p>计算空间距离，更直观但在高维语义向量中不总是最佳选择。</p><span class="num">L2</span></div>
+    </div>
+    <div class="formula reveal">score(q, d) = cosine(embedding(q), embedding(d))</div>
+
+  </div>
+</section>
+<!-- === SLIDE 09 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>ANN Index</span><span>09 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="split-even">
+      <div class="section-heading reveal-left"><p class="eyebrow">ANN</p><h2>向量索引：近似检索</h2><p>全量扫描成本过高，ANN 用“近似但足够好”的方法换取低延迟。</p><ul class="bullet-list"><li>HNSW：图结构，多用于低延迟在线检索</li><li>IVF：聚类倒排，适合大规模向量召回</li><li>PQ：压缩向量，降低存储与内存成本</li><li>核心权衡：Recall、Latency、Cost</li></ul></div>
+      <div class="diagram graph reveal-scale">
+        <svg class="diagram-svg" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M210 180 L360 90 L540 145 L710 75 L825 180 L650 270 L470 225 L300 285 Z" />
+          <path d="M360 90 L470 225 L825 180 M540 145 L300 285 M210 180 L650 270" class="accent" />
+        </svg>
+        <div class="dot-node" style="left:18%;top:44%"></div><div class="dot-node" style="left:34%;top:20%"></div><div class="dot-node" style="left:52%;top:34%"></div><div class="dot-node" style="left:70%;top:16%"></div><div class="dot-node" style="left:82%;top:44%"></div><div class="dot-node" style="left:64%;top:70%"></div><div class="dot-node" style="left:46%;top:58%"></div><div class="dot-node" style="left:28%;top:76%"></div>
+        <div class="diagram-label" style="left:39%;top:8%">navigable small-world graph</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 10 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Hybrid Retrieval</span><span>10 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">HYBRID + RRF</p><h2>混合搜索与 RRF 融合</h2><p>生产系统常将关键词召回与语义召回合并，再通过 RRF 等方法融合排序。</p></div>
+    <div class="diagram pipeline reveal-scale">
+      <svg class="diagram-svg" viewBox="0 0 1000 360" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M140 180 L315 105 L510 180 L700 180 L860 180" />
+        <path d="M140 180 L315 255 L510 180" class="accent" />
+      </svg>
+      <div class="node compact" style="left:5%;top:40%">Query</div>
+      <div class="node compact" style="left:25%;top:18%">BM25</div>
+      <div class="node compact" style="left:25%;top:63%">Vector</div>
+      <div class="node compact" style="left:48%;top:40%">RRF Fusion</div>
+      <div class="node compact" style="left:68%;top:40%">Rerank</div>
+      <div class="node compact" style="left:84%;top:40%">Top-K</div>
+      <div class="diagram-label" style="left:17%;top:24%">exact</div>
+      <div class="diagram-label" style="left:17%;top:68%">semantic</div>
+      <div class="diagram-label" style="left:58%;top:32%">rank merge</div>
+    </div>
+    <div class="formula reveal">RRF(d) = Σ 1 / (k + rankᵢ(d))</div>
+
+  </div>
+</section>
+<!-- === SLIDE 11 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Chunking</span><span>11 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">CHUNKING</p><h2>文档分块策略</h2><p>分块质量直接影响召回质量：块太小丢上下文，块太大引入噪声。</p></div>
+    <div class="cards-4 reveal-scale">
+      <div class="card "><h3>固定长度</h3><p>实现简单，适合基线；缺点是可能切断语义结构。</p><span class="num">01</span></div><div class="card "><h3>语义分块</h3><p>按标题、段落、句子边界切分，保持自然语义单元。</p><span class="num">02</span></div><div class="card "><h3>Overlap</h3><p>相邻块保留重叠窗口，降低边界信息丢失。</p><span class="num">03</span></div><div class="card "><h3>Metadata</h3><p>保留标题、路径、时间、权限等字段，支持过滤与加权。</p><span class="num">04</span></div>
+    </div>
+    <div class="callout reveal">经验值：先从 300–800 tokens + 10%–20% overlap 开始，再用评估集调参。</div>
+
+  </div>
+</section>
+<!-- === SLIDE 12 === -->
+<section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Chroma</span><span>12 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="split">
+      <div class="section-heading reveal-left"><p class="eyebrow">VECTOR DB</p><h2>Chroma 向量数据库</h2><p>Chroma 适合教学与原型验证，接口直接，能快速演示 collection、add、query、update。</p><ul class="bullet-list"><li>Collection：向量、文本、元数据的逻辑集合</li><li>Add：写入 documents、embeddings、metadata</li><li>Query：向量相似度检索 Top-K</li><li>Update/Delete：支持知识库迭代维护</li></ul></div>
+      <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>chroma_minimal.py</span></div>
+      <pre class="terminal-body code-block"><code>import chromadb
+
+client = chromadb.PersistentClient(path="./chroma_db")
+collection = client.get_or_create_collection("course_docs")
+
+collection.add(
+    ids=["doc-1"],
+    documents=["RAG means retrieval augmented generation"],
+    metadatas=[{"source": "lesson-04"}],
+)
+
+results = collection.query(
+    query_texts=["what is RAG"],
+    n_results=3,
+)</code></pre>
+    </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 13 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Vector DB Choice</span><span>13 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">SELECTION</p><h2>向量数据库选型对比</h2><p>选型不只看 QPS，还要看数据规模、过滤能力、运维复杂度、生态集成与成本。</p></div>
+    <div class="matrix reveal-scale">
+      <div><b>Chroma</b><span>教学 / 原型 / 本地开发</span><em>上手快，适合课程 demo</em></div>
+      <div><b>Milvus</b><span>大规模向量检索</span><em>分布式能力强，运维复杂度更高</em></div>
+      <div><b>Qdrant</b><span>过滤 + Payload</span><em>API 清晰，适合工程化服务</em></div>
+      <div><b>pgvector</b><span>已有 PostgreSQL 栈</span><em>事务和关系数据融合方便</em></div>
+      <div><b>Elasticsearch</b><span>Hybrid Search</span><em>关键词与向量检索一体化</em></div>
+      <div><b>Cloud Vector DB</b><span>托管优先</span><em>降低运维成本，关注费用与锁定</em></div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 14 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>RAG Pipeline</span><span>14 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">PIPELINE</p><h2>RAG 完整 Pipeline</h2><p>一个可上线的 RAG 系统通常分成离线索引链路与在线问答链路。</p></div>
+    <div class="diagram pipeline reveal-scale">
+      <div class="diagram-label" style="left:5%;top:7%">offline indexing</div>
+      <div class="diagram-label" style="left:22%;top:91%">online query path</div>
+      <div class="diagram-label" style="left:41%;top:42%">shared vector index ↓</div>
+      <div class="node compact" style="left:3%;top:15%">Docs</div>
+      <div class="flow-arrow" style="left:8.6%;top:27%">↓</div>
+      <div class="node compact" style="left:3%;top:34%">Chunk</div>
+      <div class="flow-arrow" style="left:8.6%;top:46%">↓</div>
+      <div class="node compact" style="left:3%;top:53%">Embed</div>
+      <div class="flow-arrow" style="left:15.5%;top:55%">→</div>
+      <div class="node compact" style="left:22%;top:53%">Index</div>
+      <div class="flow-arrow" style="left:32.5%;top:55%">→</div>
+      <div class="node compact" style="left:37%;top:53%">Vector DB</div>
+      <div class="flow-arrow accent" style="left:42.5%;top:65%">↓</div>
+      <div class="node compact" style="left:3%;top:73%">Question</div>
+      <div class="flow-arrow accent" style="left:15.5%;top:75%">→</div>
+      <div class="node compact" style="left:20%;top:73%">Rewrite</div>
+      <div class="flow-arrow accent" style="left:32.5%;top:75%">→</div>
+      <div class="node compact" style="left:37%;top:73%">Retrieve</div>
+      <div class="flow-arrow accent" style="left:49.5%;top:75%">→</div>
+      <div class="node compact" style="left:54%;top:73%">Rerank</div>
+      <div class="flow-arrow accent" style="left:66.5%;top:75%">→</div>
+      <div class="node compact" style="left:71%;top:73%">Prompt</div>
+      <div class="flow-arrow accent" style="left:83.5%;top:75%">→</div>
+      <div class="node compact" style="left:88%;top:73%">Answer</div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 15 === -->
+<section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>LangChain RAG</span><span>15 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="split">
+      <div class="section-heading reveal-left"><p class="eyebrow">IMPLEMENTATION</p><h2>LangChain RAG 完整实现</h2><p>用 Runnable 组合加载、检索、格式化上下文与生成回答，形成最小可运行链路。</p></div>
+      <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>rag_chain.py</span></div>
+      <pre class="terminal-body code-block"><code>from langchain_core.runnables import RunnablePassthrough
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_chroma import Chroma
+
+retriever = Chroma(
+    persist_directory="./chroma_db",
+    embedding_function=OpenAIEmbeddings(),
+).as_retriever(search_kwargs={"k": 5})
+
+prompt = ChatPromptTemplate.from_template(
+    "Answer from context only.\nContext:{context}\nQuestion:{question}"
+)
+
+rag_chain = (
+    {"context": retriever, "question": RunnablePassthrough()}
+    | prompt
+    | ChatOpenAI(model="gpt-4o-mini")
+)
+print(rag_chain.invoke("什么是 RAG？"))</code></pre>
+    </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 16 === -->
+<section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Query Construction</span><span>16 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">QUERY BUILDING</p><h2>查询构建：多字段加权</h2><p>真实搜索不是只查正文，还会综合 title、body、tags、metadata、时间与权限过滤。</p></div>
+    <div class="cards-3 reveal-scale">
+      <div class="card "><h3>字段加权</h3><p>标题命中通常比正文命中更重要，可对 title、heading、tag 设置不同 boost。</p><span class="num">boost</span></div><div class="card "><h3>过滤条件</h3><p>按部门、权限、产品线、时间范围过滤，避免召回不可见或过期内容。</p><span class="num">filter</span></div><div class="card "><h3>高亮与分页</h3><p>高亮帮助解释命中原因，分页与 from/size 控制用户浏览体验。</p><span class="num">UX</span></div>
+    </div>
+    <div class="terminal-panel short-code reveal">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>hybrid_query.json</span></div>
+      <pre class="terminal-body code-block"><code>{
+  "query": "Agent 工具调用失败如何重试",
+  "fields": {"title": 3.0, "heading": 2.0, "body": 1.0, "tags": 1.5},
+  "filters": {"department": "AI Platform", "acl": "current_user"},
+  "top_k": {"vector": 40, "bm25": 40, "rerank": 8}
+}</code></pre>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 17 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Optimization</span><span>17 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">RETRIEVAL QUALITY</p><h2>检索优化策略</h2><p>RAG 质量差时，不要只怪模型，优先拆解是召回、排序、上下文还是生成出了问题。</p></div>
+    <div class="cards-4 reveal-scale">
+      <div class="card "><h3>Query Rewrite</h3><p>将口语化问题改写为适合检索的查询，补充同义词和关键实体。</p><span class="num">01</span></div><div class="card "><h3>Multi-Query</h3><p>从多个角度生成查询，提高召回覆盖面，但要控制成本。</p><span class="num">02</span></div><div class="card "><h3>Rerank</h3><p>用 cross-encoder 或 LLM 对候选片段重新排序，提升 Top-K 精度。</p><span class="num">03</span></div><div class="card "><h3>Context Compress</h3><p>压缩或过滤无关片段，降低上下文噪声。</p><span class="num">04</span></div>
+    </div>
+    <div class="callout reveal">诊断顺序：先看是否召回正确文档，再看排序是否靠前，最后看 Prompt 是否要求基于证据回答。</div>
+
+  </div>
+</section>
+<!-- === SLIDE 18 === -->
+<section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Evaluation</span><span>18 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="split">
+      <div class="section-heading reveal-left"><p class="eyebrow">EVALUATION</p><h2>RAG 效果评估</h2><p>需要同时评估检索与生成：答案看起来流畅，不代表证据正确。</p><ul class="bullet-list"><li>Context Precision：召回片段中有多少是有用证据</li><li>Context Recall：必要证据是否被召回</li><li>Faithfulness：回答是否忠实于上下文</li><li>Answer Relevancy：回答是否真正解决问题</li></ul></div>
+      <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>ragas_eval.py</span></div>
+      <pre class="terminal-body code-block"><code># pip install ragas
+from ragas.metrics import faithfulness, answer_relevancy
+
+result = evaluate(
+    dataset,
+    metrics=[
+        faithfulness,
+        answer_relevancy,
+        context_precision,
+        context_recall,
+    ],
+)
+print(result)</code></pre>
+    </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 19 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Agentic RAG</span><span>19 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">CAPSTONE</p><h2>Agentic RAG — 课程综合应用</h2><p>Agentic RAG 把 LangGraph 的状态机、MCP 的工具协议与 RAG 的知识检索合并在一起。</p></div>
+    <div class="diagram pipeline reveal-scale">
+      <svg class="diagram-svg" viewBox="0 0 1000 390" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <marker id="arrow19" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,4 L0,8 Z" fill="rgba(139,148,158,0.82)" />
+          </marker>
+          <marker id="arrow19Accent" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L10,4 L0,8 Z" fill="rgba(57,211,83,0.94)" />
+          </marker>
+        </defs>
+        <!-- main path: Question → Planner → Retrieve → Grade Docs → Generate → Answer -->
+        <path d="M150 195 L200 195" class="arrow" marker-end="url(#arrow19)" />
+        <path d="M310 195 L358 195" class="arrow" marker-end="url(#arrow19)" />
+        <path d="M468 195 L525 195" class="arrow" marker-end="url(#arrow19)" />
+        <path d="M635 195 L695 195" class="arrow" marker-end="url(#arrow19)" />
+        <path d="M805 195 L860 195" class="arrow" marker-end="url(#arrow19)" />
+        <!-- not enough evidence: Grade Docs ↓ Rewrite -->
+        <path d="M580 225 L580 268" class="arrow-accent" marker-end="url(#arrow19Accent)" />
+        <!-- Rewrite → Retry -->
+        <path d="M470 305 L530 305" class="arrow-accent" marker-end="url(#arrow19Accent)" />
+        <!-- Retry loops back up to Retrieve -->
+        <path d="M600 288 C610 245, 500 230, 440 225" class="arrow-accent" marker-end="url(#arrow19Accent)" />
+      </svg>
+      <div class="node compact" style="left:3%;top:43%">Question</div>
+      <div class="node compact" style="left:20%;top:43%">Planner</div>
+      <div class="node compact" style="left:37%;top:43%">Retrieve</div>
+      <div class="node compact" style="left:54%;top:43%">Grade Docs</div>
+      <div class="node compact" style="left:71%;top:43%">Generate</div>
+      <div class="node compact" style="left:88%;top:43%">Answer</div>
+      <div class="node compact" style="left:37%;top:72%">Rewrite</div>
+      <div class="node compact" style="left:54%;top:72%">Retry</div>
+      <div class="diagram-label" style="left:64%;top:36%">relevant → generate</div>
+      <div class="diagram-label" style="left:52%;top:62%">not enough evidence ↓</div>
+      <div class="diagram-label" style="left:58%;top:82%">guarded retry / max attempts</div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 20 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Production</span><span>20 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">PRODUCTION</p><h2>RAG 生产化</h2><p>上线 RAG 的关键不是“能跑 demo”，而是可观测、可回滚、可治理、可持续评估。</p></div>
+    <div class="cards-4 reveal-scale">
+      <div class="card "><h3>数据治理</h3><p>文档清洗、版本、权限、过期策略、敏感信息处理。</p><span class="num">01</span></div><div class="card "><h3>索引运维</h3><p>增量更新、重建策略、Embedding 版本迁移与灰度。</p><span class="num">02</span></div><div class="card "><h3>质量闭环</h3><p>离线评估集、线上反馈、badcase 归因、A/B 实验。</p><span class="num">03</span></div><div class="card "><h3>安全合规</h3><p>权限过滤、引用溯源、审计日志、越权防护。</p><span class="num">04</span></div>
+    </div>
+    <div class="callout reveal">生产化检查：回答是否可追溯？召回是否受权限控制？Embedding 与索引是否能平滑升级？</div>
+
+  </div>
+</section>
+<!-- === SLIDE 21 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Quiz</span><span>21 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">CHECKPOINT</p><h2>课后知识检测</h2><p>用于课堂互动，不直接展示答案；建议让学员先独立判断，再分组讨论。</p></div>
+    <div class="quiz-grid reveal-scale">
+      <div><b>Q1</b><span>为什么 RAG 更适合频繁变化的事实知识？</span></div>
+      <div><b>Q2</b><span>BM25 与向量检索分别擅长什么场景？</span></div>
+      <div><b>Q3</b><span>为什么生产 RAG 常需要 Hybrid Search？</span></div>
+      <div><b>Q4</b><span>分块过大和过小分别会造成什么问题？</span></div>
+      <div><b>Q5</b><span>如何判断 RAG 的问题出在召回还是生成？</span></div>
+      <div><b>Q6</b><span>Agentic RAG 相比普通 RAG 多了哪些控制逻辑？</span></div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 22 === -->
+<section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Homework</span><span>22 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="split-even">
+      <div class="section-heading reveal-left"><p class="eyebrow">LAB</p><h2>实战练习任务</h2><p>从一个小型文档集出发，完成可评估、可调参的 RAG 系统。</p></div>
+      <div class="terminal-panel reveal-scale">
+        <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>assignment.md</span></div>
+        <div class="terminal-body checklist">
+          <p>[ ] 选择 20–50 篇课程或产品文档</p>
+          <p>[ ] 完成清洗、分块、metadata 设计</p>
+          <p>[ ] 使用 Chroma 或 pgvector 建立索引</p>
+          <p>[ ] 实现 BM25 + Vector + RRF 混合检索</p>
+          <p>[ ] 构造 20 条评估问题并记录 badcase</p>
+          <p>[ ] 加入一次 Query Rewrite 或 Rerank 优化</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+<!-- === SLIDE 23 === -->
+<section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Recap</span><span>23 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="section-heading reveal"><p class="eyebrow">RECAP</p><h2>核心知识点回顾</h2><p>本模块把搜索、向量数据库、RAG 工程和 Agent 架构合并成完整知识增强系统。</p></div>
+    <div class="cards-3 reveal-scale">
+      <div class="card "><h3>检索层</h3><p>BM25、Embedding、ANN、Hybrid、RRF 决定能否找到正确证据。</p><span class="num">01</span></div><div class="card "><h3>生成层</h3><p>Prompt、上下文压缩、引用约束、忠实性检查决定答案是否可靠。</p><span class="num">02</span></div><div class="card "><h3>系统层</h3><p>数据治理、权限、评估、监控、Agentic 控制决定能否生产化。</p><span class="num">03</span></div>
+    </div>
+    <div class="callout reveal">四模块闭环：Agent 负责决策，LangGraph 负责流程，MCP 负责工具标准化，RAG 负责知识增强。</div>
+
+  </div>
+</section>
+<!-- === SLIDE 24 === -->
+<section class="slide title-slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+  <div class="topline"><span>Complete</span><span>24 / 24</span></div>
+  <div class="slide-content">
+
+    <div class="hero-grid">
+      <div class="hero-copy reveal-left">
+        <p class="eyebrow">Q&A · COURSE COMPLETE</p>
+        <h1>从 Agent 到<br><span>知识增强系统</span></h1>
+        <p class="subtitle">你已经具备构建生产级 Agentic RAG 的核心地图：规划、工具、协议、检索、评估与治理。</p>
+      </div>
+      <div class="terminal-panel hero-panel reveal-scale">
+        <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>next_steps.sh</span></div>
+        <div class="terminal-body">
+          <div class="prompt-line">$ build your own rag-agent</div>
+          <p>1. 选一个真实业务知识库</p>
+          <p>2. 做出可评估的 baseline</p>
+          <p>3. 用 badcase 驱动检索与生成优化</p>
+          <p>4. 再引入 Agentic 控制与 MCP 工具</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+  <script>
+
+class SlidePresentation {
+  constructor() {
+    this.slides = Array.from(document.querySelectorAll('.slide'));
+    this.currentIndex = 0;
+    this.progressBar = document.querySelector('.progress-bar');
+    this.navDots = document.querySelector('.nav-dots');
+    this.isScrolling = false;
+    this.touchStartY = 0;
+    this.touchEndY = 0;
+    document.body.classList.add('js-ready');
+    this.init();
+  }
+  init() {
+    this.createNavDots();
+    this.bindEvents();
+    this.observeSlides();
+    this.goToSlide(0, false);
+  }
+  createNavDots() {
+    this.navDots.innerHTML = '';
+    this.slides.forEach((_, index) => {
+      const dot = document.createElement('button');
+      dot.className = 'nav-dot';
+      dot.setAttribute('aria-label', `Go to slide ${index + 1}`);
+      dot.addEventListener('click', () => this.goToSlide(index));
+      this.navDots.appendChild(dot);
+    });
+  }
+  bindEvents() {
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowDown' || event.key === 'ArrowRight' || event.key === ' ') { event.preventDefault(); this.next(); }
+      if (event.key === 'ArrowUp' || event.key === 'ArrowLeft') { event.preventDefault(); this.prev(); }
+      if (event.key === 'Home') { event.preventDefault(); this.goToSlide(0); }
+      if (event.key === 'End') { event.preventDefault(); this.goToSlide(this.slides.length - 1); }
+    });
+    window.addEventListener('wheel', (event) => {
+      if (this.isScrolling) return;
+      if (Math.abs(event.deltaY) < 28) return;
+      this.isScrolling = true;
+      event.deltaY > 0 ? this.next() : this.prev();
+      window.setTimeout(() => { this.isScrolling = false; }, 680);
+    }, { passive: true });
+    window.addEventListener('touchstart', (event) => { this.touchStartY = event.changedTouches[0].screenY; }, { passive: true });
+    window.addEventListener('touchend', (event) => {
+      this.touchEndY = event.changedTouches[0].screenY;
+      const delta = this.touchStartY - this.touchEndY;
+      if (Math.abs(delta) > 48) delta > 0 ? this.next() : this.prev();
+    }, { passive: true });
+  }
+  observeSlides() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+          this.currentIndex = this.slides.indexOf(entry.target);
+          this.updateControls();
+        }
+      });
+    }, { threshold: 0.55 });
+    this.slides.forEach(slide => observer.observe(slide));
+  }
+  goToSlide(index, smooth = true) {
+    const target = Math.max(0, Math.min(index, this.slides.length - 1));
+    this.currentIndex = target;
+    this.slides[target].scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+    this.slides[target].classList.add('visible');
+    this.updateControls();
+  }
+  next() { this.goToSlide(this.currentIndex + 1); }
+  prev() { this.goToSlide(this.currentIndex - 1); }
+  updateControls() {
+    const progress = ((this.currentIndex + 1) / this.slides.length) * 100;
+    this.progressBar.style.width = `${progress}%`;
+    Array.from(this.navDots.children).forEach((dot, index) => dot.classList.toggle('active', index === this.currentIndex));
+  }
+}
+document.addEventListener('DOMContentLoaded', () => new SlidePresentation());
+
+  </script>
+</body>
+</html>

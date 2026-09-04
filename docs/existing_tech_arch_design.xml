@@ -1,0 +1,591 @@
+<title>技术架构设计文档｜AI Agent 课程助教系统</title>
+
+<callout emoji="📌" background-color="light-blue" border-color="blue">
+  <p><b>文档定位：</b>本文基于《项目 PRD｜基于 LangGraph、MCP 与 RAG 的 AI Agent 课程助教系统》编写，面向研发、架构评审、教学运营与项目验收团队，用于明确系统架构、核心模块、Agent 编排、RAG、MCP 工具接入、数据模型、部署与评估方案。</p>
+  <p><b>架构结论：</b>系统采用“React 单页前端 + FastAPI 后端 + LangGraph Agent 工作流 + MCP 工具服务 + 课程 RAG 知识库”的分层架构。MVP 以课程问答、资料定位、Agentic RAG、来源追溯和最小 Web UI 为核心，V1/V2 扩展练习批改、学习路径、项目评审与多 MCP Server 插拔能力。</p>
+</callout>
+
+<h1>1. 背景与目标</h1>
+
+<h2>1.1 项目背景</h2>
+<p>AI Agent 课程体系包含 Agent 基础与 LangChain、LangGraph 与多 Agent、MCP、RAG 与向量数据库等模块。课程资料覆盖 PPT、讲义、逐字稿、代码示例、课堂练习和项目方案，但这些资料当前主要是静态资产，学员难以快速定位知识点，讲师和助教也难以规模化处理重复答疑、练习反馈与学习路径规划。</p>
+<p>本系统的核心目标是将课程资料转化为可检索、可追溯、可评估、可扩展的课程助教 Agent。系统既是教学工具，也是一个完整的 Agent 工程示范项目，能够串联 LangGraph、MCP 与 RAG 的真实落地链路。</p>
+
+<h2>1.2 技术目标</h2>
+<ul>
+  <li>构建课程知识库，支持 PPT 页码、讲义章节、逐字稿片段、代码示例和练习 Rubric 的统一检索。</li>
+  <li>使用 LangGraph 显式编排 Router、Retriever、Answer、Reviewer、Grader、Planner 等节点，避免不可观测的黑盒链式调用。</li>
+  <li>通过 RAG 和证据校验降低幻觉风险，回答必须返回课程来源，并在证据不足时明确拒答。</li>
+  <li>通过 MCP 将 Course Search、Homework Grading、Code Example、Learning Path 等能力工具化，保证 Agent 和工具职责解耦。</li>
+  <li>提供 Web UI 展示回答、来源、Agent 轨迹和评估结果，满足课程演示与工程评审需要。</li>
+</ul>
+
+<h2>1.3 非目标与边界</h2>
+<callout emoji="⚠️" background-color="light-yellow" border-color="yellow">
+  <p>MVP 不建设通用企业知识库平台，不实现复杂多租户、计费、组织级权限治理、自动训练平台和任意代码执行沙箱。代码能力优先支持代码检索与解释，代码运行评测作为后续版本独立评估。</p>
+</callout>
+
+<hr/>
+
+<h1>2. 需求摘要</h1>
+
+<h2>2.1 用户角色与核心诉求</h2>
+<table>
+  <thead><tr><th background-color="light-gray">角色</th><th background-color="light-gray">核心诉求</th><th background-color="light-gray">关键能力</th><th background-color="light-gray">成功标准</th></tr></thead>
+  <tbody>
+    <tr><td>课程学员</td><td>理解概念、完成练习、获得即时反馈</td><td>课程问答、来源定位、学习路径、练习批改</td><td>回答准确、可追溯、教学化，能指导下一步学习</td></tr>
+    <tr><td>授课讲师</td><td>降低重复答疑成本，辅助课堂互动</td><td>高频问题统计、来源定位、轨迹查看、评估报告</td><td>能发现课程薄弱点并辅助备课</td></tr>
+    <tr><td>助教和运营</td><td>沉淀 FAQ，跟进学习进度与练习反馈</td><td>问题汇总、批改记录、FAQ 更新、知识库状态</td><td>能导出可执行的课程改进建议</td></tr>
+    <tr><td>项目评审者</td><td>判断学员项目是否覆盖 Agent 工程能力</td><td>Rubric 评审、项目方案审查、评分报告</td><td>评分标准统一，反馈可复用</td></tr>
+  </tbody>
+</table>
+
+<h2>2.2 功能范围</h2>
+<table>
+  <thead><tr><th background-color="light-gray">模块</th><th background-color="light-gray">MVP 能力</th><th background-color="light-gray">优先级</th><th background-color="light-gray">关键验收点</th></tr></thead>
+  <tbody>
+    <tr><td>课程资料导入</td><td>导入 PPT、讲义、逐字稿、代码示例</td><td>P0</td><td>资料解析后形成统一 CourseChunk</td></tr>
+    <tr><td>知识库构建</td><td>清洗、分块、元数据标注、Embedding、入库</td><td>P0</td><td>每个 chunk 保留课程、页码、章节和内容类型</td></tr>
+    <tr><td>课程问答</td><td>基于 RAG 回答课程问题</td><td>P0</td><td>返回结论、解释、来源和追问建议</td></tr>
+    <tr><td>资料定位</td><td>定位 PPT 页、讲义章节、逐字稿片段</td><td>P0</td><td>结果按相关性排序并区分内容类型</td></tr>
+    <tr><td>Agentic RAG</td><td>查询改写、检索、证据判断、生成、Reviewer 校验</td><td>P0</td><td>具备 State、Node、Edge、Conditional Edge 和 END 条件</td></tr>
+    <tr><td>练习批改</td><td>文本答案评分、诊断和修改建议</td><td>P1</td><td>支持按课程模块使用不同 Rubric</td></tr>
+    <tr><td>学习路径</td><td>按基础和可用时间生成学习计划</td><td>P1</td><td>包含章节、耗时、目标和检查问题</td></tr>
+    <tr><td>MCP 工具</td><td>Course Search MCP Server</td><td>P1</td><td>Agent 可通过 MCP 调用课程检索工具</td></tr>
+    <tr><td>Web UI</td><td>Chat、来源面板、轨迹面板</td><td>P1</td><td>可演示完整端到端链路</td></tr>
+  </tbody>
+</table>
+
+<h2>2.3 非功能要求</h2>
+<table>
+  <thead><tr><th background-color="light-gray">类别</th><th background-color="light-gray">要求</th><th background-color="light-gray">MVP 指标</th><th background-color="light-gray">架构措施</th></tr></thead>
+  <tbody>
+    <tr><td>准确性</td><td>回答基于课程证据</td><td>关键问题正确率不低于 80%</td><td>RAG、Reviewer、拒答机制</td></tr>
+    <tr><td>可追溯性</td><td>重要回答展示来源</td><td>来源覆盖率不低于 90%</td><td>CourseChunk 元数据和 Citation Builder</td></tr>
+    <tr><td>延迟</td><td>普通问答保持可交互</td><td>P95 不超过 10 秒</td><td>意图路由、缓存、简单问题短链路</td></tr>
+    <tr><td>稳定性</td><td>工作流不能无限循环</td><td>循环异常率不高于 1%</td><td>max_retry、超时和 END 条件</td></tr>
+    <tr><td>可观测性</td><td>保留检索、工具调用、Reviewer 结果</td><td>每次请求有 trace</td><td>Trace Store 和评估日志</td></tr>
+    <tr><td>安全性</td><td>不暴露未授权资料，不执行危险代码</td><td>MVP 禁止任意代码执行</td><td>权限过滤、工具白名单、输入输出审计</td></tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h1>3. 总体架构</h1>
+
+<h2>3.1 架构视图</h2>
+<whiteboard type="mermaid">flowchart TB
+  User[用户：学员 / 讲师 / 助教 / 评审者] --&gt; UI[React 单页 Web UI]
+  UI --&gt; API[FastAPI Backend]
+  API --&gt; Graph[LangGraph Agent Orchestrator]
+  Graph --&gt; Router[Router Node]
+  Graph --&gt; RAG[RAG Pipeline]
+  Graph --&gt; MCP[MCP Tool Gateway]
+  Graph --&gt; Review[Reviewer / Grader]
+  RAG --&gt; VDB[(Chroma Vector DB)]
+  RAG --&gt; Meta[(SQLite / PostgreSQL Metadata DB)]
+  MCP --&gt; CourseSearch[Course Search MCP Server]
+  MCP --&gt; Homework[Homework Grading Server]
+  MCP --&gt; CodeExample[Code Example Server]
+  API --&gt; Trace[(Trace and Eval Store)]
+  Ingestion[Offline Ingestion Jobs] --&gt; VDB
+  Ingestion --&gt; Meta
+  Sources[课程资料：PPT / 讲义 / 逐字稿 / 代码 / 练习] --&gt; Ingestion</whiteboard>
+
+<h2>3.2 分层说明</h2>
+<table>
+  <thead><tr><th background-color="light-gray">层级</th><th background-color="light-gray">职责</th><th background-color="light-gray">核心组件</th><th background-color="light-gray">设计原则</th></tr></thead>
+  <tbody>
+    <tr><td>体验层</td><td>提供问答、来源、轨迹、批改和报告页面</td><td>React SPA、Chat UI、Source Panel、Trace Panel</td><td>先满足课程演示，后扩展运营面板</td></tr>
+    <tr><td>API 层</td><td>请求鉴权、任务分发、响应聚合、日志记录</td><td>FastAPI、Pydantic Schema、SSE 或轮询接口</td><td>API 与 Agent 编排解耦</td></tr>
+    <tr><td>Agent 编排层</td><td>基于状态机执行路由、检索、生成、审查、重试</td><td>LangGraph、State、Node、Conditional Edge</td><td>显式状态，可观测，可限制循环</td></tr>
+    <tr><td>工具层</td><td>通过 MCP 暴露课程检索、批改、代码示例和学习路径能力</td><td>MCP Server、Tool Gateway、Tool Schema</td><td>工具只返回结构化事实，不直接承担最终回答</td></tr>
+    <tr><td>知识层</td><td>存储课程 chunk、向量、元数据、Rubric 和 FAQ</td><td>Chroma、SQLite、文件对象存储</td><td>元数据优先，来源可追溯</td></tr>
+    <tr><td>离线处理层</td><td>课程资料解析、清洗、分块、索引、评测集维护</td><td>Ingestion Pipeline、Embedding Job、Eval Job</td><td>离线可重复执行，按版本管理</td></tr>
+  </tbody>
+</table>
+
+<h2>3.3 关键架构决策</h2>
+<table>
+  <thead><tr><th background-color="light-gray">决策项</th><th background-color="light-gray">推荐方案</th><th background-color="light-gray">理由</th><th background-color="light-gray">权衡</th></tr></thead>
+  <tbody>
+    <tr><td>Agent 编排</td><td>LangGraph</td><td>显式状态、条件边、重试与 END 条件适合教学展示和工程评审</td><td>开发复杂度高于简单 Chain</td></tr>
+    <tr><td>向量数据库</td><td>Chroma for MVP</td><td>本地部署简单，适合课程演示</td><td>生产级扩展性弱于托管向量库</td></tr>
+    <tr><td>结构化存储</td><td>SQLite for MVP，PostgreSQL for V1</td><td>MVP 轻量，后续可平滑迁移</td><td>SQLite 并发能力有限</td></tr>
+    <tr><td>工具协议</td><td>MCP</td><td>标准化工具、资源和 Prompt 暴露方式，便于多工具插拔</td><td>需要定义清晰工具边界</td></tr>
+    <tr><td>前端</td><td>React 单页应用</td><td>满足 Chat、来源、轨迹面板的快速构建</td><td>复杂运营后台暂缓</td></tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h1>4. 核心模块设计</h1>
+
+<h2>4.1 前端 Web UI</h2>
+<ul>
+  <li><b>Chat 页面：</b>输入问题、展示结构化回答、来源引用、推荐追问。</li>
+  <li><b>来源面板：</b>展示命中的 PPT 页、讲义章节、逐字稿片段和代码示例，支持按课程、内容类型过滤。</li>
+  <li><b>Agent 轨迹面板：</b>展示 Router 判断、检索 query、召回结果、Reviewer 结论、重试次数和 MCP 工具调用。</li>
+  <li><b>练习批改页：</b>提交题目和答案，展示评分、优点、缺失点、风险点、改进建议和参考答案。</li>
+  <li><b>评估报告页：</b>展示 Recall@K、Faithfulness、Citation Accuracy、失败案例和高频问题。</li>
+</ul>
+
+<h2>4.2 后端 API 服务</h2>
+<table>
+  <thead><tr><th background-color="light-gray">子模块</th><th background-color="light-gray">职责</th><th background-color="light-gray">输入</th><th background-color="light-gray">输出</th></tr></thead>
+  <tbody>
+    <tr><td>Request Gateway</td><td>鉴权、参数校验、请求 ID 生成</td><td>HTTP 请求</td><td>标准化 TutorRequest</td></tr>
+    <tr><td>Agent Service</td><td>调用 LangGraph，管理状态流转</td><td>TutorRequest</td><td>TutorResponse 和 trace_id</td></tr>
+    <tr><td>Knowledge Service</td><td>检索、来源构造、元数据查询</td><td>query、filter、top_k</td><td>CourseChunk 列表</td></tr>
+    <tr><td>Evaluation Service</td><td>记录评测结果、失败案例、反馈</td><td>trace、answer、feedback</td><td>EvalRecord</td></tr>
+    <tr><td>Admin Service</td><td>知识库状态、重建索引、FAQ 管理</td><td>管理操作</td><td>任务状态</td></tr>
+  </tbody>
+</table>
+
+<h2>4.3 离线知识库构建模块</h2>
+<whiteboard type="mermaid">flowchart LR
+  A[课程原始资料] --&gt; B[Loader 解析]
+  B --&gt; C[Cleaner 清洗]
+  C --&gt; D[Chunker 分块]
+  D --&gt; E[Metadata Enricher 元数据标注]
+  E --&gt; F[Embedding Job]
+  F --&gt; G[(Vector DB)]
+  E --&gt; H[(Metadata DB)]
+  H --&gt; I[Eval Dataset Builder]
+  I --&gt; J[(评测集)]</whiteboard>
+
+<table>
+  <thead><tr><th background-color="light-gray">处理阶段</th><th background-color="light-gray">关键逻辑</th><th background-color="light-gray">输出</th><th background-color="light-gray">质量检查</th></tr></thead>
+  <tbody>
+    <tr><td>Loader</td><td>解析 PPT HTML、讲义、逐字稿、代码和练习题</td><td>RawDocument</td><td>文件数量、页码、章节是否完整</td></tr>
+    <tr><td>Cleaner</td><td>去除无意义重复、保留教学表达、抽取代码摘要</td><td>CleanDocument</td><td>乱码率、空 chunk、重复率</td></tr>
+    <tr><td>Chunker</td><td>按内容类型选择页级、章节级、段落级或代码逻辑单元</td><td>CourseChunk</td><td>长度分布、跨主题比例</td></tr>
+    <tr><td>Metadata Enricher</td><td>补充 course_id、slide_no、section、content_type、version</td><td>CourseChunk with metadata</td><td>必填元数据覆盖率</td></tr>
+    <tr><td>Embedding Job</td><td>向量化文本和摘要，写入 Chroma</td><td>Vector index</td><td>向量数量和元数据数量一致</td></tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h1>5. Agent 编排设计</h1>
+
+<h2>5.1 Agent 角色与职责</h2>
+<table>
+  <thead><tr><th background-color="light-gray">Agent</th><th background-color="light-gray">职责</th><th background-color="light-gray">典型输入</th><th background-color="light-gray">典型输出</th></tr></thead>
+  <tbody>
+    <tr><td>Router Agent</td><td>识别任务类型和是否需要检索、批改或规划</td><td>用户问题、上下文</td><td>task_type、route_reason、filters</td></tr>
+    <tr><td>Query Rewriter</td><td>在检索不足时改写查询，补充同义词和课程术语</td><td>原问题、失败检索结果</td><td>rewritten_query</td></tr>
+    <tr><td>Retriever Agent</td><td>检索课程知识库并返回结构化证据</td><td>query、filters、top_k</td><td>retrieved_docs、scores</td></tr>
+    <tr><td>Answer Agent</td><td>基于证据生成教学化回答</td><td>问题、证据、输出模板</td><td>answer、citations、followups</td></tr>
+    <tr><td>Reviewer Agent</td><td>检查回答是否覆盖问题、忠于证据、引用可靠</td><td>answer、evidence、query</td><td>pass、issues、action</td></tr>
+    <tr><td>Grader Agent</td><td>基于 Rubric 评分并给出反馈</td><td>题目、答案、Rubric</td><td>score、diagnosis、suggestions</td></tr>
+    <tr><td>Planner Agent</td><td>生成学习路径或项目实施计划</td><td>用户基础、时间、目标</td><td>plan、milestones、check_questions</td></tr>
+    <tr><td>Tool Agent</td><td>统一调用 MCP 工具并处理异常</td><td>tool_name、arguments</td><td>tool_result、tool_trace</td></tr>
+  </tbody>
+</table>
+
+<h2>5.2 LangGraph State</h2>
+<pre lang="python" caption="核心状态定义"><code>class TutorState(TypedDict):
+    request_id: str
+    user_id: str
+    user_query: str
+    task_type: str
+    route_reason: str
+    rewritten_query: str | None
+    filters: dict
+    retrieved_docs: list[dict]
+    evidence_score: float
+    answer: str | None
+    citations: list[dict]
+    review_result: dict
+    retry_count: int
+    max_retry: int
+    tool_calls: list[dict]
+    trace: list[dict]
+    final_response: dict | None
+    error: str | None</code></pre>
+
+<h2>5.3 工作流设计</h2>
+<whiteboard type="mermaid">flowchart TD
+  Start([Start]) --&gt; Router[Router]
+  Router -- task=课程问答 --&gt; Retrieve[Retrieve]
+  Router -- task=资料定位 --&gt; Locate[Locate Material]
+  Router -- task=练习批改 --&gt; LoadRubric[Load Rubric]
+  Router -- task=学习路径 --&gt; Plan[Planner]
+  Retrieve --&gt; Evidence{证据充分?}
+  Evidence -- 否且未超过重试 --&gt; Rewrite[Query Rewrite]
+  Rewrite --&gt; Retrieve
+  Evidence -- 是 --&gt; Generate[Generate Answer]
+  Evidence -- 否且已达上限 --&gt; Refuse[Evidence Insufficient Response]
+  Locate --&gt; Generate
+  LoadRubric --&gt; Grade[Grader]
+  Grade --&gt; Review[Reviewer]
+  Plan --&gt; Review
+  Generate --&gt; Review
+  Refuse --&gt; Final[Final Response]
+  Review -- 通过 --&gt; Final
+  Review -- 不通过且可修复 --&gt; Generate
+  Review -- 不通过且不可修复 --&gt; Refuse
+  Final --&gt; End([END])</whiteboard>
+
+<h2>5.4 循环与兜底策略</h2>
+<ul>
+  <li><b>检索重试：</b>当 evidence_score 低于阈值时进入 Query Rewrite，最多重试 2 次。</li>
+  <li><b>Reviewer 修复：</b>Reviewer 可要求 Answer Agent 修复一次，但不得形成无限生成循环。</li>
+  <li><b>证据不足：</b>达到 max_retry 后必须输出证据不足说明，并推荐用户换一种提问或查看相关课程范围。</li>
+  <li><b>工具异常：</b>MCP 工具失败时记录 tool_error，必要时降级为本地检索或返回可解释失败原因。</li>
+</ul>
+
+<hr/>
+
+<h1>6. RAG 设计</h1>
+
+<h2>6.1 知识片段模型</h2>
+<pre lang="json" caption="CourseChunk 示例"><code>{
+  "chunk_id": "ppt3_slide_08_transcript_01",
+  "course_id": "ppt3_mcp",
+  "course_name": "PPT3：MCP 与 Agent 工具生态",
+  "slide_no": 8,
+  "section": "MCP Server",
+  "content_type": "slide_transcript",
+  "text": "MCP Server 用于向 Agent 暴露工具、资源和 Prompt...",
+  "summary": "介绍 MCP Server 的职责和组成。",
+  "keywords": ["MCP", "Server", "Tools", "Resources", "Prompts"],
+  "source_path": "frontend_slides_03_mcp_agent_ppt1_style.html",
+  "source_url": null,
+  "version": "v1",
+  "created_at": "2026-07-15T00:00:00+08:00"
+}</code></pre>
+
+<h2>6.2 分块策略</h2>
+<table>
+  <thead><tr><th background-color="light-gray">内容类型</th><th background-color="light-gray">分块方式</th><th background-color="light-gray">推荐粒度</th><th background-color="light-gray">注意事项</th></tr></thead>
+  <tbody>
+    <tr><td>PPT 页面</td><td>一页一个主 chunk，复杂页按图示、代码、要点拆分</td><td>300 到 800 中文字</td><td>必须保留 slide_no 和页面标题</td></tr>
+    <tr><td>讲义</td><td>按 h2 或 h3 章节切分</td><td>500 到 1000 中文字</td><td>避免跨主题切分</td></tr>
+    <tr><td>逐字稿</td><td>按 PPT 页或讲授段落切分</td><td>400 到 900 中文字</td><td>保留教学解释，清理无意义重复</td></tr>
+    <tr><td>代码示例</td><td>按函数、类、文件或完整案例切分</td><td>一个完整逻辑单元</td><td>同时生成自然语言摘要和依赖信息</td></tr>
+    <tr><td>练习题</td><td>题目、参考答案、Rubric 分开存储</td><td>按题目粒度</td><td>便于 Grader Agent 精确调用</td></tr>
+  </tbody>
+</table>
+
+<h2>6.3 检索流程</h2>
+<ol>
+  <li seq="auto">Router 根据问题识别 task_type 和过滤条件，例如 course_id、content_type、是否需要代码示例。</li>
+  <li seq="auto">Query Normalizer 对问题做术语标准化，例如 LangGraph State、MCP Server、RAG Evaluation。</li>
+  <li seq="auto">Retriever 执行向量检索，MVP 使用 Chroma top_k 召回。</li>
+  <li seq="auto">Keyword Boost 对课程名、页码、章节标题、关键词命中进行加权。</li>
+  <li seq="auto">Evidence Scorer 判断证据是否足够支撑回答，低于阈值进入 Query Rewrite。</li>
+  <li seq="auto">Citation Builder 生成课程来源，包含课程名、页码或章节、内容类型和摘要。</li>
+</ol>
+
+<h2>6.4 回答生成约束</h2>
+<callout emoji="✅" background-color="light-green" border-color="green">
+  <p>回答结构固定为：简短结论、展开解释、课程来源、继续学习建议、追问建议。若证据不足，必须明确说明“当前课程资料证据不足”，不得编造页码、章节或来源。</p>
+</callout>
+
+<hr/>
+
+<h1>7. MCP 与工具接入设计</h1>
+
+<h2>7.1 工具边界原则</h2>
+<ul>
+  <li>MCP 工具只负责查询、评分、检索或返回结构化结果，不直接生成最终自然语言回答。</li>
+  <li>Answer Agent 负责基于工具结果组织最终回答，Reviewer Agent 负责校验答案与证据的一致性。</li>
+  <li>所有工具调用必须记录 tool_name、arguments、latency、status、error 和 result_summary。</li>
+  <li>工具必须有超时、参数校验和错误降级策略。</li>
+</ul>
+
+<h2>7.2 MCP Server 规划</h2>
+<table>
+  <thead><tr><th background-color="light-gray">Server</th><th background-color="light-gray">工具</th><th background-color="light-gray">MVP</th><th background-color="light-gray">返回类型</th></tr></thead>
+  <tbody>
+    <tr><td>Course Search Server</td><td>search_course_material、get_slide_detail、get_transcript_section</td><td>是</td><td>CourseChunk、SlideDetail、TranscriptSection</td></tr>
+    <tr><td>Homework Grading Server</td><td>grade_answer、get_reference_answer、list_homework</td><td>否，V1</td><td>GradeResult、Rubric、Homework</td></tr>
+    <tr><td>Code Example Server</td><td>search_code_example、get_code_snippet、explain_code</td><td>否，V1</td><td>CodeSnippet、CodeExplanation</td></tr>
+    <tr><td>Learning Path Server</td><td>generate_learning_plan、recommend_next_topic</td><td>否，V2</td><td>LearningPlan、TopicRecommendation</td></tr>
+  </tbody>
+</table>
+
+<h2>7.3 Course Search Tool Schema</h2>
+<pre lang="json" caption="search_course_material"><code>{
+  "name": "search_course_material",
+  "description": "Search course materials by natural language query and filters.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "query": {"type": "string"},
+      "course_ids": {"type": "array", "items": {"type": "string"}},
+      "content_types": {"type": "array", "items": {"type": "string"}},
+      "top_k": {"type": "integer", "default": 5}
+    },
+    "required": ["query"]
+  },
+  "output_schema": {
+    "type": "object",
+    "properties": {
+      "results": {"type": "array"},
+      "query_used": {"type": "string"},
+      "latency_ms": {"type": "integer"}
+    }
+  }
+}</code></pre>
+
+<hr/>
+
+<h1>8. 数据模型</h1>
+
+<h2>8.1 核心实体</h2>
+<table>
+  <thead><tr><th background-color="light-gray">实体</th><th background-color="light-gray">说明</th><th background-color="light-gray">关键字段</th><th background-color="light-gray">存储</th></tr></thead>
+  <tbody>
+    <tr><td>Course</td><td>课程元信息</td><td>course_id、name、order、description、version</td><td>Metadata DB</td></tr>
+    <tr><td>CourseMaterial</td><td>原始资料文件</td><td>material_id、course_id、type、path、checksum、version</td><td>Metadata DB 和文件存储</td></tr>
+    <tr><td>CourseChunk</td><td>可检索知识片段</td><td>chunk_id、course_id、slide_no、section、content_type、text</td><td>Vector DB 和 Metadata DB</td></tr>
+    <tr><td>Homework</td><td>练习题</td><td>homework_id、course_id、question、reference_answer</td><td>Metadata DB</td></tr>
+    <tr><td>Rubric</td><td>评分标准</td><td>rubric_id、course_id、dimensions、weights</td><td>Metadata DB</td></tr>
+    <tr><td>Conversation</td><td>用户会话</td><td>conversation_id、user_id、created_at、last_active_at</td><td>Metadata DB</td></tr>
+    <tr><td>Trace</td><td>Agent 执行轨迹</td><td>trace_id、request_id、nodes、tool_calls、latency</td><td>Trace Store</td></tr>
+    <tr><td>EvalRecord</td><td>评估记录</td><td>eval_id、query、expected_source、actual_source、scores</td><td>Eval Store</td></tr>
+  </tbody>
+</table>
+
+<h2>8.2 关系设计</h2>
+<whiteboard type="mermaid">erDiagram
+  COURSE ||--o{ COURSE_MATERIAL : contains
+  COURSE ||--o{ COURSE_CHUNK : indexes
+  COURSE_MATERIAL ||--o{ COURSE_CHUNK : produces
+  COURSE ||--o{ HOMEWORK : has
+  HOMEWORK ||--|| RUBRIC : uses
+  CONVERSATION ||--o{ MESSAGE : contains
+  MESSAGE ||--o{ TRACE : creates
+  TRACE ||--o{ TOOL_CALL : records
+  TRACE ||--o{ EVAL_RECORD : evaluates</whiteboard>
+
+<h2>8.3 数据保留策略</h2>
+<ul>
+  <li><b>课程资料：</b>按版本保留，支持重新索引和引用回溯。</li>
+  <li><b>会话记录：</b>MVP 可保留问题、回答、来源和反馈；如涉及个人学习进度，需要单独确认隐私边界。</li>
+  <li><b>Trace 日志：</b>保留节点状态、工具调用摘要和错误，不记录敏感原文或密钥。</li>
+  <li><b>评估数据：</b>保留测试问题、期望来源、实际来源、质量分和失败原因，用于课程迭代。</li>
+</ul>
+
+<hr/>
+
+<h1>9. 接口设计</h1>
+
+<h2>9.1 API 总览</h2>
+<table>
+  <thead><tr><th background-color="light-gray">接口</th><th background-color="light-gray">方法</th><th background-color="light-gray">用途</th><th background-color="light-gray">响应</th></tr></thead>
+  <tbody>
+    <tr><td>/api/chat</td><td>POST</td><td>提交课程问题并获取回答</td><td>TutorResponse</td></tr>
+    <tr><td>/api/locate</td><td>POST</td><td>定位知识点所在课程资料</td><td>LocateResponse</td></tr>
+    <tr><td>/api/grade</td><td>POST</td><td>批改练习答案</td><td>GradeResponse</td></tr>
+    <tr><td>/api/learning-plan</td><td>POST</td><td>生成学习路径</td><td>LearningPlanResponse</td></tr>
+    <tr><td>/api/traces/{trace_id}</td><td>GET</td><td>查询 Agent 执行轨迹</td><td>TraceDetail</td></tr>
+    <tr><td>/api/evals/report</td><td>GET</td><td>查询评估报告</td><td>EvalReport</td></tr>
+    <tr><td>/api/admin/reindex</td><td>POST</td><td>触发知识库重建</td><td>JobStatus</td></tr>
+  </tbody>
+</table>
+
+<h2>9.2 Chat 请求与响应</h2>
+<pre lang="json" caption="POST /api/chat request"><code>{
+  "conversation_id": "conv_001",
+  "user_query": "LangGraph 为什么需要 State？",
+  "mode": "auto",
+  "filters": {
+    "course_ids": ["ppt2_langgraph"],
+    "content_types": ["slide", "transcript", "handout"]
+  },
+  "stream": false
+}</code></pre>
+
+<pre lang="json" caption="POST /api/chat response"><code>{
+  "answer": {
+    "summary": "LangGraph 使用 State 是为了在节点之间显式传递上下文和中间结果。",
+    "details": ["State 让工作流具备可观测性。", "State 支持条件边和重试控制。"],
+    "citations": [
+      {"course_name": "PPT2：LangGraph 与多 Agent", "slide_no": 6, "section": "StateGraph"}
+    ],
+    "followups": ["State 和 Memory 有什么区别？", "Conditional Edge 如何使用？"]
+  },
+  "trace_id": "trace_001",
+  "status": "success"
+}</code></pre>
+
+<hr/>
+
+<h1>10. 权限与安全</h1>
+
+<h2>10.1 权限模型</h2>
+<table>
+  <thead><tr><th background-color="light-gray">角色</th><th background-color="light-gray">可用能力</th><th background-color="light-gray">限制</th><th background-color="light-gray">备注</th></tr></thead>
+  <tbody>
+    <tr><td>学员</td><td>课程问答、资料定位、学习路径、提交练习</td><td>不可管理知识库，不可查看他人学习记录</td><td>MVP 可使用简单登录或本地身份</td></tr>
+    <tr><td>讲师</td><td>学员能力加高频问题、评估报告、课程资料状态</td><td>不可访问系统密钥和底层日志敏感字段</td><td>用于备课和课程复盘</td></tr>
+    <tr><td>助教和运营</td><td>FAQ 管理、批改记录、问题汇总</td><td>需控制个人数据访问范围</td><td>后续接入更细权限</td></tr>
+    <tr><td>管理员</td><td>资料导入、重建索引、配置工具</td><td>操作需审计</td><td>生产环境需要最小权限</td></tr>
+  </tbody>
+</table>
+
+<h2>10.2 安全控制</h2>
+<ul>
+  <li><b>资料访问控制：</b>检索前应用课程和角色过滤条件，避免返回未授权资料。</li>
+  <li><b>工具白名单：</b>MVP 只开放 Course Search 工具；代码运行工具默认禁用。</li>
+  <li><b>Prompt 注入防护：</b>系统提示、工具描述和课程内容分层处理，禁止课程资料覆盖系统安全策略。</li>
+  <li><b>输出校验：</b>Reviewer 检查来源真实性、是否存在无证据断言和虚假页码。</li>
+  <li><b>密钥管理：</b>Embedding、LLM、MCP 配置通过环境变量或密钥管理系统注入，不写入代码和日志。</li>
+  <li><b>审计日志：</b>记录用户请求、工具调用、管理操作和异常，但避免记录敏感密钥和过量个人数据。</li>
+</ul>
+
+<hr/>
+
+<h1>11. 可观测性</h1>
+
+<h2>11.1 Trace 设计</h2>
+<table>
+  <thead><tr><th background-color="light-gray">Trace 字段</th><th background-color="light-gray">说明</th><th background-color="light-gray">用途</th><th background-color="light-gray">是否展示给前端</th></tr></thead>
+  <tbody>
+    <tr><td>request_id</td><td>请求唯一标识</td><td>链路排查</td><td>否</td></tr>
+    <tr><td>node_events</td><td>LangGraph 每个节点的输入摘要、输出摘要、耗时</td><td>轨迹面板和调试</td><td>是，脱敏后</td></tr>
+    <tr><td>retrieval_events</td><td>query、filters、top_k、召回分数</td><td>检索质量分析</td><td>是，摘要展示</td></tr>
+    <tr><td>tool_calls</td><td>MCP 工具名、参数摘要、耗时、状态</td><td>工具调用准确率</td><td>是，摘要展示</td></tr>
+    <tr><td>review_result</td><td>Reviewer 判断、问题和修复建议</td><td>幻觉治理和失败分析</td><td>是，简化展示</td></tr>
+    <tr><td>error</td><td>异常类型和错误摘要</td><td>排障和稳定性分析</td><td>仅展示用户友好信息</td></tr>
+  </tbody>
+</table>
+
+<h2>11.2 指标体系</h2>
+<table>
+  <thead><tr><th background-color="light-gray">指标类别</th><th background-color="light-gray">指标</th><th background-color="light-gray">目标</th><th background-color="light-gray">用途</th></tr></thead>
+  <tbody>
+    <tr><td>产品指标</td><td>问题解决率、来源可用率、练习反馈满意度</td><td>解决率不低于 80%，来源可用率不低于 90%</td><td>衡量教学价值</td></tr>
+    <tr><td>RAG 指标</td><td>Recall@5、MRR、Faithfulness、Citation Accuracy</td><td>Recall@5 不低于 85%，Citation Accuracy 不低于 90%</td><td>衡量检索和引用质量</td></tr>
+    <tr><td>Agent 指标</td><td>Task Success Rate、Tool Call Accuracy、Loop Rate、Average Steps</td><td>任务成功率不低于 80%，异常循环率不高于 1%</td><td>衡量编排可靠性</td></tr>
+    <tr><td>系统指标</td><td>P50、P95、错误率、工具超时率</td><td>P95 不超过 10 秒</td><td>衡量服务可用性</td></tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h1>12. 部署架构</h1>
+
+<h2>12.1 MVP Docker Compose</h2>
+<whiteboard type="mermaid">flowchart LR
+  Browser[Browser] --&gt; Frontend[frontend: React]
+  Frontend --&gt; Backend[backend: FastAPI]
+  Backend --&gt; Agent[agent: LangGraph Runtime]
+  Agent --&gt; MCPServer[mcp-course-search]
+  Agent --&gt; Chroma[(chroma)]
+  Agent --&gt; SQLite[(sqlite volume)]
+  Ingest[ingestion job] --&gt; Chroma
+  Ingest --&gt; SQLite
+  Materials[(course materials volume)] --&gt; Ingest</whiteboard>
+
+<h2>12.2 环境划分</h2>
+<table>
+  <thead><tr><th background-color="light-gray">环境</th><th background-color="light-gray">用途</th><th background-color="light-gray">部署方式</th><th background-color="light-gray">数据策略</th></tr></thead>
+  <tbody>
+    <tr><td>Local Dev</td><td>研发调试和课程演示</td><td>Docker Compose 或本地进程</td><td>使用样例课程资料</td></tr>
+    <tr><td>Staging</td><td>讲师验收和评测集回归</td><td>共享服务器或容器平台</td><td>使用正式课程资料副本</td></tr>
+    <tr><td>Production Lite</td><td>小规模课程使用</td><td>容器化部署，后端和向量库独立持久化</td><td>按课程版本管理索引</td></tr>
+  </tbody>
+</table>
+
+<h2>12.3 配置与发布</h2>
+<ul>
+  <li>使用环境变量配置模型、Embedding、向量库路径、数据库路径和 MCP Server 地址。</li>
+  <li>知识库重建作为离线 Job 执行，完成后写入新版本索引，避免在线请求期间半更新。</li>
+  <li>发布前运行评测集，验证 Recall@K、Citation Accuracy、证据不足拒答和关键用户问题。</li>
+</ul>
+
+<hr/>
+
+<h1>13. 评估与验收</h1>
+
+<h2>13.1 工程验收标准</h2>
+<checkbox done="false">完成课程资料导入、清洗、分块、Embedding 和向量库写入。</checkbox>
+<checkbox done="false">用户可以通过 Web UI 输入课程问题并获得带来源的回答。</checkbox>
+<checkbox done="false">实现至少一个 LangGraph 工作流，包含 State、Node、Edge、Conditional Edge 和 END 条件。</checkbox>
+<checkbox done="false">实现证据不足拒答机制，不输出虚假页码或伪造来源。</checkbox>
+<checkbox done="false">实现 Course Search MCP Server 或至少一个可被 Agent 调用的 MCP Tool。</checkbox>
+<checkbox done="false">每次请求保留可查询 trace，包括检索、工具调用和 Reviewer 结果。</checkbox>
+<checkbox done="false">提供基础评测集和评估报告。</checkbox>
+
+<h2>13.2 质量评测方案</h2>
+<table>
+  <thead><tr><th background-color="light-gray">评测集</th><th background-color="light-gray">样例问题</th><th background-color="light-gray">评估指标</th><th background-color="light-gray">通过标准</th></tr></thead>
+  <tbody>
+    <tr><td>概念问答</td><td>LangGraph 和 LangChain 的区别是什么？</td><td>正确率、Faithfulness、Citation Accuracy</td><td>回答准确且至少 1 条来源支撑</td></tr>
+    <tr><td>页码定位</td><td>MCP Server 的 Tools、Resources、Prompts 在哪一页讲过？</td><td>Recall@5、MRR</td><td>正确位置进入前 5</td></tr>
+    <tr><td>工程设计</td><td>我要做一个 RAG Agent，怎么设计流程？</td><td>覆盖度、可执行性、引用质量</td><td>覆盖分块、检索、重排、引用、评估</td></tr>
+    <tr><td>练习批改</td><td>只做向量检索再回答够不够？</td><td>Rubric 一致性、反馈可行动性</td><td>指出缺少索引、改写、重排、引用和评估</td></tr>
+    <tr><td>证据不足</td><td>课程未覆盖的外部问题</td><td>拒答率、幻觉率</td><td>明确说明资料证据不足</td></tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h1>14. 风险与应对</h1>
+
+<table>
+  <thead><tr><th background-color="light-gray">风险</th><th background-color="light-gray">表现</th><th background-color="light-gray">影响</th><th background-color="light-gray">应对策略</th></tr></thead>
+  <tbody>
+    <tr><td>RAG 幻觉</td><td>回答合理但资料不支持</td><td>误导学员</td><td>强制来源、Reviewer 校验、证据不足拒答</td></tr>
+    <tr><td>检索召回不足</td><td>相关资料没有进入 top_k</td><td>回答不完整或拒答过多</td><td>优化分块、关键词加权、Query Rewrite、后续引入混合检索</td></tr>
+    <tr><td>多 Agent 延迟高</td><td>复杂流程响应慢</td><td>影响学习体验</td><td>按任务复杂度路由，简单问题走短链路</td></tr>
+    <tr><td>循环失控</td><td>反复改写、检索和生成</td><td>成本和延迟不可控</td><td>max_retry、超时、END 条件和 Loop Rate 监控</td></tr>
+    <tr><td>MCP 工具边界模糊</td><td>工具既检索又生成最终答案</td><td>职责混乱，难以调试</td><td>工具返回结构化事实，最终回答由 Answer Agent 生成</td></tr>
+    <tr><td>课程资料版本变化</td><td>引用页码或章节失效</td><td>来源不可用</td><td>引入 version、checksum 和重新索引流程</td></tr>
+    <tr><td>个人学习数据合规</td><td>学习进度和批改记录涉及个人信息</td><td>隐私风险</td><td>默认最小化采集，开启前定义权限和保留周期</td></tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h1>15. 演进路线</h1>
+
+<h2>15.1 版本规划</h2>
+<table>
+  <thead><tr><th background-color="light-gray">版本</th><th background-color="light-gray">目标</th><th background-color="light-gray">核心交付</th><th background-color="light-gray">验收重点</th></tr></thead>
+  <tbody>
+    <tr><td>MVP：课程 RAG 助教</td><td>验证课程问答和来源追溯</td><td>资料导入、知识库、RAG API、LangGraph 工作流、Web Chat</td><td>能回答课程问题并返回来源</td></tr>
+    <tr><td>V1：练习与项目辅导</td><td>提升教学闭环能力</td><td>Grader Agent、Rubric、学习路径、项目方案审查、高频问题沉淀</td><td>反馈可行动，Rubric 一致</td></tr>
+    <tr><td>V2：MCP 工具体系</td><td>实现多工具标准化接入</td><td>Course Search、Homework、Code Example、Learning Path MCP Server</td><td>工具可插拔，轨迹可展示</td></tr>
+    <tr><td>V3：教学运营与评估</td><td>支撑课程持续迭代</td><td>标准评测集、薄弱点报告、FAQ 自动沉淀、知识库版本管理</td><td>能指导课程内容优化</td></tr>
+  </tbody>
+</table>
+
+<h2>15.2 实施里程碑</h2>
+<table>
+  <thead><tr><th background-color="light-gray">阶段</th><th background-color="light-gray">周期</th><th background-color="light-gray">目标</th><th background-color="light-gray">交付物</th></tr></thead>
+  <tbody>
+    <tr><td>阶段 1：资料处理</td><td>第 1 周</td><td>完成资料解析、清洗、分块和元数据设计</td><td>离线索引脚本、知识片段 JSON、初版向量库</td></tr>
+    <tr><td>阶段 2：基础 RAG</td><td>第 2 周</td><td>实现课程问答、来源返回和基础 API</td><td>RAG API、检索接口、测试问题集</td></tr>
+    <tr><td>阶段 3：LangGraph 工作流</td><td>第 3 周</td><td>实现 Router、Retriever、Generate、Reviewer、Retry</td><td>Agentic RAG 图、Trace 日志、失败兜底</td></tr>
+    <tr><td>阶段 4：MCP 工具</td><td>第 4 周</td><td>实现 Course Search MCP Server 并接入 Agent</td><td>MCP Server、工具 schema、调用示例</td></tr>
+    <tr><td>阶段 5：前端 Demo</td><td>第 5 周</td><td>实现 Chat UI、来源面板和轨迹面板</td><td>可演示 Web 应用</td></tr>
+    <tr><td>阶段 6：评估优化</td><td>第 6 周</td><td>完成评测、Prompt 优化、分块优化和验收材料</td><td>评估报告、演示脚本、结课验收 Rubric</td></tr>
+  </tbody>
+</table>
+
+<hr/>
+
+<h1>16. 待确认问题</h1>
+
+<callout emoji="❗" background-color="light-yellow" border-color="yellow">
+  <p>以下问题建议在工程启动前确认，避免影响 MVP 范围、数据权限和部署成本。</p>
+</callout>
+
+<ol>
+  <li seq="auto">课程资料最终以本地文件、飞书文档、知识库还是混合方式接入？</li>
+  <li seq="auto">回答来源是否需要点击跳转到原始 PPT、讲义或逐字稿？</li>
+  <li seq="auto">MVP 是否完全不支持代码运行，仅支持代码解释和代码检索？</li>
+  <li seq="auto">练习批改是否需要和人工评分结果对齐？是否已有历史样本？</li>
+  <li seq="auto">是否记录学员个人学习进度？如果记录，需要明确隐私、权限和数据保留策略。</li>
+  <li seq="auto">演示环境采用本地 Docker Compose，还是需要部署到共享服务器？</li>
+</ol>
+
+<callout emoji="✅" background-color="light-green" border-color="green">
+  <p><b>最终建议：</b>MVP 以“课程 RAG 问答 + 来源定位 + LangGraph Agentic RAG + Course Search MCP Server + Trace 面板”为最小闭环。练习批改和学习路径可作为 V1 扩展，避免首版同时承担过多 Agent 能力导致交付风险上升。</p>
+</callout>

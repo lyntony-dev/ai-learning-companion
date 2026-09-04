@@ -1,0 +1,56 @@
+name: CI
+
+# 持续集成(Tier 3-7):PR 与主干推送时跑与本地一致的校验门禁。
+# 后端 pytest + eval 质量门禁;前端 typecheck/lint/build/单测。
+# 真实 Ark 冒烟不在 CI 跑(需密钥),对应 1 skip 与本地一致。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: 后端 (pytest + eval)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scaffold/apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Set up Python 3.11
+        run: uv venv --python 3.11 .venv
+      - name: Install deps
+        run: uv pip install -e '.[dev]'
+      - name: Pytest (期望 147 passed, 1 skipped)
+        run: .venv/bin/pytest -q
+      - name: Eval 质量门禁 (期望 4/4)
+        run: .venv/bin/python ../../evals/runner/qa_quality_runner.py
+
+  frontend:
+    name: 前端 (typecheck/lint/build/test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scaffold
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.10.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install deps
+        run: pnpm --dir apps/web install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --dir apps/web run typecheck
+      - name: Lint (zero warnings)
+        run: pnpm --dir apps/web run lint
+      - name: Unit tests
+        run: pnpm --dir apps/web run test
+      - name: Build
+        run: pnpm --dir apps/web run build

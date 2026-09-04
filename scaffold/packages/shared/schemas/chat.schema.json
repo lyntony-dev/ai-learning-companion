@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ChatResponse",
+  "type": "object",
+  "properties": {
+    "answer": { "type": "string" },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "citation_id": { "type": "integer" },
+          "chunk_id": { "type": "string" },
+          "course_name": { "type": "string" },
+          "section": { "type": "string" },
+          "source_path": { "type": "string" }
+        },
+        "required": ["citation_id", "chunk_id", "course_name", "section", "source_path"]
+      }
+    },
+    "trace_id": { "type": "string" }
+  },
+  "required": ["answer", "citations", "trace_id"]
+}

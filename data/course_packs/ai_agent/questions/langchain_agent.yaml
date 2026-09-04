@@ -1,0 +1,64 @@
+# LangChain Agent 课程预置题库
+# 覆盖 topic: langchain.agent_basics / langchain.tools / langchain.memory
+# difficulty: easy | medium | hard(缺省 medium)
+# status: candidate(讲师审核后可改 approved)
+
+status: candidate
+
+questions:
+  # --- Agent 基本概念 ---
+  - id: agent_basics_what
+    topic_id: langchain.agent_basics
+    difficulty: easy
+    prompt: 用一句话说明 LangChain 中 Agent 与普通 LLM 直接调用的核心区别是什么?
+    reference_answer: Agent 能自主决定是否/如何调用工具并根据观察结果多步推理,而直接调用 LLM 只做一次性文本生成,不具备工具调用与循环决策能力。
+
+  - id: agent_basics_loop
+    topic_id: langchain.agent_basics
+    difficulty: medium
+    prompt: 描述一个 LangChain Agent 从收到用户问题到给出最终答案的一次典型「思考-行动-观察」循环包含哪些步骤。
+    reference_answer: 模型根据 prompt 产出思考与要调用的工具及入参(Action),执行工具得到结果(Observation),把观察拼回上下文继续推理,重复直到模型判断可以给出 Final Answer 为止。
+
+  - id: agent_basics_design
+    topic_id: langchain.agent_basics
+    difficulty: hard
+    prompt: 你要为「查询公司内部文档并给出带引用的回答」设计一个 Agent,请说明需要哪些工具、如何控制其停止条件,以及如何降低幻觉。
+    reference_answer: 需检索工具(向量库/关键词)与引用组装工具;通过最大迭代步数与「已获得足够证据」的停止判断控制循环;要求模型只依据检索片段作答并强制附引用,对无证据的问题拒答,以此降低幻觉。
+
+  # --- 工具与 Tool 调用 ---
+  - id: tools_define
+    topic_id: langchain.tools
+    difficulty: easy
+    prompt: 在 LangChain 中定义一个工具(Tool)通常需要提供哪三个关键要素?
+    reference_answer: 工具名称、功能描述(供模型判断何时调用),以及可执行的函数与其入参 schema。
+
+  - id: tools_when_call
+    topic_id: langchain.tools
+    difficulty: medium
+    prompt: 模型是依据什么信息决定调用哪个工具的?如果工具描述写得含糊会导致什么问题?
+    reference_answer: 模型依据每个工具的名称与自然语言描述(及入参 schema)匹配当前意图来选择工具;描述含糊会导致选错工具、漏调用或反复调用,降低成功率。
+
+  - id: tools_error_handling
+    topic_id: langchain.tools
+    difficulty: hard
+    prompt: 当一个被 Agent 调用的工具返回错误或超时,你会如何设计让 Agent 优雅恢复而不是直接崩溃?
+    reference_answer: 捕获工具异常并把错误信息作为 Observation 反馈给模型,允许其重试、换工具或降级回答;设置重试上限与总步数上限,超限则返回可解释的失败说明,避免死循环与崩溃。
+
+  # --- 记忆与上下文 ---
+  - id: memory_why
+    topic_id: langchain.memory
+    difficulty: easy
+    prompt: 为什么多轮对话的 Agent 需要「记忆(Memory)」组件?
+    reference_answer: LLM 单次调用无状态,记忆用于把历史对话/中间结果带入后续 prompt,使 Agent 能理解指代、延续上下文并保持一致。
+
+  - id: memory_types
+    topic_id: langchain.memory
+    difficulty: medium
+    prompt: 对比「全量对话历史记忆」与「摘要式记忆」两种策略,各自的优缺点是什么?
+    reference_answer: 全量历史信息最完整但随轮次增长很快撑爆上下文窗口且成本高;摘要式记忆把旧对话压缩成摘要,节省 token、可支撑长对话,但可能丢失细节。实际常按窗口+摘要混合。
+
+  - id: memory_long_context
+    topic_id: langchain.memory
+    difficulty: hard
+    prompt: 一个长期运行的客服 Agent 上下文不断增长逼近模型窗口上限,你会用哪些手段管理记忆?
+    reference_answer: 采用滑动窗口保留近期对话、对更早内容做增量摘要、把关键事实写入外部存储/向量库按需检索(检索式记忆),并区分短期工作记忆与长期用户画像,必要时按重要性淘汰。

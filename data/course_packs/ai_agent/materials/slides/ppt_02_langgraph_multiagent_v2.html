@@ -1,0 +1,2473 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mira-preview-type" content="html-ppt">
+<meta name="mira-aspect-ratio" content="16:9">
+<title>LangGraph 多智能体编排</title>
+<style>
+
+:root {
+  /* PLATFORM — DO NOT OVERRIDE */
+  --slide-width: 1440px;
+  --slide-height: 810px;
+  --deck-scale: 1;
+  --slide-index: 0;
+  --mira-bg-content: #f7f8f9;
+
+  /* STYLE TOKENS — tech-dark */
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --ink: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --accent2: #bc8cff;
+  --border: #30363d;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --chart-1: #58a6ff;
+  --chart-2: #bc8cff;
+  --chart-3: #39c5cf;
+  --chart-4: #d29922;
+  --chart-5: #3fb950;
+  --chart-6: #f85149;
+  --overlay: rgba(88, 166, 255, 0.06);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --radius: 12px;
+  --notes-w: 320px;
+  --font-display: 700 1em/1.2 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-body: 400 1em/1.6 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Consolas", monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+  background: #0d1117;
+}
+.deck-shell {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; margin: 0; padding: 0; background: #0d1117;
+}
+.deck-viewport {
+  flex: 0 0 auto; position: relative;
+  width: var(--slide-width); height: var(--slide-height);
+  transform: scale(var(--deck-scale)); transform-origin: center center;
+  overflow: hidden; margin: 0; padding: 0; max-width: none; max-height: none; border: 0;
+}
+.deck {
+  display: flex; width: max-content; height: var(--slide-height);
+  transform: translate3d(calc(var(--slide-index, 0) * -1 * var(--slide-width)), 0, 0);
+}
+.slide, section[data-mira-slide] {
+  position: relative; flex: 0 0 var(--slide-width);
+  width: var(--slide-width); height: var(--slide-height); overflow: hidden;
+  background: var(--bg);
+}
+.slide-inner {
+  position: relative; width: 100%; height: 100%;
+  padding: 44px 48px 44px calc(var(--notes-w) + 32px);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.slide-body { flex: 1; min-height: 0; overflow: hidden; }
+
+/* ---- Speaker Notes Panel ---- */
+.notes-panel {
+  position: absolute; top: 0; left: 0; width: var(--notes-w); height: 100%;
+  background: #010409; border-right: 1px solid var(--border);
+  padding: 20px 16px; overflow-y: auto; z-index: 10;
+  font-family: var(--font-body);
+}
+.notes-panel::-webkit-scrollbar { width: 4px; }
+.notes-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.notes-header {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.notes-section { margin-bottom: 14px; }
+.notes-section-title {
+  font-size: 12px; font-weight: 700; color: var(--accent2);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 4px;
+}
+.notes-section-body {
+  font-size: 12px; color: #b1bac4; line-height: 1.6;
+}
+.notes-section-body ul { margin: 0; padding-left: 14px; }
+.notes-section-body li { margin-bottom: 3px; }
+.notes-section-body code {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 1px 4px; border-radius: 3px;
+}
+.notes-section-body strong { color: var(--ink); }
+
+/* ---- Page number / Brand ---- */
+.page-num {
+  position: absolute; bottom: 18px; right: 28px;
+  font-size: 12px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 1px;
+}
+.brand-tag {
+  position: absolute; bottom: 18px; left: calc(var(--notes-w) + 28px);
+  font-size: 12px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 1px;
+}
+
+/* ---- Common ---- */
+.section-kicker {
+  font-family: var(--font-mono); font-size: 13px; color: var(--accent);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
+}
+.section-title {
+  font-family: var(--font-display); font-size: 34px; font-weight: 700;
+  color: var(--ink); line-height: 1.2; margin-bottom: 24px;
+}
+
+/* ---- Code blocks ---- */
+.code-block {
+  background: #010409; border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 18px; font-family: var(--font-mono); font-size: 13px;
+  line-height: 1.65; margin: 8px 0;
+  white-space: pre; overflow: auto;
+  tab-size: 4;
+  color: #e6edf3;
+}
+.code-block::-webkit-scrollbar { height: 6px; width: 6px; }
+.code-block::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+.code-block::-webkit-scrollbar-track { background: transparent; }
+.code-block .kw { color: #ff7b72; }
+.code-block .str { color: #a5d6ff; }
+.code-block .fn { color: #d2a8ff; }
+.code-block .com { color: #8b949e; font-style: italic; }
+.code-block .num { color: #79c0ff; }
+.code-block .cls { color: #ffa657; }
+.code-block .dec { color: #d2a8ff; }
+.code-block .var { color: #e6edf3; }
+.code-block .op { color: #ff7b72; }
+
+/* ---- Cover ---- */
+.cover-bg {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 700px 400px at 65% 30%, rgba(88,166,255,0.12), transparent 70%),
+    radial-gradient(ellipse 500px 350px at 35% 70%, rgba(188,140,255,0.10), transparent 70%),
+    var(--bg);
+  z-index: 0;
+}
+.cover-grid {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(88,166,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88,166,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+}
+.cover-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; justify-content: center;
+  height: 100%; padding: 0 60px 0 0;
+}
+.cover-kicker {
+  font-family: var(--font-mono); font-size: 15px; color: var(--accent);
+  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 18px;
+}
+.cover-title {
+  font-family: var(--font-display); font-size: 56px; font-weight: 800;
+  color: var(--ink); line-height: 1.15; margin-bottom: 16px; letter-spacing: -1px;
+}
+.cover-title .gradient-text {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.cover-subtitle {
+  font-family: var(--font-body); font-size: 20px; color: var(--muted);
+  margin-bottom: 36px; line-height: 1.5;
+}
+.cover-meta { display: flex; gap: 32px; align-items: center; }
+.cover-meta-item { display: flex; flex-direction: column; gap: 4px; }
+.cover-meta-label {
+  font-size: 11px; color: var(--muted); font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.cover-meta-value { font-size: 16px; color: var(--ink); font-weight: 600; }
+.cover-divider { width: 1px; height: 32px; background: var(--border); }
+.cover-badge {
+  position: absolute; top: 40px; right: 48px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: 1px solid var(--border); border-radius: 100px;
+  background: rgba(22,27,34,0.8); backdrop-filter: blur(8px);
+}
+.cover-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); box-shadow: 0 0 8px var(--success);
+}
+.cover-badge-text { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ---- Cards ---- */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px 20px;
+}
+.card-title { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+.card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.card-body code {
+  font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 2px 5px; border-radius: 3px;
+}
+
+/* ---- Timeline ---- */
+.timeline { display: flex; gap: 0; margin-bottom: 24px; }
+.timeline-item {
+  flex: 1; position: relative; padding: 18px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-right: none;
+}
+.timeline-item:last-child { border-right: 1px solid var(--border); border-radius: 0 10px 10px 0; }
+.timeline-item:first-child { border-radius: 10px 0 0 10px; }
+.timeline-num { font-family: var(--font-mono); font-size: 12px; color: var(--accent); margin-bottom: 6px; }
+.timeline-title { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.timeline-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ---- Table ---- */
+.tbl { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.tbl th {
+  background: var(--surface2); padding: 10px 14px; font-size: 12px; font-weight: 600;
+  color: var(--muted); text-align: left; border-bottom: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.tbl td { padding: 12px 14px; font-size: 13px; color: var(--ink); border-bottom: 1px solid var(--border); background: var(--surface); }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl .hl { color: var(--accent); font-weight: 600; }
+
+/* ---- Concept box ---- */
+.concept-box {
+  padding: 16px 20px; background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; margin-bottom: 12px;
+}
+.concept-box-title { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+.concept-box-body { font-size: 13px; color: var(--ink); line-height: 1.6; }
+.concept-box-body strong { color: var(--accent2); }
+
+/* ---- Formula ---- */
+.formula-box {
+  padding: 20px; background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(188,140,255,0.06));
+  border: 1px solid rgba(88,166,255,0.2); border-radius: 10px; text-align: center; margin-bottom: 16px;
+}
+.formula-text { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: 2px; }
+.formula-plus { color: var(--accent); margin: 0 6px; }
+.formula-eq { color: var(--muted); margin: 0 10px; }
+.formula-result {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+/* ---- Quiz / Exercise ---- */
+.quiz-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 20px; margin-bottom: 12px;
+}
+.quiz-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: #0d1117; font-size: 12px; font-weight: 700;
+  font-family: var(--font-mono); margin-right: 8px; flex-shrink: 0;
+}
+.quiz-question {
+  font-size: 14px; color: var(--ink); font-weight: 600; margin-bottom: 8px;
+  display: flex; align-items: flex-start; line-height: 1.5;
+}
+.quiz-options { display: flex; flex-direction: column; gap: 4px; padding-left: 32px; }
+.quiz-option {
+  font-size: 13px; color: var(--muted); line-height: 1.6;
+  font-family: var(--font-body);
+}
+.quiz-option .opt-label {
+  display: inline-block; width: 20px; color: var(--accent2); font-weight: 700;
+}
+.quiz-answer {
+  margin-top: 6px; padding-left: 32px;
+  font-size: 12px; color: var(--success); font-family: var(--font-mono);
+}
+.quiz-answer::before { content: "✓ "; }
+
+/* ---- Homework ---- */
+.hw-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 18px; margin-bottom: 10px;
+}
+.hw-icon {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; font-family: var(--font-mono);
+}
+.hw-icon-1 { background: rgba(88,166,255,0.15); color: var(--accent); }
+.hw-icon-2 { background: rgba(188,140,255,0.15); color: var(--accent2); }
+.hw-icon-3 { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-content { flex: 1; }
+.hw-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.hw-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.hw-desc code {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 1px 4px; border-radius: 3px;
+}
+.hw-difficulty {
+  display: inline-block; padding: 1px 6px; border-radius: 3px;
+  font-size: 10px; font-family: var(--font-mono); margin-left: 6px;
+}
+.hw-easy { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-medium { background: rgba(210,153,34,0.15); color: var(--warning); }
+.hw-hard { background: rgba(248,81,73,0.15); color: var(--danger); }
+
+/* ---- Misc ---- */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-family: var(--font-mono); letter-spacing: 0.5px;
+}
+.tag-blue { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+.tag-purple { background: rgba(188,140,255,0.15); color: var(--accent2); border: 1px solid rgba(188,140,255,0.3); }
+.tag-green { background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
+.tag-orange { background: rgba(210,153,34,0.15); color: var(--warning); border: 1px solid rgba(210,153,34,0.3); }
+
+.flow-step {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px; color: var(--ink);
+}
+.flow-arrow { color: var(--accent); font-size: 16px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.flex-row { display: flex; gap: 12px; align-items: center; }
+.flex-col { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---- Graph / Node styles ---- */
+.graph-node {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 16px; text-align: center; position: relative;
+}
+.graph-node-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.graph-node-desc { font-size: 11px; color: var(--muted); }
+.graph-node-agent { border-color: var(--accent); background: rgba(88,166,255,0.06); }
+.graph-node-tool { border-color: var(--accent2); background: rgba(188,140,255,0.06); }
+.graph-node-router { border-color: var(--warning); background: rgba(210,153,34,0.06); border-style: dashed; }
+.graph-node-human { border-color: var(--success); background: rgba(63,185,80,0.06); }
+.graph-edge {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 18px; font-family: var(--font-mono);
+}
+.graph-edge-label {
+  font-size: 10px; font-family: var(--font-mono); color: var(--accent);
+  background: var(--bg); padding: 2px 6px; border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+/* ---- Architecture diagram ---- */
+.arch-box {
+  border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px;
+  background: var(--surface); text-align: center;
+}
+.arch-box-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.arch-box-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.arch-arrow {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); font-size: 20px;
+}
+
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const slides = Array.from(document.querySelectorAll('[data-mira-slide]'));
+  if (!slides.length) return;
+
+  let index = 0;
+  const root = document.documentElement;
+  const width = 1440;
+  const height = 810;
+
+  const fit = () => {
+    const scale = Math.min(window.innerWidth / width, window.innerHeight / height);
+    root.style.setProperty('--deck-scale', String(Math.max(0.1, scale)));
+  };
+
+  const render = () => {
+    root.style.setProperty('--slide-index', String(index));
+    fit();
+  };
+
+  const go = (nextIndex) => {
+    index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+    render();
+  };
+
+  window.addEventListener('resize', fit);
+  window.addEventListener('keydown', (event) => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(event.key)) go(index + 1);
+    if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(event.key)) go(index - 1);
+    if (event.key === 'Home') go(0);
+    if (event.key === 'End') go(slides.length - 1);
+  });
+
+  render();
+});
+</script>
+</head>
+<body>
+<div class="deck-shell">
+<div class="deck-viewport">
+<div class="deck">
+
+<!-- ====== Slide 01: Cover ====== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第1页</div>
+<div class="notes-section">
+  <div class="notes-section-title">开场引入</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>回顾第一模块：单 Agent 能调用工具，但能力有限</li>
+      <li>提问：「如果任务需要多个步骤、多种角色协作，单 Agent 够用吗？」</li>
+      <li>引出本模块主题：<strong>LangGraph 多智能体编排</strong></li>
+      <li>强调：本模块将从图的概念出发，构建多 Agent 协作系统</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">时间分配</div>
+  <div class="notes-section-body">
+    封面页讲解约 <strong>3 分钟</strong>，快速激发兴趣，预告本节亮点。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div class="cover-bg"></div>
+    <div class="cover-grid"></div>
+    <div class="cover-badge">
+      <div class="cover-badge-dot"></div>
+      <span class="cover-badge-text">AI Agent 开发系列</span>
+    </div>
+    <div class="cover-content">
+      <div class="cover-kicker">MODULE 02 · 第二模块</div>
+      <h1 class="cover-title">
+        LangGraph<br>
+        <span class="gradient-text">多智能体编排</span>
+      </h1>
+      <p class="cover-subtitle">从单 Agent 到多 Agent 协作，用状态图构建复杂 AI 工作流</p>
+      <div class="cover-meta">
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">课时</span>
+          <span class="cover-meta-value">4 课时 · 180 分钟</span>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">前置模块</span>
+          <span class="cover-meta-value">Module 01 LangChain Agent</span>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">配套源码</span>
+          <span class="cover-meta-value">example/langgraph_multiagent/</span>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">01 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">COURSE OVERVIEW</div>
+<h2 class="section-title">本节课程总览</h2>
+<div class="slide-body">
+<div class="timeline">
+<div class="timeline-item">
+<div class="timeline-num">PART 1</div>
+<div class="timeline-title">问题与概念</div>
+<div class="timeline-desc">单 Agent 局限 · LangGraph 是什么 · 四大核心概念</div>
+</div>
+<div class="timeline-item">
+<div class="timeline-num">PART 2</div>
+<div class="timeline-title">核心构建</div>
+<div class="timeline-desc">State · Node · Edge · StateGraph</div>
+</div>
+<div class="timeline-item">
+<div class="timeline-num">PART 3</div>
+<div class="timeline-title">高级模式</div>
+<div class="timeline-desc">多 Agent 协作 · 循环工作流 · Context DI · 决策矩阵</div>
+</div>
+<div class="timeline-item">
+<div class="timeline-num">PART 4</div>
+<div class="timeline-title">实战与总结</div>
+<div class="timeline-desc">Supervisor 实现 · Human-in-the-Loop · 流式输出</div>
+</div>
+</div>
+<div class="grid-2">
+<div class="card" style="border-left: 3px solid var(--accent);">
+<div class="card-title">学习目标</div>
+<div class="card-body">掌握 LangGraph 图编程模型，能构建带循环、条件路由的生产级多 Agent 系统</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--accent2);">
+<div class="card-title">前置知识</div>
+<div class="card-body">完成 Module 1 · 了解 LangChain Agent · Python 异步基础</div>
+</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">课程定位</div>
+<div class="notes-section-body">
+<ul>
+<li>Part 3 新增了循环工作流和 Context DI，这是生产系统的核心</li>
+<li>决策矩阵帮助学生判断何时用 Agent、何时用 LangGraph</li>
+<li>循环工作流是 Module 4 Agentic RAG 的前置知识</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 02</div>
+<div class="page-num">02 / 25</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第3页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>从上节课的天气 Agent 出发，引出复杂场景的需求</li>
+      <li>单 Agent 的 3 个核心瓶颈要逐一展开</li>
+      <li>用「写一篇研究报告」作为例子说明多角色需求</li>
+      <li>转折：LangGraph 就是解决这些问题的框架</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">互动建议</div>
+  <div class="notes-section-body">
+    提问：「写一篇深度研究报告，需要哪些角色配合？」<br>引导学生说出：资料搜集 → 撰写 → 审校 → 修改 等步骤。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">PROBLEM · 痛点分析</div>
+      <h2 class="section-title">单 Agent 的局限性</h2>
+    </div>
+    <div class="slide-body">
+      <div class="flex-col" style="height: 100%;">
+        <div class="grid-3" style="flex: 1;">
+          <div class="card" style="border-top: 3px solid var(--danger);">
+            <div class="card-title" style="color: var(--danger);">能力瓶颈</div>
+            <div class="card-body">
+              单个 Agent 的 <strong>Prompt 上下文有限</strong>，当任务需要多种不同专业能力时，一个 Agent 难以兼顾。<br><br>
+              <code>例：研究 + 写作 + 审校 三种能力难以在一个 Prompt 中表达</code>
+            </div>
+          </div>
+          <div class="card" style="border-top: 3px solid var(--warning);">
+            <div class="card-title" style="color: var(--warning);">工具爆炸</div>
+            <div class="card-body">
+              工具数量增多时，LLM <strong>选错工具的概率上升</strong>。bind_tools() 绑定 10+ 工具后准确率显著下降。<br><br>
+              <code>例：搜索、摘要、翻译、写作、审校、格式化… 全绑一个 Agent</code>
+            </div>
+          </div>
+          <div class="card" style="border-top: 3px solid var(--accent2);">
+            <div class="card-title" style="color: var(--accent2);">无法并行</div>
+            <div class="card-body">
+              单 Agent 是<strong>串行执行</strong>的。当任务有独立子任务时，无法并行处理，效率受限。<br><br>
+              <code>例：同时搜索 3 个不同主题的资料，单 Agent 只能一个个查</code>
+            </div>
+          </div>
+        </div>
+        <div class="formula-box" style="margin-top: 8px;">
+          <div class="formula-text">
+            <span style="color: var(--danger);">单 Agent</span>
+            <span class="formula-eq">→</span>
+            <span style="color: var(--muted); font-size: 18px;">能力有限 · 工具冲突 · 串行瓶颈</span>
+            <span class="formula-eq">→</span>
+            <span class="formula-result">需要多 Agent 协作</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">03 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第4页</div>
+<div class="notes-section">
+  <div class="notes-section-title">核心概念</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>LangGraph 是 LangChain 团队推出的<strong>图式编排框架</strong></li>
+      <li>核心思想：把 Agent 工作流建模为<strong>有向图</strong></li>
+      <li>节点 = 函数/Agent，边 = 数据流向</li>
+      <li>条件边 = 根据状态动态选择下一个节点</li>
+      <li>状态 = 在节点间传递的共享数据结构</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">类比讲解</div>
+  <div class="notes-section-body">
+    可以类比为<strong>工厂流水线</strong>：每个工位（节点）负责一道工序，物料（状态）在工位间传递，质检环节（条件边）决定物料送去哪个工位。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">CORE CONCEPT</div>
+      <h2 class="section-title">什么是 LangGraph？</h2>
+    </div>
+    <div class="slide-body">
+      <div class="flex-col" style="height: 100%;">
+        <div class="grid-2" style="flex: 1;">
+          <div class="flex-col">
+            <div class="concept-box">
+              <div class="concept-box-title">定义</div>
+              <div class="concept-box-body">
+                LangGraph 是一个基于<strong>有向图</strong>的 Agent 编排框架，把复杂任务拆解为多个节点，通过<strong>边</strong>和<strong>条件路由</strong>组织执行流程，实现多 Agent 协作。
+              </div>
+            </div>
+            <div class="concept-box" style="border-left-color: var(--success);">
+              <div class="concept-box-title" style="color: var(--success);">与 LangChain 的关系</div>
+              <div class="concept-box-body">
+                <ul style="margin:0; padding-left:14px;">
+                  <li>LangChain 提供单 Agent 能力（LLM + Tools）</li>
+                  <li>LangGraph 提供<strong>多 Agent 编排</strong>能力</li>
+                  <li>LangGraph 中的节点可以是 LangChain Agent</li>
+                  <li>两者是<strong>互补关系</strong>，不是替代</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div class="flex-col" style="justify-content: center;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 0;">
+              <div class="graph-node graph-node-agent" style="width: 160px;">
+                <div class="graph-node-title">Research Agent</div>
+                <div class="graph-node-desc">搜索 · 收集资料</div>
+              </div>
+              <div class="graph-edge" style="height: 28px;">↓<span class="graph-edge-label" style="margin-left:4px;">state</span></div>
+              <div class="graph-node graph-node-router" style="width: 160px;">
+                <div class="graph-node-title">Router</div>
+                <div class="graph-node-desc">条件路由</div>
+              </div>
+              <div class="graph-edge" style="height: 28px;">↓<span class="graph-edge-label" style="margin-left:4px;">if ready</span></div>
+              <div class="graph-node graph-node-agent" style="width: 160px; border-color: var(--accent2);">
+                <div class="graph-node-title" style="color: var(--accent2);">Writer Agent</div>
+                <div class="graph-node-desc">撰写报告</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex-row" style="justify-content: center; gap: 8px;">
+          <span class="tag tag-blue">Graph</span>
+          <span class="tag tag-purple">Node</span>
+          <span class="tag tag-green">Edge</span>
+          <span class="tag tag-orange">State</span>
+          <span class="tag tag-blue">Conditional Routing</span>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">04 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第5页</div>
+<div class="notes-section">
+  <div class="notes-section-title">四大核心概念</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><strong>State（状态）</strong>：TypedDict 定义，在节点间传递</li>
+      <li><strong>Node（节点）</strong>：Python 函数，接收 state 返回更新</li>
+      <li><strong>Edge（边）</strong>：固定连接，A 执行完一定走 B</li>
+      <li><strong>Conditional Edge（条件边）</strong>：根据 state 动态选路</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码预告</div>
+  <div class="notes-section-body">
+    这页是概念铺垫，后面每一页会逐一展开。先让学生有整体印象，不急于写代码。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">FUNDAMENTALS · 核心概念</div>
+      <h2 class="section-title">图的四大核心概念</h2>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2" style="height: 100%;">
+        <div class="flex-col">
+          <div class="concept-box">
+            <div class="concept-box-title">① State · 状态</div>
+            <div class="concept-box-body">
+              在节点间传递的<strong>共享数据结构</strong>，通常用 <code>TypedDict</code> 或 <code>Pydantic Model</code> 定义。<br><br>
+              每个节点接收当前 State，返回<strong>需要更新的字段</strong>，LangGraph 自动合并。
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--accent2);">
+            <div class="concept-box-title" style="color: var(--accent2);">② Node · 节点</div>
+            <div class="concept-box-body">
+              一个 <strong>Python 函数</strong>，接收 State 作为参数，返回一个 dict 更新 State。<br><br>
+              节点可以是：Agent、工具函数、LLM 调用、或任意 Python 逻辑。
+            </div>
+          </div>
+        </div>
+        <div class="flex-col">
+          <div class="concept-box" style="border-left-color: var(--success);">
+            <div class="concept-box-title" style="color: var(--success);">③ Edge · 边</div>
+            <div class="concept-box-body">
+              <strong>固定连接</strong>，表示「A 执行完后，一定执行 B」。<br><br>
+              <code>graph.add_edge("node_a", "node_b")</code><br><br>
+              适合确定性的执行流程。
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--warning);">
+            <div class="concept-box-title" style="color: var(--warning);">④ Conditional Edge · 条件边</div>
+            <div class="concept-box-body">
+              <strong>动态路由</strong>：根据当前 State 决定下一个执行的节点。<br><br>
+              <code>graph.add_conditional_edges("node_a", router_fn, {path1: "node_b", path2: "node_c"})</code><br><br>
+              这是实现<strong>智能决策</strong>的关键。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">05 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第6页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>State 是 LangGraph 的核心，一切围绕 State 转</li>
+      <li><code>TypedDict</code> 是 Python 标准库的类型工具</li>
+      <li><code>Annotated[list, add_messages]</code> 是 LangGraph 的消息合并策略</li>
+      <li>Reducer 决定了状态更新的方式：默认覆盖 vs 追加</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">易错点</div>
+  <div class="notes-section-body">
+    学生经常忘记用 <code>Annotated</code>，直接写 <code>messages: list</code>，导致消息被覆盖而非追加。务必强调 <code>add_messages</code> reducer 的作用。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">STEP 01 · STATE</div>
+      <h2 class="section-title">定义状态 State</h2>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2" style="height: 100%;">
+        <div class="flex-col">
+          <div class="concept-box">
+            <div class="concept-box-title">什么是 State？</div>
+            <div class="concept-box-body">
+              State 是在图中<strong>流转的共享数据</strong>。每个节点读取 State、修改 State，LangGraph 负责在节点间传递和合并。
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--accent2);">
+            <div class="concept-box-title" style="color: var(--accent2);">Reducer 合并策略</div>
+            <div class="concept-box-body">
+              <ul style="margin:0; padding-left:14px;">
+                <li><strong>默认</strong>：返回值直接覆盖字段</li>
+                <li><code>add_messages</code>：消息列表<strong>追加</strong></li>
+                <li><code>operator.add</code>：列表追加合并</li>
+                <li>自定义 reducer：任意合并逻辑</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="code-block" style="margin: 0;"><span class="kw">from</span> typing <span class="kw">import</span> Annotated, TypedDict
+<span class="kw">from</span> langgraph.graph <span class="kw">import</span> MessagesState
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> BaseMessage
+
+<span class="com"># 方式一：继承 MessagesState（内置 messages 字段）</span>
+<span class="kw">class</span> <span class="cls">AgentState</span>(MessagesState):
+    <span class="com"># messages 已自动包含，带 add_messages reducer</span>
+    next_agent: <span class="cls">str</span>      <span class="com"># 下一个要执行的 Agent</span>
+    research_data: <span class="cls">str</span>  <span class="com"># 研究收集到的资料</span>
+    draft: <span class="cls">str</span>         <span class="com"># 写作 Agent 的初稿</span>
+    review_notes: <span class="cls">str</span>   <span class="com"># 审校 Agent 的反馈</span>
+
+<span class="com"># 方式二：从头定义（手动加 Annotated）</span>
+<span class="kw">class</span> <span class="cls">CustomState</span>(TypedDict):
+    messages: Annotated[<span class="cls">list</span>[BaseMessage], add_messages]
+    topic: <span class="cls">str</span>
+    result: <span class="cls">str</span></div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">06 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第7页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>节点本质就是一个 <code>def node(state): return {...}</code> 函数</li>
+      <li>接收 State dict，返回需要更新的字段 dict</li>
+      <li>可以在节点内调用 LangChain Agent、LLM、工具等</li>
+      <li><code>Command</code> 对象可以同时更新状态和指定跳转目标</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码演示</div>
+  <div class="notes-section-body">
+    现场演示：把上节课的天气 Agent 包装成一个节点。强调 return 只需要返回<strong>变更的字段</strong>，不需要返回完整 State。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">STEP 02 · NODE</div>
+      <h2 class="section-title">定义节点 Node</h2>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2" style="height: 100%;">
+        <div class="flex-col">
+          <div class="concept-box">
+            <div class="concept-box-title">节点的本质</div>
+            <div class="concept-box-body">
+              节点就是一个<strong>普通 Python 函数</strong>：<br><br>
+              <code>def node_name(state: AgentState) -> dict:</code><br><br>
+              接收当前 State，返回一个 dict，LangGraph 会自动<strong>合并</strong>到 State 中。
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--success);">
+            <div class="concept-box-title" style="color: var(--success);">返回值规则</div>
+            <div class="concept-box-body">
+              <ul style="margin:0; padding-left:14px;">
+                <li>只返回<strong>需要更新的字段</strong></li>
+                <li>未返回的字段<strong>保持不变</strong></li>
+                <li>带 reducer 的字段按策略合并</li>
+                <li>可以用 <code>Command</code> 同时更新+路由</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="code-block" style="margin: 0;"><span class="kw">from</span> langgraph.types <span class="kw">import</span> Command
+
+<span class="com"># 基本节点：返回状态更新</span>
+<span class="kw">def</span> <span class="fn">research_node</span>(state: AgentState) -> <span class="cls">dict</span>:
+    <span class="com"># 调用 Research Agent 执行搜索</span>
+    result = research_agent.invoke(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> {
+        <span class="str">"messages"</span>: [result],       <span class="com"># 追加消息</span>
+        <span class="str">"research_data"</span>: result.content,
+        <span class="str">"next_agent"</span>: <span class="str">"writer"</span>,  <span class="com"># 设置路由</span>
+    }
+
+<span class="com"># 使用 Command 同时更新+路由</span>
+<span class="kw">def</span> <span class="fn">review_node</span>(state: AgentState) -> Command:
+    review = reviewer_agent.invoke(state[<span class="str">"messages"</span>])
+    <span class="kw">if</span> <span class="str">"通过"</span> <span class="kw">in</span> review.content:
+        <span class="kw">return</span> Command(update={<span class="str">"review_notes"</span>: review.content},
+                         goto=<span class="str">"END"</span>)
+    <span class="kw">else</span>:
+        <span class="kw">return</span> Command(update={<span class="str">"review_notes"</span>: review.content},
+                         goto=<span class="str">"writer"</span>)  <span class="com"># 打回重写</span></div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">07 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第8页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>普通边 = 固定顺序，条件边 = 动态选路</li>
+      <li><code>add_conditional_edges</code> 三要素：源节点、路由函数、路径映射</li>
+      <li>路由函数返回字符串 key，映射到目标节点</li>
+      <li>这是实现「Agent 自主决策」的核心机制</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">类比</div>
+  <div class="notes-section-body">
+    条件边就像<strong>高速公路匝道口</strong>：根据你的目的地（State 中的字段），选择不同的出口（节点）。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">STEP 03 · EDGE & ROUTING</div>
+      <h2 class="section-title">边与条件路由</h2>
+    </div>
+    <div class="slide-body">
+      <div class="flex-col" style="height: 100%;">
+        <div class="grid-2" style="flex: 1;">
+          <div class="flex-col">
+            <div class="concept-box">
+              <div class="concept-box-title">普通边 — 固定连接</div>
+              <div class="concept-box-body">
+                <code>graph.add_edge("node_a", "node_b")</code><br><br>
+                A 执行完<strong>一定</strong>走 B，适合确定性流程。
+              </div>
+            </div>
+            <div class="concept-box" style="border-left-color: var(--warning);">
+              <div class="concept-box-title" style="color: var(--warning);">条件边 — 动态路由</div>
+              <div class="concept-box-body">
+                <code>graph.add_conditional_edges(</code><br>
+                &nbsp;&nbsp;<code>"source_node",</code> <span style="color:var(--muted)"># 源节点</span><br>
+                &nbsp;&nbsp;<code>router_function,</code> <span style="color:var(--muted)"># 路由函数</span><br>
+                &nbsp;&nbsp;<code>{"key1": "node_b", "key2": "node_c"}</code> <span style="color:var(--muted)"># 路径映射</span><br>
+                <code>)</code><br><br>
+                路由函数根据 State 返回 key，决定下一步。
+              </div>
+            </div>
+          </div>
+          <div class="code-block" style="margin: 0;"><span class="com"># 路由函数：根据 state 决定下一个节点</span>
+<span class="kw">def</span> <span class="fn">should_continue</span>(state: AgentState) -> <span class="cls">str</span>:
+    <span="com"># 检查是否已有研究资料</span>
+    <span class="kw">if</span> <span class="kw">not</span> state.get(<span class="str">"research_data"</span>):
+        <span class="kw">return</span> <span class="str">"research"</span>      <span class="com"># 需要搜索</span>
+
+    <span="com"># 检查是否已有初稿</span>
+    <span class="kw">if</span> <span class="kw">not</span> state.get(<span class="str">"draft"</span>):
+        <span class="kw">return</span> <span class="str">"writer"</span>        <span class="com"># 需要写作</span>
+
+    <span="com"># 检查审校是否通过</span>
+    <span class="kw">if</span> <span class="str">"通过"</span> <span class="kw">in</span> state.get(<span class="str">"review_notes"</span>, <span class="str">""</span>):
+        <span class="kw">return</span> <span class="str">"END"</span>           <span class="com"># 完成</span>
+    <span class="kw">else</span>:
+        <span class="kw">return</span> <span class="str">"writer"</span>        <span class="com"># 打回重写</span>
+
+<span class="com"># 注册条件边</span>
+graph.add_conditional_edges(
+    <span class="str">"supervisor"</span>,
+    should_continue,
+    {
+        <span class="str">"research"</span>: <span class="str">"research_node"</span>,
+        <span class="str">"writer"</span>: <span class="str">"writer_node"</span>,
+        <span class="str">"END"</span>: <span class="cls">END</span>,
+    }
+)</div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">08 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第9页</div>
+<div class="notes-section">
+  <div class="notes-section-title">完整流程</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>三步走：创建 StateGraph → 添加节点和边 → 编译</li>
+      <li><code>compile()</code> 会做校验，确保图结构合法</li>
+      <li>编译后得到的是可执行的 <code>Runnable</code>，支持 invoke/stream</li>
+      <li>checkpointer 用于持久化状态，支持断点续跑</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">注意事项</div>
+  <div class="notes-section-body">
+    必须设置 <code>entry_point</code>（通过 add_edge(START, "node")）和至少一个到 <code>END</code> 的路径，否则 compile 会报错。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">STEP 04 · BUILD GRAPH</div>
+      <h2 class="section-title">构建 StateGraph</h2>
+    </div>
+    <div class="slide-body">
+      <div class="flex-col" style="height: 100%;">
+        <div class="timeline" style="margin-bottom: 12px;">
+          <div class="timeline-item">
+            <div class="timeline-num">STEP 1</div>
+            <div class="timeline-title">创建 StateGraph</div>
+            <div class="timeline-desc">指定 State 类型</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-num">STEP 2</div>
+            <div class="timeline-title">添加节点和边</div>
+            <div class="timeline-desc">add_node + add_edge</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-num">STEP 3</div>
+            <div class="timeline-title">编译</div>
+            <div class="timeline-desc">compile() 得到可执行图</div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-num">STEP 4</div>
+            <div class="timeline-title">执行</div>
+            <div class="timeline-desc">invoke / stream</div>
+          </div>
+        </div>
+        <div class="code-block" style="flex: 1; margin: 0;"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+
+<span class="com"># 1. 创建 StateGraph，指定 State 类型</span>
+graph_builder = StateGraph(AgentState)
+
+<span class="com"># 2. 添加节点</span>
+graph_builder.add_node(<span class="str">"research"</span>, research_node)
+graph_builder.add_node(<span class="str">"writer"</span>, writer_node)
+graph_builder.add_node(<span class="str">"reviewer"</span>, review_node)
+
+<span class="com"># 3. 设置入口</span>
+graph_builder.add_edge(START, <span class="str">"research"</span>)
+
+<span class="com"># 4. 添加固定边</span>
+graph_builder.add_edge(<span class="str">"research"</span>, <span class="str">"writer"</span>)
+
+<span class="com"># 5. 添加条件边（审校通过 → END，不通过 → writer 重写）</span>
+graph_builder.add_conditional_edges(
+    <span class="str">"reviewer"</span>,
+    <span class="kw">lambda</span> state: <span class="str">"END"</span> <span class="kw">if</span> <span class="str">"通过"</span> <span class="kw">in</span> state.get(<span class="str">"review_notes"</span>, <span class="str">""</span>) <span class="kw">else</span> <span class="str">"writer"</span>,
+    {<span class="str">"END"</span>: END, <span class="str">"writer"</span>: <span class="str">"writer"</span>}
+)
+
+<span class="com"># 6. 编译（可加 checkpointer 支持记忆）</span>
+checkpointer = MemorySaver()
+graph = graph_builder.compile(checkpointer=checkpointer)
+
+<span class="com"># 7. 执行</span>
+result = graph.invoke(
+    {<span class="str">"messages"</span>: [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"写一篇关于 AI Agent 的研究报告"</span>} ]},
+    config={<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"demo-002"</span>}}
+)</div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">09 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第10页</div>
+<div class="notes-section">
+  <div class="notes-section-title">三种协作模式</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><strong>Supervisor（主管模式）</strong>：一个中心 Agent 调度其他 Agent</li>
+      <li><strong>Network（网络模式）</strong>：Agent 之间自由通信</li>
+      <li><strong>Hierarchical（层级模式）</strong>：树状结构，层层委派</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">选型建议</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>初学者推荐从 Supervisor 模式开始</li>
+      <li>Network 适合 Agent 数量少、需要灵活交互的场景</li>
+      <li>Hierarchical 适合大型复杂项目</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">PATTERNS · 协作模式</div>
+      <h2 class="section-title">多 Agent 协作模式</h2>
+    </div>
+    <div class="slide-body">
+      <div class="grid-3" style="height: 100%;">
+        <div class="flex-col" style="align-items: center;">
+          <div class="card" style="width: 100%; border-top: 3px solid var(--accent);">
+            <div class="card-title" style="color: var(--accent);">Supervisor · 主管模式</div>
+            <div class="card-body" style="text-align: center;">
+              <strong>中心调度</strong>，一个 Supervisor Agent 决定调用哪个子 Agent
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px;">
+            <div class="graph-node graph-node-router" style="width: 120px; padding: 8px 12px;">
+              <div class="graph-node-title" style="font-size: 12px;">Supervisor</div>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <div class="graph-node graph-node-agent" style="width: 80px; padding: 6px 8px;">
+                <div class="graph-node-title" style="font-size: 11px;">Agent A</div>
+              </div>
+              <div class="graph-node graph-node-agent" style="width: 80px; padding: 6px 8px;">
+                <div class="graph-node-title" style="font-size: 11px;">Agent B</div>
+              </div>
+              <div class="graph-node graph-node-agent" style="width: 80px; padding: 6px 8px;">
+                <div class="graph-node-title" style="font-size: 11px;">Agent C</div>
+              </div>
+            </div>
+            <div class="card-body" style="text-align: center; font-size: 11px; margin-top: 8px;">
+              ✅ 简单清晰<br>✅ 易于调试<br>⚠️ 中心节点是瓶颈
+            </div>
+          </div>
+        </div>
+        <div class="flex-col" style="align-items: center;">
+          <div class="card" style="width: 100%; border-top: 3px solid var(--accent2);">
+            <div class="card-title" style="color: var(--accent2);">Network · 网络模式</div>
+            <div class="card-body" style="text-align: center;">
+              <strong>自由通信</strong>，任意 Agent 可以调用任意 Agent
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px;">
+            <div style="display: flex; gap: 24px; align-items: center;">
+              <div class="graph-node graph-node-agent" style="width: 80px; padding: 6px 8px;">
+                <div class="graph-node-title" style="font-size: 11px;">Agent A</div>
+              </div>
+              <div class="graph-node graph-node-agent" style="width: 80px; padding: 6px 8px; border-color: var(--accent2);">
+                <div class="graph-node-title" style="font-size: 11px; color: var(--accent2);">Agent B</div>
+              </div>
+              <div class="graph-node graph-node-agent" style="width: 80px; padding: 6px 8px;">
+                <div class="graph-node-title" style="font-size: 11px;">Agent C</div>
+              </div>
+            </div>
+            <div style="font-size: 18px; color: var(--muted); margin-top: 4px;">↔ ↔ ↔</div>
+            <div class="card-body" style="text-align: center; font-size: 11px; margin-top: 4px;">
+              ✅ 灵活交互<br>✅ 无单点瓶颈<br>⚠️ 复杂度高<br>⚠️ 难以调试
+            </div>
+          </div>
+        </div>
+        <div class="flex-col" style="align-items: center;">
+          <div class="card" style="width: 100%; border-top: 3px solid var(--success);">
+            <div class="card-title" style="color: var(--success);">Hierarchical · 层级模式</div>
+            <div class="card-body" style="text-align: center;">
+              <strong>树状委派</strong>，上层 Agent 把任务拆分给下层
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px;">
+            <div class="graph-node graph-node-router" style="width: 120px; padding: 8px 12px;">
+              <div class="graph-node-title" style="font-size: 12px;">Top Supervisor</div>
+            </div>
+            <div style="font-size: 16px; color: var(--muted);">↙ ↘</div>
+            <div style="display: flex; gap: 20px;">
+              <div class="flex-col" style="align-items: center; gap: 4px;">
+                <div class="graph-node graph-node-agent" style="width: 70px; padding: 4px 6px;">
+                  <div class="graph-node-title" style="font-size: 10px;">Sub-A</div>
+                </div>
+                <div style="font-size: 12px; color: var(--muted);">↙ ↘</div>
+                <div style="display: flex; gap: 6px;">
+                  <div class="graph-node graph-node-tool" style="width: 50px; padding: 3px 4px;">
+                    <div class="graph-node-title" style="font-size: 9px;">A1</div>
+                  </div>
+                  <div class="graph-node graph-node-tool" style="width: 50px; padding: 3px 4px;">
+                    <div class="graph-node-title" style="font-size: 9px;">A2</div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-col" style="align-items: center; gap: 4px;">
+                <div class="graph-node graph-node-agent" style="width: 70px; padding: 4px 6px;">
+                  <div class="graph-node-title" style="font-size: 10px;">Sub-B</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body" style="text-align: center; font-size: 11px; margin-top: 4px;">
+              ✅ 适合大型项目<br>✅ 职责清晰<br>⚠️ 层级过多影响效率
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">10 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第11页</div>
+<div class="notes-section">
+  <div class="notes-section-title">Supervisor 模式详解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Supervisor 是最常用的多 Agent 模式</li>
+      <li>Supervisor 本身是一个 LLM，通过 Prompt 让它选择调用哪个 Agent</li>
+      <li>使用 <code>Command(goto="agent_name")</code> 进行路由</li>
+      <li>每个子 Agent 完成后返回 Supervisor，由它决定下一步</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码重点</div>
+  <div class="notes-section-body">
+    注意 <code>Command</code> 的用法：它同时包含 <code>update</code>（状态更新）和 <code>goto</code>（路由目标）。这是 LangGraph 较新的 API，比 <code>add_conditional_edges</code> 更简洁。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">PATTERN 01 · SUPERVISOR</div>
+      <h2 class="section-title">Supervisor 主管模式实现</h2>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2" style="height: 100%;">
+        <div class="flex-col">
+          <div class="concept-box">
+            <div class="concept-box-title">工作流程</div>
+            <div class="concept-box-body">
+              <div class="flow-step" style="margin-bottom: 6px;">① 用户消息 → <strong>Supervisor</strong></div>
+              <div class="flow-step" style="margin-bottom: 6px;">② Supervisor 决策：调用哪个 Agent？</div>
+              <div class="flow-step" style="margin-bottom: 6px;">③ 被选中的 Agent 执行并返回结果</div>
+              <div class="flow-step" style="margin-bottom: 6px;">④ 结果回到 Supervisor</div>
+              <div class="flow-step">⑤ Supervisor 决策：完成 or 调用下一个</div>
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--success);">
+            <div class="concept-box-title" style="color: var(--success);">Supervisor 的 Prompt</div>
+            <div class="concept-box-body">
+              <code>"你是一个团队主管。根据用户请求，选择合适的团队成员来处理。可选成员：research（资料搜集）、writer（撰写）、reviewer（审校）。"</code>
+            </div>
+          </div>
+        </div>
+        <div class="code-block" style="margin: 0;"><span class="kw">from</span> langgraph.types <span class="kw">import</span> Command
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> HumanMessage
+
+<span class="com"># Supervisor 节点</span>
+<span class="kw">def</span> <span class="fn">supervisor_node</span>(state: AgentState) -> Command:
+    <span class="com"># 用 LLM 决策下一步</span>
+    response = llm.invoke([
+        SystemMessage(content=SUPERVISOR_PROMPT),
+        *state[<span class="str">"messages"</span>],
+    ])
+    <span class="com"># 解析 LLM 输出，得到目标 Agent</span>
+    next_agent = parse_agent_name(response.content)
+
+    <span class="kw">if</span> next_agent == <span class="str">"FINISH"</span>:
+        <span class="kw">return</span> Command(goto=<span class="cls">END</span>, update={<span class="str">"next_agent"</span>: <span class="str">"FINISH"</span>})
+    <span class="kw">else</span>:
+        <span class="kw">return</span> Command(goto=next_agent, update={<span class="str">"next_agent"</span>: next_agent})
+
+<span class="com"># 子 Agent 节点（执行后回到 Supervisor）</span>
+<span class="kw">def</span> <span class="fn">research_node</span>(state: AgentState) -> Command:
+    result = research_agent.invoke(state[<span class="str">"messages"</span>])
+    <span class="kw">return</span> Command(
+        update={<span class="str">"messages"</span>: [result]},
+        goto=<span class="str">"supervisor"</span>  <span class="com"># 完成后回到 Supervisor</span>
+    )
+
+<span class="com"># 构建图</span>
+builder = StateGraph(AgentState)
+builder.add_node(<span class="str">"supervisor"</span>, supervisor_node)
+builder.add_node(<span class="str">"research"</span>, research_node)
+builder.add_node(<span class="str">"writer"</span>, writer_node)
+builder.add_edge(START, <span class="str">"supervisor"</span>)
+graph = builder.compile()</div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">11 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">PART 3 · 高级模式</div>
+<h2 class="section-title">循环工作流：带退出条件的自我修正</h2>
+<div class="slide-body">
+<div style="display: flex; gap: 0; align-items: stretch; margin-bottom: 16px;">
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px 0 0 8px; padding: 14px; text-align: center;">
+<div style="font-size: 11px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px;">NODE</div>
+<div style="font-size: 14px; font-weight: 600; color: var(--ink);">Retrieve</div>
+<div style="font-size: 11px; color: var(--muted); margin-top: 4px;">混合检索 Top-K</div>
+</div>
+<div style="display: flex; align-items: center; color: var(--accent2); font-size: 18px; padding: 0 8px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); padding: 14px; text-align: center;">
+<div style="font-size: 11px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px;">NODE</div>
+<div style="font-size: 14px; font-weight: 600; color: var(--ink);">Grade Docs</div>
+<div style="font-size: 11px; color: var(--muted); margin-top: 4px;">LLM 评判相关性</div>
+</div>
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 8px;">
+<div style="color: var(--accent2); font-size: 16px;">↓</div>
+<div style="font-size: 11px; color: var(--warning); font-family: var(--font-mono);">相关?</div>
+</div>
+<div style="flex: 1; background: linear-gradient(135deg, rgba(88,166,255,0.12), rgba(188,140,255,0.08)); border: 1px solid rgba(88,166,255,0.3); border-radius: 0 8px 8px 0; padding: 14px; text-align: center;">
+<div style="font-size: 11px; color: var(--success); font-family: var(--font-mono); margin-bottom: 4px;">NODE</div>
+<div style="font-size: 14px; font-weight: 600; color: var(--ink);">Generate</div>
+<div style="font-size: 11px; color: var(--muted); margin-top: 4px;">生成答案</div>
+</div>
+</div>
+<div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 16px;">
+<div style="background: var(--surface); border: 1px dashed var(--warning); border-radius: 8px; padding: 8px 16px; text-align: center;">
+<div style="font-size: 12px; color: var(--warning); font-family: var(--font-mono);">不相关 ↓</div>
+</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; text-align: center;">
+<div style="font-size: 13px; font-weight: 600; color: var(--ink);">Rewrite Query</div>
+<div style="font-size: 11px; color: var(--muted); margin-top: 2px;">LLM 重写查询 (temp=0.3) · attempts &lt; max_retries → 回到 Retrieve</div>
+</div>
+<div style="background: var(--surface); border: 1px dashed var(--danger); border-radius: 8px; padding: 8px 16px; text-align: center;">
+<div style="font-size: 12px; color: var(--danger); font-family: var(--font-mono);">attempts ≥ max ↓</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--danger); border-radius: 8px; padding: 8px 16px; text-align: center;">
+<div style="font-size: 12px; color: var(--danger); font-family: var(--font-mono);">Fallback</div>
+</div>
+</div>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">为什么需要循环？</div>
+<div class="concept-box-body">
+单次检索可能返回不相关文档。让 Agent <strong>自我判断</strong>文档质量，<strong>自动重写</strong>查询，是生产级系统的核心能力。
+</div>
+</div>
+<div class="card">
+<div class="card-title">关键实现</div>
+<div class="card-body" style="font-size: 12px;">
+<strong style="color: var(--accent);">条件边</strong>：<code>add_conditional_edges</code> 路由<br>
+<strong style="color: var(--accent);">状态追踪</strong>：<code>retrieval_attempts</code> 计数<br>
+<strong style="color: var(--accent);">退出条件</strong>：<code>max_retrieval_attempts</code><br>
+<strong style="color: var(--accent);">结构化输出</strong>：<code>GradeDocuments</code> (yes/no)
+</div>
+</div>
+</div>
+<div>
+<div class="code-block" style="font-size: 11px; line-height: 1.5;">
+<span class="com"># LangGraph 循环工作流</span>
+graph = <span class="cls">StateGraph</span>(AgentState)
+
+graph.<span class="fn">add_node</span>(<span class="str">"retrieve"</span>, retrieve_node)
+graph.<span class="fn">add_node</span>(<span class="str">"grade"</span>, grade_documents_node)
+graph.<span class="fn">add_node</span>(<span class="str">"rewrite"</span>, rewrite_query_node)
+graph.<span class="fn">add_node</span>(<span class="str">"generate"</span>, generate_answer_node)
+
+graph.<span class="fn">add_edge</span>(<span class="str">"retrieve"</span>, <span class="str">"grade"</span>)
+
+<span class="com"># 条件路由：相关→生成，不相关→重写</span>
+graph.<span class="fn">add_conditional_edges</span>(
+    <span class="str">"grade"</span>,
+    decide_to_generate,
+    {<span class="str">"generate"</span>: <span class="str">"generate"</span>,
+     <span class="str">"rewrite"</span>: <span class="str">"rewrite"</span>}
+)
+<span class="com"># 重写后回到检索（形成循环）</span>
+graph.<span class="fn">add_edge</span>(<span class="str">"rewrite"</span>, <span class="str">"retrieve"</span>)
+</div>
+</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">核心要点</div>
+<div class="notes-section-body">
+<ul>
+<li>循环工作流是 LangGraph 区别于简单链式调用的核心能力</li>
+<li>必须有明确的退出条件，防止无限循环</li>
+<li>retrieve → grade → rewrite → retrieve 是最经典的 RAG 循环</li>
+<li>GradeDocuments 使用 structured output 确保判断一致性</li>
+<li>查询重写的 temperature 设为 0.3，保持专注但允许变化</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">与 Module 4 的关联</div>
+<div class="notes-section-body">
+这个模式在 Module 4 的 Agentic RAG 中完整实现。可以提前告诉学生 Module 4 会看到完整的代码实现。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 02</div>
+<div class="page-num">12 / 25</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">PART 3 · 高级模式</div>
+<h2 class="section-title">Context 依赖注入：生产级 Agent 架构</h2>
+<div class="slide-body">
+<div class="grid-2" style="margin-bottom: 16px;">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">问题：全局变量的陷阱</div>
+<div class="concept-box-body">
+传统写法：LLM 客户端、检索器、追踪器作为<strong>全局变量</strong>。<br>
+→ 无法测试（测试环境 LLM 不同）<br>
+→ 无法配置（切换模型需改代码）<br>
+→ 无法追踪（每个节点手动传 callback）
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--accent2);">
+<div class="concept-box-title" style="color: var(--accent2);">方案：Context 注入</div>
+<div class="concept-box-body">
+LangGraph 的 <code>Context</code> 对象在图编译时注入依赖。<br>
+→ 节点函数通过参数接收依赖<br>
+→ 测试时注入 Mock 对象<br>
+→ 生产时注入真实客户端<br>
+→ 追踪器自动应用到所有节点
+</div>
+</div>
+</div>
+<div>
+<div class="code-block" style="font-size: 11px; line-height: 1.5;">
+<span class="com"># 定义 Context 类型</span>
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="cls">GraphContext</span>:
+    llm: <span class="cls">BaseChatModel</span>
+    retriever: <span class="cls">HybridRetriever</span>
+    langfuse: <span class="cls">Langfuse</span>
+    max_attempts: <span class="cls">int</span> = <span class="num">3</span>
+
+<span class="com"># 节点通过 Context 接收依赖</span>
+<span class="kw">async def</span> <span class="fn">retrieve_node</span>(
+    state: <span class="cls">AgentState</span>,
+    *, context: <span class="cls">GraphContext</span>
+) -> <span class="cls">AgentState</span>:
+    <span class="var">docs</span> = <span class="kw">await</span> context.retriever.<span class="fn">search</span>(
+        state[<span class="str">"rewritten_query"</span>]
+    )
+    <span class="com"># Langfuse 自动追踪</span>
+    context.langfuse.<span class="fn">trace</span>(
+        name=<span class="str">"retrieve"</span>,
+        input=state[<span class="str">"rewritten_query"</span>],
+        output=docs
+    )
+    <span class="kw">return</span> {<span class="str">"sources"</span>: docs}
+
+<span class="com"># 编译时注入依赖</span>
+app = graph.<span class="fn">compile</span>(
+    context=<span class="cls">GraphContext</span>(
+        llm=<span class="fn">get_llm</span>(),
+        retriever=<span class="fn">get_retriever</span>(),
+        langfuse=<span class="fn">get_langfuse</span>()
+    )
+)
+</div>
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--success);">
+<div class="card-title" style="color: var(--success);">生产实践建议</div>
+<div class="card-body" style="font-size: 12px;">
+<strong style="color: var(--ink);">测试</strong>：注入 Mock LLM + Mock Retriever，验证节点逻辑<br>
+<strong style="color: var(--ink);">多环境</strong>：Dev 注入小模型，Prod 注入大模型<br>
+<strong style="color: var(--ink);">追踪</strong>：Langfuse CallbackHandler 通过 Context 传播<br>
+<strong style="color: var(--ink);">配置</strong>：max_attempts 等参数通过 Context 传递
+</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">核心要点</div>
+<div class="notes-section-body">
+<ul>
+<li>Context 是 LangGraph 0.2+ 的新特性，解决依赖管理问题</li>
+<li>比全局变量更安全、更可测试、更可配置</li>
+<li>生产系统的 LLM 客户端、追踪器、配置都应通过 Context 注入</li>
+<li>测试时注入 Mock 对象是最佳实践</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">对比传统方式</div>
+<div class="notes-section-body">
+传统 LangChain Agent 通过全局变量或闭包传递依赖。Context 模式更接近 Spring Framework 的依赖注入理念，是工程化的进步。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 02</div>
+<div class="page-num">13 / 25</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第14页</div>
+<div class="notes-section">
+  <div class="notes-section-title">实战项目说明</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>这是本模块的核心实战项目</li>
+      <li>三个 Agent + 一个 Supervisor + 条件路由</li>
+      <li>Research Agent 用 Tavily 搜索（或模拟）</li>
+      <li>Writer Agent 根据资料撰写初稿</li>
+      <li>Reviewer Agent 检查质量，不通过则打回重写</li>
+      <li>循环最多 3 次，防止死循环</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">演示建议</div>
+  <div class="notes-section-body">
+    现场运行演示，让学生看到 Supervisor 如何调度。用 <code>stream()</code> 展示每个节点的执行过程。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">PRACTICE · 完整实战</div>
+      <h2 class="section-title">多 Agent 研究报告系统</h2>
+    </div>
+    <div class="slide-body">
+      <div class="flex-col" style="height: 100%;">
+        <div class="grid-2" style="flex: 1;">
+          <div class="flex-col">
+            <div class="concept-box">
+              <div class="concept-box-title">系统架构</div>
+              <div class="concept-box-body">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 8px;">
+                  <div class="graph-node graph-node-router" style="width: 140px; padding: 8px 12px;">
+                    <div class="graph-node-title" style="font-size: 12px;">Supervisor</div>
+                    <div class="graph-node-desc">调度决策</div>
+                  </div>
+                  <div style="font-size: 14px; color: var(--muted);">↙ ↓ ↘</div>
+                  <div style="display: flex; gap: 12px;">
+                    <div class="graph-node graph-node-agent" style="width: 90px; padding: 6px 8px;">
+                      <div class="graph-node-title" style="font-size: 11px;">Research</div>
+                      <div class="graph-node-desc" style="font-size: 10px;">搜索资料</div>
+                    </div>
+                    <div class="graph-node graph-node-agent" style="width: 90px; padding: 6px 8px; border-color: var(--accent2);">
+                      <div class="graph-node-title" style="font-size: 11px; color: var(--accent2);">Writer</div>
+                      <div class="graph-node-desc" style="font-size: 10px;">撰写初稿</div>
+                    </div>
+                    <div class="graph-node graph-node-agent" style="width: 90px; padding: 6px 8px; border-color: var(--success);">
+                      <div class="graph-node-title" style="font-size: 11px; color: var(--success);">Reviewer</div>
+                      <div class="graph-node-desc" style="font-size: 10px;">审校反馈</div>
+                    </div>
+                  </div>
+                  <div style="font-size: 14px; color: var(--muted); margin-top: 4px;">↓</div>
+                  <div class="graph-edge-label">条件路由：通过 → END · 不通过 → Writer</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--accent2);">
+            <div class="concept-box-title" style="color: var(--accent2);">执行流程</div>
+            <div class="concept-box-body">
+              <div class="flow-step" style="margin-bottom: 5px; font-size: 12px; padding: 8px 12px;">① 用户：<strong>"写一篇 AI Agent 研究报告"</strong></div>
+              <div class="flow-step" style="margin-bottom: 5px; font-size: 12px; padding: 8px 12px;">② Supervisor → 调度 <strong style="color:var(--accent)">Research</strong></div>
+              <div class="flow-step" style="margin-bottom: 5px; font-size: 12px; padding: 8px 12px;">③ Research 搜索资料 → 返回 Supervisor</div>
+              <div class="flow-step" style="margin-bottom: 5px; font-size: 12px; padding: 8px 12px;">④ Supervisor → 调度 <strong style="color:var(--accent2)">Writer</strong></div>
+              <div class="flow-step" style="margin-bottom: 5px; font-size: 12px; padding: 8px 12px;">⑤ Writer 根据资料撰写 → 返回 Supervisor</div>
+              <div class="flow-step" style="margin-bottom: 5px; font-size: 12px; padding: 8px 12px;">⑥ Supervisor → 调度 <strong style="color:var(--success)">Reviewer</strong></div>
+              <div class="flow-step" style="margin-bottom: 5px; font-size: 12px; padding: 8px 12px;">⑦ Reviewer 审校 → 不通过 → 回到 ④</div>
+              <div class="flow-step" style="font-size: 12px; padding: 8px 12px;">⑧ Reviewer 通过 → <strong style="color:var(--success)">输出最终报告</strong></div>
+            </div>
+          </div>
+        </div>
+        <div class="flex-row" style="justify-content: center; gap: 8px;">
+          <span class="tag tag-blue">Supervisor</span>
+          <span class="tag tag-purple">3 Agents</span>
+          <span class="tag tag-green">条件路由</span>
+          <span class="tag tag-orange">循环审校</span>
+          <span class="tag tag-blue">MemorySaver</span>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">14 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第15页</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>每个子 Agent 都是用 LangChain 的 create_agent 创建的</li>
+      <li>Research Agent 绑定搜索工具</li>
+      <li>Writer Agent 不需要工具，纯 LLM 生成</li>
+      <li>Reviewer Agent 也不需要工具，但需要审校 Prompt</li>
+      <li>注意每个 Agent 的 Prompt 要清晰定义角色</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">时间分配</div>
+  <div class="notes-section-body">
+    代码页讲解约 <strong>10 分钟</strong>，重点讲 Agent 定义和 Prompt 设计。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">CODE · 完整实现 (1/2)</div>
+      <h2 class="section-title">定义三个子 Agent</h2>
+    </div>
+    <div class="slide-body">
+      <div class="code-block" style="height: 100%; margin: 0;"><span class="kw">from</span> langchain_core.messages <span class="kw">import</span> SystemMessage, HumanMessage
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+llm = ChatOpenAI(model=<span class="str">"gpt-4o"</span>, temperature=<span class="num">0</span>)
+
+<span class="com"># ─── 工具定义 ───</span>
+<span class="kw">@tool</span>
+<span class="kw">def</span> <span class="fn">search_web</span>(query: <span class="cls">str</span>) -> <span class="cls">str</span>:
+    <span class="str">"""搜索网络获取最新信息"""</span>
+    <span class="com"># 实际项目中用 Tavily/SearchAPI</span>
+    <span class="kw">return</span> f<span class="str">"搜索结果：关于 '{query}' 的最新资料..."</span>
+
+<span class="com"># ─── Research Agent ───</span>
+research_prompt = <span class="str">"""你是一个资料搜集专家。
+根据用户给定的主题，使用 search_web 工具搜索相关资料。
+返回结构化的研究要点，包含关键事实和数据。"""</span>
+
+research_agent = create_agent(
+    llm, [search_web], prompt=research_prompt
+)
+
+<span class="com"># ─── Writer Agent ───</span>
+writer_prompt = <span class="str">"""你是一个专业写作专家。
+根据提供的研究资料，撰写一篇结构清晰、内容丰富的报告。
+包含：标题、摘要、正文（3-5段）、结论。"""</span>
+
+writer_agent = create_agent(
+    llm, [], prompt=writer_prompt
+)
+
+<span class="com"># ─── Reviewer Agent ───</span>
+reviewer_prompt = <span class="str">"""你是一个严格的审校专家。
+检查报告的质量，关注：
+1. 内容准确性  2. 逻辑连贯性  3. 语言流畅度
+如果合格，回复「审校通过」。
+如果不合格，指出具体问题并回复「需要修改」。"""</span>
+
+reviewer_agent = create_agent(
+    llm, [], prompt=reviewer_prompt
+)</div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">15 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第16页</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Supervisor 用 LLM + 结构化输出来做路由决策</li>
+      <li>每个子 Agent 节点执行后用 <code>Command(goto="supervisor")</code> 回到调度</li>
+      <li>Reviewer 节点有特殊的条件路由：不通过 → writer</li>
+      <li><code>recursion_limit</code> 防止死循环</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">注意事项</div>
+  <div class="notes-section-body">
+    <code>recursion_limit=50</code> 是安全措施。审校循环最多 3 次，加上其他节点，50 足够。如果不设限，Reviewer 一直不通过会导致死循环。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">CODE · 完整实现 (2/2)</div>
+      <h2 class="section-title">构建 Supervisor 图</h2>
+    </div>
+    <div class="slide-body">
+      <div class="code-block" style="height: 100%; margin: 0;"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> StateGraph, START, END
+<span class="kw">from</span> langgraph.types <span class="kw">import</span> Command
+<span class="kw">from</span> langgraph.checkpoint.memory <span class="kw">import</span> MemorySaver
+
+<span class="com"># ─── Supervisor 节点 ───</span>
+<span class="kw">def</span> <span class="fn">supervisor_node</span>(state: AgentState) -> Command:
+    response = llm.invoke([
+        SystemMessage(content=<span class="str">"你是团队主管。根据当前状态选择下一步："
+        "research（需要搜集资料）、writer（需要撰写）、"
+        "reviewer（需要审校）、FINISH（任务完成）。"
+        "只回复一个单词。"</span>),
+        *state[<span class="str">"messages"</span>],
+    ])
+    choice = response.content.strip().lower()
+    <span class="kw">if</span> choice == <span class="str">"finish"</span>:
+        <span class="kw">return</span> Command(goto=END, update={<span class="str">"next_agent"</span>: <span class="str">"FINISH"</span>})
+    <span class="kw">return</span> Command(goto=choice, update={<span class="str">"next_agent"</span>: choice})
+
+<span class="com"># ─── 子 Agent 节点 ───</span>
+<span class="kw">def</span> <span class="fn">research_node</span>(state: AgentState) -> Command:
+    result = research_agent.invoke({<span class="str">"messages"</span>: state[<span class="str">"messages"</span>]})
+    <span class="kw">return</span> Command(update={<span class="str">"messages"</span>: result[<span class="str">"messages"</span>], <span class="str">"research_data"</span>: result[<span class="str">"messages"</span>][-<span class="num">1</span>].content},
+                     goto=<span class="str">"supervisor"</span>)
+
+<span class="kw">def</span> <span class="fn">writer_node</span>(state: AgentState) -> Command:
+    result = writer_agent.invoke({<span class="str">"messages"</span>: state[<span class="str">"messages"</span>]})
+    <span class="kw">return</span> Command(update={<span class="str">"messages"</span>: result[<span class="str">"messages"</span>], <span class="str">"draft"</span>: result[<span class="str">"messages"</span>][-<span class="num">1</span>].content},
+                     goto=<span class="str">"supervisor"</span>)
+
+<span class="kw">def</span> <span class="fn">reviewer_node</span>(state: AgentState) -> Command:
+    result = reviewer_agent.invoke({<span class="str">"messages"</span>: state[<span class="str">"messages"</span>]})
+    review = result[<span class="str">"messages"</span>][-<span class="num">1</span>].content
+    <span class="kw">return</span> Command(update={<span class="str">"messages"</span>: result[<span class="str">"messages"</span>], <span class="str">"review_notes"</span>: review},
+                     goto=<span class="str">"supervisor"</span>)
+
+<span class="com"># ─── 构建图 ───</span>
+builder = StateGraph(AgentState)
+builder.add_node(<span class="str">"supervisor"</span>, supervisor_node)
+builder.add_node(<span class="str">"research"</span>, research_node)
+builder.add_node(<span class="str">"writer"</span>, writer_node)
+builder.add_node(<span class="str">"reviewer"</span>, reviewer_node)
+builder.add_edge(START, <span class="str">"supervisor"</span>)
+
+graph = builder.compile(checkpointer=MemorySaver())
+
+<span class="com"># ─── 执行 ───</span>
+result = graph.invoke(
+    {<span class="str">"messages"</span>: [HumanMessage(content=<span class="str">"写一篇关于 AI Agent 发展现状的研究报告"</span>)]},
+    config={<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"report-001"</span>}, <span class="str">"recursion_limit"</span>: <span class="num">50</span>}
+)</div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">16 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第17页</div>
+<div class="notes-section">
+  <div class="notes-section-title">复杂实战项目</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>这是本模块最复杂的实战项目，贴近真实教学场景</li>
+      <li>5个节点：Supervisor + 4个子Agent（理解题意/语义评分/代码检测/反馈生成）</li>
+      <li>Supervisor 根据作业类型动态调度不同Agent</li>
+      <li>代码作业和非代码作业走不同评分路径</li>
+      <li>Feedback Agent 汇总所有评分结果生成反馈报告</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">教学要点</div>
+  <div class="notes-section-body">
+    重点讲解 <code>add_conditional_edges</code> 的条件路由：Supervisor 根据作业类型决定走哪条评分路径。这与前面的 Supervisor <code>Command(goto=...)</code> 模式是两种不同写法，都要掌握。
+  </div>
+</div>
+</div>
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">PRACTICE · 复杂实战</div>
+      <h2 class="section-title">多 Agent 作业批改系统</h2>
+    </div>
+    <div class="slide-body">
+      <div class="flex-col" style="height: 100%;">
+        <div class="grid-2" style="flex: 1; gap: 16px;">
+          <div class="flex-col">
+            <div class="concept-box">
+              <div class="concept-box-title">系统架构</div>
+              <div class="concept-box-body">
+                <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 6px;">
+                  <div class="graph-node graph-node-router" style="width: 130px; padding: 6px 10px;">
+                    <div class="graph-node-title" style="font-size: 11px;">Supervisor</div>
+                    <div class="graph-node-desc" style="font-size: 10px;">分析作业类型</div>
+                  </div>
+                  <div style="font-size: 12px; color: var(--muted);">↙&nbsp;&nbsp;&nbsp;↓&nbsp;&nbsp;&nbsp;↘</div>
+                  <div style="display: flex; gap: 6px;">
+                    <div class="graph-node graph-node-agent" style="width: 78px; padding: 5px 6px;">
+                      <div class="graph-node-title" style="font-size: 10px;">Understand</div>
+                      <div class="graph-node-desc" style="font-size: 9px;">理解题意</div>
+                    </div>
+                    <div class="graph-node graph-node-agent" style="width: 78px; padding: 5px 6px; border-color: var(--accent2);">
+                      <div class="graph-node-title" style="font-size: 10px; color: var(--accent2);">Semantic</div>
+                      <div class="graph-node-desc" style="font-size: 9px;">语义评分</div>
+                    </div>
+                    <div class="graph-node graph-node-agent" style="width: 78px; padding: 5px 6px; border-color: var(--warning);">
+                      <div class="graph-node-title" style="font-size: 10px; color: var(--warning);">CodeCheck</div>
+                      <div class="graph-node-desc" style="font-size: 9px;">代码检测</div>
+                    </div>
+                  </div>
+                  <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">↓</div>
+                  <div class="graph-node" style="width: 110px; padding: 5px 10px; background: rgba(63,185,80,0.08); border: 1px solid var(--success); border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 600; color: var(--success);">Feedback</div>
+                    <div style="font-size: 9px; color: var(--muted);">生成反馈</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+              <span class="tag tag-blue">Supervisor</span>
+              <span class="tag tag-purple">条件路由</span>
+              <span class="tag tag-green">并行评分</span>
+              <span class="tag tag-orange"> TypedDict</span>
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--accent2);">
+            <div class="concept-box-title" style="color: var(--accent2);">执行流程</div>
+            <div class="concept-box-body">
+              <div class="flow-step" style="margin-bottom: 4px; font-size: 11px; padding: 6px 10px;">① 学生提交作业 → <strong>Supervisor</strong></div>
+              <div class="flow-step" style="margin-bottom: 4px; font-size: 11px; padding: 6px 10px;">② Supervisor 分析：编程题 or 文本题？</div>
+              <div class="flow-step" style="margin-bottom: 4px; font-size: 11px; padding: 6px 10px;">③ → <strong style="color:var(--accent)">Understand</strong>：提取题目要求与评分点</div>
+              <div class="flow-step" style="margin-bottom: 4px; font-size: 11px; padding: 6px 10px;">④ → <strong style="color:var(--accent2)">Semantic</strong>：语义相似度 + 要点覆盖打分</div>
+              <div class="flow-step" style="margin-bottom: 4px; font-size: 11px; padding: 6px 10px;">⑤ 编程题额外 → <strong style="color:var(--warning)">CodeCheck</strong>：语法+运行+规范</div>
+              <div class="flow-step" style="margin-bottom: 4px; font-size: 11px; padding: 6px 10px;">⑥ 各评分结果汇总 → <strong style="color:var(--success)">Feedback</strong></div>
+              <div class="flow-step" style="font-size: 11px; padding: 6px 10px;">⑦ Feedback 生成结构化评语 → <strong style="color:var(--success)">END</strong></div>
+            </div>
+          </div>
+        </div>
+        <div style="background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.2); border-radius: 8px; padding: 8px 14px; display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 12px; color: var(--accent); font-family: var(--font-mono); white-space: nowrap;">💡 设计亮点</span>
+          <span style="font-size: 11px; color: var(--muted);">条件路由按作业类型分流 · Semantic 和 CodeCheck 可并行执行 · Feedback 汇总多Agent结果 · 接近真实教学评分场景</span>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">AI Agent Course · Module 02</div>
+    <div class="page-num">17 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第18页</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解 (1/2)</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>GradingState</code> 包含作业内容、题目要求、各维度评分、最终反馈</li>
+      <li>Understand Agent 提取评分点，为后续评分提供基准</li>
+      <li>Semantic Agent 用 LLM 做语义评分，返回结构化 JSON</li>
+      <li>CodeCheck Agent 先做静态语法检查，再尝试运行代码</li>
+      <li>注意 <code>ast.parse</code> 做语法检查比直接运行更安全</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">时间分配</div>
+  <div class="notes-section-body">
+    代码两页讲解约 <strong>12 分钟</strong>。重点讲 State 设计和条件路由逻辑。
+  </div>
+</div>
+</div>
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">CODE · 作业批改系统 (1/2)</div>
+      <h2 class="section-title">状态定义与子 Agent</h2>
+    </div>
+    <div class="slide-body">
+      <div class="code-block" style="height: 100%; margin: 0; font-size: 12px; line-height: 1.55;"><span class="kw">from</span> typing <span class="kw">import</span> TypedDict, Literal, Optional
+<span class="kw">from</span> langchain_core.messages <span class="kw">import</span> SystemMessage, HumanMessage
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">import</span> ast, json
+
+llm = ChatOpenAI(model=<span class="str">"gpt-4o"</span>, temperature=<span class="num">0</span>)
+
+<span class="com"># ─── 状态定义 ───</span>
+<span class="kw">class</span> <span class="cls">GradingState</span>(TypedDict):
+    submission: <span class="cls">str</span>              <span class="com"># 学生提交内容</span>
+    assignment_type: <span class="cls">Literal</span>[<span class="str">"code"</span>, <span class="str">"text"</span>]  <span class="com"># 作业类型</span>
+    rubric: <span class="cls">list</span>[<span class="cls">str</span>]            <span class="com"># 评分点列表</span>
+    semantic_score: <span class="cls">optional</span>[<span class="cls">float</span>]    <span class="com"># 语义评分</span>
+    code_score: <span class="cls">optional</span>[<span class="cls">dict</span>]       <span class="com"># 代码检测结果</span>
+    feedback: <span class="cls">str</span>                   <span class="com"># 最终反馈</span>
+
+<span class="com"># ─── Understand Agent：理解题意，提取评分点 ───</span>
+<span class="kw">def</span> <span class="fn">understand_node</span>(state: <span class="cls">GradingState</span>) -> <span class="cls">dict</span>:
+    prompt = <span class="str">f"""分析以下学生提交，提取评分要点。
+    作业内容: {state['submission'][:500]}
+    返回 JSON: {{"type": "code"|"text", "rubric": ["要点1", ...]}}"""</span>
+    resp = llm.invoke([HumanMessage(content=prompt)])
+    result = json.loads(resp.content)
+    <span class="kw">return</span> {<span class="str">"assignment_type"</span>: result[<span class="str">"type"</span>],
+            <span class="str">"rubric"</span>: result[<span class="str">"rubric"</span>]}
+
+<span class="com"># ─── Semantic Agent：语义评分 ───</span>
+<span class="kw">def</span> <span class="fn">semantic_node</span>(state: <span class="cls">GradingState</span>) -> <span class="cls">dict</span>:
+    rubric_str = <span class="str">"\n"</span>.join(<span class="fn">enumerate</span>(state[<span class="str">"rubric"</span>], <span class="num">1</span>))
+    prompt = <span class="str">f"""按评分点逐一打分(0-10分)。
+    评分点: {rubric_str}
+    学生提交: {state['submission']}
+    返回 JSON: {{"total": 85.0, "details": [{{"point": "...", "score": 8, "comment": "..."}}]}}"""</span>
+    resp = llm.invoke([HumanMessage(content=prompt)])
+    result = json.loads(resp.content)
+    <span class="kw">return</span> {<span class="str">"semantic_score"</span>: result[<span class="str">"total"</span>]}
+
+<span class="com"># ─── CodeCheck Agent：代码检测 ───</span>
+<span class="kw">def</span> <span class="fn">codecheck_node</span>(state: <span class="cls">GradingState</span>) -> <span class="cls">dict</span>:
+    code = state[<span class="str">"submission"</span>]
+    <span class="com"># 1. 语法检查</span>
+    <span class="kw">try</span>:
+        ast.parse(code)
+        syntax_ok = <span class="kw">True</span>
+    <span class="kw">except</span> SyntaxError <span class="kw">as</span> e:
+        syntax_ok = <span class="kw">False</span>
+    <span class="com"># 2. LLM 检查代码规范与逻辑</span>
+    prompt = <span class="str">f"""检查代码质量，评分维度：
+    1.正确性 2.可读性 3.边界处理
+    代码: {code[:800]}
+    返回 JSON: {{"score": 75, "issues": ["问题1", ...]}}"""</span>
+    resp = llm.invoke([HumanMessage(content=prompt)])
+    result = json.loads(resp.content)
+    result[<span class="str">"syntax_ok"</span>] = syntax_ok
+    <span class="kw">return</span> {<span class="str">"code_score"</span>: result}</div>
+    </div>
+    <div class="brand-tag">AI Agent Course · Module 02</div>
+    <div class="page-num">18 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第19页</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解 (2/2)</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Supervisor 使用 <code>add_conditional_edges</code> 做条件路由</li>
+      <li>路由函数 <code>route_by_type</code> 根据作业类型返回不同路径</li>
+      <li>编程题走 CodeCheck，文本题跳过 CodeCheck</li>
+      <li>两条路径最终都汇入 Feedback 节点</li>
+      <li>Feedback Agent 汇总所有评分生成结构化反馈</li>
+      <li>对比前一个示例的 <code>Command(goto=...)</code>，体会两种路由方式</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">扩展讨论</div>
+  <div class="notes-section-body">
+    可扩展方向：增加 Plagiarism Agent 查重、增加 Hint Agent 给出改进建议、用 <code>interrupt_before</code> 让教师确认评分后再发布。
+  </div>
+</div>
+</div>
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">CODE · 作业批改系统 (2/2)</div>
+      <h2 class="section-title">Supervisor 路由与图构建</h2>
+    </div>
+    <div class="slide-body">
+      <div class="code-block" style="height: 100%; margin: 0; font-size: 12px; line-height: 1.55;"><span class="com"># ─── Supervisor 节点：分析作业类型 ───</span>
+<span class="kw">def</span> <span class="fn">supervisor_node</span>(state: <span class="cls">GradingState</span>) -> <span class="cls">dict</span>:
+    <span class="com"># 由 Understand 节点已提取 assignment_type</span>
+    <span class="kw">return</span> {}  <span class="com"># 仅作为路由中转</span>
+
+<span class="com"># ─── 条件路由：按作业类型分流 ───</span>
+<span class="kw">def</span> <span class="fn">route_by_type</span>(state: <span class="cls">GradingState</span>) -> <span class="cls">str</span>:
+    <span class="kw">if</span> state.get(<span class="str">"assignment_type"</span>) == <span class="str">"code"</span>:
+        <span class="kw">return</span> <span class="str">"codecheck"</span>   <span class="com"># 编程题 → 代码检测</span>
+    <span class="kw">return</span> <span class="str">"feedback"</span>        <span class="com"># 文本题 → 直接生成反馈</span>
+
+<span class="com"># ─── Feedback Agent：汇总评分，生成反馈 ───</span>
+<span class="kw">def</span> <span class="fn">feedback_node</span>(state: <span class="cls">GradingState</span>) -> <span class="cls">dict</span>:
+    parts = [<span class="str">f"语义评分: {state.get('semantic_score', 0)}/100"</span>]
+    <span class="kw">if</span> state.get(<span class="str">"code_score"</span>):
+        cs = state[<span class="str">"code_score"</span>]
+        parts.append(<span class="str">f"代码评分: {cs['score']}/100"</span>)
+        <span class="kw">if</span> <span class="kw">not</span> cs.get(<span class="str">"syntax_ok"</span>, <span class="kw">True</span>):
+            parts.append(<span class="str">"⚠️ 存在语法错误"</span>)
+        <span class="kw">if</span> cs.get(<span class="str">"issues"</span>):
+            parts.append(<span class="str">"问题: "</span> + <span class="str">"; "</span>.join(cs[<span class="str">"issues"</span>][:<span class="num">3</span>]))
+
+    prompt = <span class="str">f"""你是教师，根据以下评分信息写反馈。
+    {chr(10).join(parts)}
+    学生提交: {state['submission'][:400]}
+    要求：肯定优点 + 指出不足 + 给出改进建议，200字以内。"""</span>
+    resp = llm.invoke([HumanMessage(content=prompt)])
+    <span class="kw">return</span> {<span class="str">"feedback"</span>: resp.content}
+
+<span class="com"># ─── 构建图 ───</span>
+builder = StateGraph(GradingState)
+builder.add_node(<span class="str">"supervisor"</span>, supervisor_node)
+builder.add_node(<span class="str">"understand"</span>, understand_node)
+builder.add_node(<span class="str">"semantic"</span>, semantic_node)
+builder.add_node(<span class="str">"codecheck"</span>, codecheck_node)
+builder.add_node(<span class="str">"feedback"</span>, feedback_node)
+
+<span class="com"># 线性：START → understand → supervisor → semantic</span>
+builder.add_edge(START, <span class="str">"understand"</span>)
+builder.add_edge(<span class="str">"understand"</span>, <span class="str">"supervisor"</span>)
+builder.add_edge(<span class="str">"supervisor"</span>, <span class="str">"semantic"</span>)
+
+<span class="com"># 条件路由：semantic 之后按作业类型分流</span>
+builder.add_conditional_edges(
+    <span class="str">"semantic"</span>,
+    route_by_type,
+    {<span class="str">"codecheck"</span>: <span class="str">"codecheck"</span>, <span class="str">"feedback"</span>: <span class="str">"feedback"</span>}
+)
+builder.add_edge(<span class="str">"codecheck"</span>, <span class="str">"feedback"</span>)
+builder.add_edge(<span class="str">"feedback"</span>, END)
+
+graph = builder.compile()
+
+<span class="com"># ─── 执行 ───</span>
+result = graph.invoke({
+    <span class="str">"submission"</span>: <span class="str">"def factorial(n):\n    if n <= 1: return 1\n    return n * factorial(n-1)"</span>,
+    <span class="str">"assignment_type"</span>: <span class="str">"code"</span>,
+    <span class="str">"rubric"</span>: []
+})</div>
+    </div>
+    <div class="brand-tag">AI Agent Course · Module 02</div>
+    <div class="page-num">19 / 25</div>
+  </div>
+</section>
+
+
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">PART 3 · 高级模式</div>
+<h2 class="section-title">Agent vs LangGraph：何时用什么？</h2>
+<div class="slide-body">
+<table class="tbl" style="margin-bottom: 16px;">
+<thead>
+<tr>
+<th style="width: 130px;">维度</th>
+<th style="color: var(--accent);">LangChain Agent</th>
+<th style="color: var(--accent2);">LangGraph StateGraph</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="font-weight: 600;">适用场景</td>
+<td>单 Agent + 多工具</td>
+<td>多节点工作流 + 条件路由</td>
+</tr>
+<tr>
+<td style="font-weight: 600;">工具数量</td>
+<td>1-5 个工具</td>
+<td>不限（按节点组织）</td>
+</tr>
+<tr>
+<td style="font-weight: 600;">执行模式</td>
+<td>线性：思考→调用→观察→思考</td>
+<td>图结构：可循环、可并行</td>
+</tr>
+<tr>
+<td style="font-weight: 600;">状态管理</td>
+<td>对话历史（messages）</td>
+<td>自定义 TypedDict（任意字段）</td>
+</tr>
+<tr>
+<td style="font-weight: 600;">退出条件</td>
+<td>LLM 自行决定停止</td>
+<td>显式条件边 + max_attempts</td>
+</tr>
+<tr>
+<td style="font-weight: 600;">可调试性</td>
+<td>中等（callback 日志）</td>
+<td>高（节点级 trace + Langfuse）</td>
+</tr>
+<tr>
+<td style="font-weight: 600;">学习曲线</td>
+<td>低（几行代码启动）</td>
+<td>中（需理解图、状态、边）</td>
+</tr>
+<tr>
+<td style="font-weight: 600;">生产就绪</td>
+<td>中等</td>
+<td style="color: var(--success);">高（Context DI + tracing）</td>
+</tr>
+</tbody>
+</table>
+<div class="grid-2">
+<div class="card" style="border-left: 3px solid var(--accent);">
+<div class="card-title" style="color: var(--accent);">选 Agent Executor 当…</div>
+<div class="card-body" style="font-size: 12px;">
+✓ 工具少且简单（天气、计算器）<br>
+✓ 不需要循环或复杂路由<br>
+✓ 快速原型验证<br>
+✓ 单轮对话即可解决
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--accent2);">
+<div class="card-title" style="color: var(--accent2);">选 LangGraph 当…</div>
+<div class="card-body" style="font-size: 12px;">
+✓ 需要条件路由（guardrail、评分）<br>
+✓ 需要循环重试（查询重写）<br>
+✓ 多 Agent 协作（Supervisor 模式）<br>
+✓ 需要 Human-in-the-Loop<br>
+✓ 生产级可追踪、可测试
+</div>
+</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">决策建议</div>
+<div class="notes-section-body">
+<ul>
+<li>简单场景不要过度设计——Agent Executor 够用就用</li>
+<li>一旦需要"判断后路由"或"循环重试"，就该上 LangGraph</li>
+<li>生产系统推荐 LangGraph，因为可追踪性和可测试性更好</li>
+<li>两者不是互斥的——LangGraph 节点内部可以调用 Agent</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">课程关联</div>
+<div class="notes-section-body">
+Module 1 教的 Agent Executor 适合入门。Module 2 的 LangGraph 适合生产。Module 4 的 Agentic RAG 展示了 LangGraph 在真实项目中的威力。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 02</div>
+<div class="page-num">20 / 25</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第21页</div>
+<div class="notes-section">
+  <div class="notes-section-title">HITL 讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Human-in-the-Loop = 在图中插入人工审核环节</li>
+      <li>使用 <code>interrupt()</code> 暂停图执行</li>
+      <li>用 <code>Command(resume=...)</code> 恢复执行</li>
+      <li>适合高风险决策、需要人工确认的场景</li>
+      <li>实际应用：审批流程、内容安全审核、关键决策确认</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">应用场景</div>
+  <div class="notes-section-body">
+    举例：Writer 写完报告后，暂停等待人工审阅。审阅通过后继续执行 Reviewer 节点；不通过则直接回到 Writer 重写。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div>
+      <div class="section-kicker">ADVANCED · 人机协作</div>
+      <h2 class="section-title">Human-in-the-Loop</h2>
+    </div>
+    <div class="slide-body">
+      <div class="grid-2" style="height: 100%;">
+        <div class="flex-col">
+          <div class="concept-box">
+            <div class="concept-box-title">什么是 HITL？</div>
+            <div class="concept-box-body">
+              在图执行过程中<strong>暂停</strong>，等待人工输入后再<strong>继续</strong>。<br><br>
+              适用于：
+              <ul style="margin:6px 0 0 14px;">
+                <li>高风险决策（如发送邮件、执行交易）</li>
+                <li>内容安全审核</li>
+                <li>需要人工确认的关键步骤</li>
+                <li>人工修正 Agent 输出</li>
+              </ul>
+            </div>
+          </div>
+          <div class="concept-box" style="border-left-color: var(--success);">
+            <div class="concept-box-title" style="color: var(--success);">核心 API</div>
+            <div class="concept-box-body">
+              <ul style="margin:0; padding-left:14px;">
+                <li><code>interrupt(value)</code> — 暂停执行，返回 value 给调用者</li>
+                <li><code>Command(resume=value)</code> — 恢复执行，传入人工输入</li>
+                <li>需要 <code>checkpointer</code> 来保存暂停时的状态</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="code-block" style="margin: 0;"><span class="kw">from</span> langgraph.types <span class="kw">import</span> interrupt, Command
+
+<span class="com"># 在 Writer 节点后加入人工审核</span>
+<span class="kw">def</span> <span class="fn">human_review_node</span>(state: AgentState) -> Command:
+    <span class="com"># 暂停图执行，展示初稿给人工审阅</span>
+    draft = state.get(<span class="str">"draft"</span>, <span class="str">""</span>)
+    human_feedback = interrupt({
+        <span class="str">"question"</span>: <span class="str">"请审阅以下报告初稿："</span>,
+        <span class="str">"draft"</span>: draft[:<span class="num">500</span>] + <span class="str">"..."</span>,
+    })
+
+    <span class="com"># 人工反馈写入 state</span>
+    <span class="kw">if</span> human_feedback.get(<span class="str">"approved"</span>):
+        <span class="kw">return</span> Command(
+            update={<span class="str">"review_notes"</span>: <span class="str">"人工审核通过"</span>},
+            goto=<span class="str">"supervisor"</span>
+        )
+    <span class="kw">else</span>:
+        <span class="kw">return</span> Command(
+            update={<span class="str">"review_notes"</span>: human_feedback.get(<span class="str">"comment"</span>, <span class="str">"需要修改"</span>)},
+            goto=<span class="str">"writer"</span>  <span class="com"># 打回重写</span>
+        )
+
+<span class="com"># 调用方式</span>
+<span class="com"># 第一次调用会被 interrupt 暂停</span>
+result = graph.invoke(initial_input, config)
+
+<span class="com"># 人工审阅后恢复执行</span>
+result = graph.invoke(
+    Command(resume={<span class="str">"approved"</span>: <span class="cls">True</span>}),
+    config  <span class="com"># 同一个 thread_id</span>
+)</div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">21 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">SUMMARY</div>
+<h2 class="section-title">核心知识点回顾</h2>
+<div class="slide-body">
+<div class="grid-2">
+<div>
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">基础概念</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+LangGraph = 图结构工作流引擎<br>
+State（状态）+ Node（节点）+ Edge（边）= 图<br>
+StateGraph 编译后可持久化、可流式
+</div>
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">核心构建</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+TypedDict 定义状态 schema<br>
+add_node + add_edge 组装图<br>
+add_conditional_edges 实现路由
+</div>
+</div>
+<div>
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">高级模式</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+Supervisor 主管模式：中心调度多 Agent<br>
+<strong style="color: var(--ink);">循环工作流</strong>：retrieve→grade→rewrite→retrieve<br>
+<strong style="color: var(--ink);">Context DI</strong>：生产级依赖注入<br>
+<strong style="color: var(--ink);">决策矩阵</strong>：Agent vs LangGraph 选型
+</div>
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">生产实践</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; padding-left: 12px; border-left: 2px solid var(--border);">
+Human-in-the-Loop：人工审核关键步骤<br>
+Langfuse 追踪每个节点执行<br>
+MemorySaver 持久化对话状态
+</div>
+</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">总结要点</div>
+<div class="notes-section-body">
+<ul>
+<li>LangGraph 的核心价值是"图结构"——支持循环、并行、条件路由</li>
+<li>循环工作流是 Module 4 Agentic RAG 的基础</li>
+<li>Context DI 是从 Demo 到生产的关键工程实践</li>
+<li>鼓励学生在项目中实践循环工作流模式</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 02</div>
+<div class="page-num">22 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第23页</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂检测</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>4道选择题，每题请举手回答</li>
+      <li>重点考察 StateGraph 构建、条件路由、Supervisor 模式</li>
+      <li>错误率高的知识点需重新讲解</li>
+      <li>Q4 的循环工作流是下节课 Agentic RAG 的基础，确保学生理解</li>
+    </ul>
+  </div>
+</div>
+  </div>
+  <div class="slide-inner">
+    <div class="section-kicker">QUIZ</div>
+    <h2 class="section-title">课堂知识检测</h2>
+    <div class="slide-body">
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; border-left: 3px solid var(--accent);">
+          <div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q1</div>
+          <div style="font-size: 15px; color: var(--ink); line-height: 1.6;">LangGraph 中，用什么来定义 Agent 的状态结构？</div>
+          <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. dict &nbsp;&nbsp; B. TypedDict &nbsp;&nbsp; C. dataclass &nbsp;&nbsp; D. Pydantic Model</div>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; border-left: 3px solid var(--accent);">
+          <div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q2</div>
+          <div style="font-size: 15px; color: var(--ink); line-height: 1.6;">实现"根据评分决定下一步走哪个节点"需要用哪个 API？</div>
+          <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. add_node() &nbsp;&nbsp; B. add_edge() &nbsp;&nbsp; C. add_conditional_edges() &nbsp;&nbsp; D. compile()</div>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; border-left: 3px solid var(--accent2);">
+          <div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q3</div>
+          <div style="font-size: 15px; color: var(--ink); line-height: 1.6;">Supervisor 主管模式中，Supervisor 节点的核心职责是什么？</div>
+          <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. 执行具体任务 &nbsp;&nbsp; B. 路由请求到子 Agent &nbsp;&nbsp; C. 存储对话历史 &nbsp;&nbsp; D. 生成最终回答</div>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; border-left: 3px solid var(--accent2);">
+          <div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q4</div>
+          <div style="font-size: 15px; color: var(--ink); line-height: 1.6;">循环工作流（retrieve → grade → rewrite → retrieve）的退出条件通常是什么？</div>
+          <div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. 超时 &nbsp;&nbsp; B. 检索到相关文档 &nbsp;&nbsp; C. 达到最大迭代次数 &nbsp;&nbsp; D. B 和 C 都对</div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">AI Agent Course · Module 02</div>
+    <div class="page-num">23 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第24页</div>
+<div class="notes-section">
+  <div class="notes-section-title">课后作业</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>三个难度梯度，基础题必做确保掌握 StateGraph 基本流程</li>
+      <li>进阶题训练多 Agent 协作设计能力</li>
+      <li>挑战题引入 Human-in-the-Loop，接近生产场景</li>
+      <li>提交方式：代码 + 运行截图 → 课程仓库</li>
+      <li>截止时间：下节课前</li>
+    </ul>
+  </div>
+</div>
+  </div>
+  <div class="slide-inner">
+    <div class="section-kicker">HOMEWORK</div>
+    <h2 class="section-title">实战练习任务</h2>
+    <div class="slide-body">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; border-left: 3px solid var(--success);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 12px; background: rgba(63,185,80,0.15); color: var(--success); padding: 2px 10px; border-radius: 4px; font-weight: 600;">基础题 · 必做</span>
+            <span style="font-size: 15px; color: var(--ink); font-weight: 600;">构建单节点 StateGraph</span>
+          </div>
+          <div style="font-size: 13px; color: var(--muted); line-height: 1.7; padding-left: 12px; border-left: 2px solid var(--border);">
+            定义 TypedDict 状态 → 创建一个 LLM 节点 → add_edge 连接 START → node → END → compile & invoke<br>
+            <span style="color: var(--accent);">提示：</span>参考课程 Slide 6-9 的代码，修改 prompt 即可
+          </div>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; border-left: 3px solid var(--warning);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 12px; background: rgba(210,153,34,0.15); color: var(--warning); padding: 2px 10px; border-radius: 4px; font-weight: 600;">进阶题 · 必做</span>
+            <span style="font-size: 15px; color: var(--ink); font-weight: 600;">实现 Supervisor 多 Agent 系统</span>
+          </div>
+          <div style="font-size: 13px; color: var(--muted); line-height: 1.7; padding-left: 12px; border-left: 2px solid var(--border);">
+            构建两个子 Agent（如翻译 Agent + 摘要 Agent），用 Supervisor 路由<br>
+            <span style="color: var(--accent);">要求：</span>使用 add_conditional_edges，支持根据用户输入选择不同子 Agent
+          </div>
+        </div>
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; border-left: 3px solid var(--accent2);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 12px; background: rgba(188,140,255,0.15); color: var(--accent2); padding: 2px 10px; border-radius: 4px; font-weight: 600;">挑战题 · 选做</span>
+            <span style="font-size: 15px; color: var(--ink); font-weight: 600;">添加 Human-in-the-Loop 审核</span>
+          </div>
+          <div style="font-size: 13px; color: var(--muted); line-height: 1.7; padding-left: 12px; border-left: 2px solid var(--border);">
+            在进阶题基础上，增加人工审核节点：子 Agent 输出后暂停等待人工确认<br>
+            <span style="color: var(--accent);">提示：</span>使用 interrupt_before 参数，参考 Slide 18 的 Human-in-the-Loop 机制
+          </div>
+        </div>
+        <div style="display: flex; gap: 16px; margin-top: 4px;">
+          <div style="font-size: 12px; color: var(--muted);">📋 提交方式：代码 + 运行截图 → 课程仓库</div>
+          <div style="font-size: 12px; color: var(--muted);">⏰ 截止时间：下节课前</div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">AI Agent Course · Module 02</div>
+    <div class="page-num">24 / 25</div>
+  </div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+  <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第25页</div>
+<div class="notes-section">
+  <div class="notes-section-title">课程总结</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>恭喜完成第二模块学习！</li>
+      <li>你已掌握：StateGraph、多 Agent 协作、条件路由、HITL、流式输出</li>
+      <li>你已构建：一个多 Agent 研究报告系统</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课后资源</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>源码：<code>example/langgraph_multiagent/</code></li>
+      <li>LangGraph 文档：<code>langchain-ai.github.io/langgraph</code></li>
+      <li>LangGraph Studio：<code>studio.langchain.com</code></li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">下节预告</div>
+  <div class="notes-section-body">
+    下一模块：<strong>MCP Agent — 模型上下文协议</strong><br>
+    将学习如何用 MCP 协议让 Agent 连接外部工具和数据源。
+  </div>
+</div>
+</div>
+
+  <div class="slide-inner">
+    <div class="cover-bg"></div>
+    <div class="cover-grid"></div>
+    <div class="cover-content" style="align-items: center; text-align: center;">
+      <div class="cover-kicker">MODULE 02 · COMPLETE</div>
+      <h1 class="cover-title" style="font-size: 64px;">
+        <span class="gradient-text">Q & A</span>
+      </h1>
+      <p class="cover-subtitle" style="margin-bottom: 32px;">
+        恭喜完成第二模块学习！你已掌握 LangGraph 多智能体编排的全部核心知识
+      </p>
+      <div class="cover-meta" style="margin-bottom: 32px;">
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">已掌握</span>
+          <span class="cover-meta-value">4 大核心概念</span>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">已构建</span>
+          <span class="cover-meta-value">多 Agent 报告系统</span>
+        </div>
+        <div class="cover-divider"></div>
+        <div class="cover-meta-item">
+          <span class="cover-meta-label">下一站</span>
+          <span class="cover-meta-value">MCP Agent</span>
+        </div>
+      </div>
+      <div class="flex-row" style="justify-content: center; gap: 10px;">
+        <div class="card" style="padding: 12px 20px;">
+          <div class="card-body" style="font-size: 13px;">
+            📁 源码：<code>example/langgraph_multiagent/</code>
+          </div>
+        </div>
+        <div class="card" style="padding: 12px 20px;">
+          <div class="card-body" style="font-size: 13px;">
+            📖 文档：<code>langchain-ai.github.io/langgraph</code>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="brand-tag">LangGraph Multi-Agent</div>
+    <div class="page-num">25 / 25</div>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

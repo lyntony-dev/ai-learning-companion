@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mira-preview-type" content="html-ppt" />
+  <meta name="mira-aspect-ratio" content="16:9" />
+  <title>Module 02 · LangGraph 多智能体编排</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Archivo:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* === THEME TOKENS: TERMINAL GREEN + SWISS GRID === */
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #111827;
+      --bg-panel: rgba(22, 27, 34, 0.92);
+      --bg-panel-2: rgba(13, 17, 23, 0.78);
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-dim: #64748b;
+      --accent: #39d353;
+      --accent-2: #58a6ff;
+      --accent-3: #d29922;
+      --danger: #ff7b72;
+      --border: rgba(139, 148, 158, 0.28);
+      --border-strong: rgba(57, 211, 83, 0.42);
+      --grid-line: rgba(139, 148, 158, 0.08);
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --font-display: "Archivo", sans-serif;
+      --font-body: "JetBrains Mono", monospace;
+      --font-mono: "JetBrains Mono", monospace;
+      --subtitle-size: clamp(0.78rem, 1.42vw, 1.16rem);
+      --label-size: clamp(0.58rem, 0.82vw, 0.78rem);
+      --code-size: clamp(0.50rem, 0.74vw, 0.78rem);
+      --radius: clamp(0.75rem, 1.5vw, 1.4rem);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --duration-normal: 0.65s;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ===========================================
+       VIEWPORT FITTING: MANDATORY BASE STYLES
+       Include this ENTIRE file in every presentation.
+       These styles ensure slides fit exactly in the viewport.
+       =========================================== */
+
+    html, body { height: 100%; overflow-x: hidden; }
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+    .slide { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; scroll-snap-align: start; display: flex; flex-direction: column; position: relative; }
+    .slide-content { flex: 1; display: flex; flex-direction: column; justify-content: center; max-height: 100%; overflow: hidden; padding: var(--slide-padding); }
+    :root { --title-size: clamp(1.5rem, 5vw, 4rem); --h2-size: clamp(1.20rem, 3.10vw, 2.35rem); --h3-size: clamp(0.92rem, 1.85vw, 1.48rem); --body-size: clamp(0.68rem, 1.12vw, 0.98rem); --small-size: clamp(0.56rem, 0.82vw, 0.78rem); --slide-padding: clamp(1rem, 4vw, 4rem); --content-gap: clamp(0.5rem, 1.6vw, 1.55rem); --element-gap: clamp(0.25rem, 0.8vw, 0.85rem); }
+    .card, .container, .content-box { max-width: min(90vw, 1000px); max-height: min(80vh, 700px); }
+    .feature-list, .bullet-list { gap: clamp(0.38rem, 0.85vh, 0.82rem); }
+    .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.52; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: clamp(0.5rem, 1.5vw, 1rem); }
+    img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+    @media (max-height: 700px) { :root { --slide-padding: clamp(0.75rem, 3vw, 2rem); --content-gap: clamp(0.35rem, 1.2vw, 0.9rem); --title-size: clamp(1.25rem, 4.5vw, 2.5rem); --h2-size: clamp(1rem, 2.6vw, 1.65rem); --body-size: clamp(0.62rem, 1vw, 0.86rem); --code-size: clamp(0.46rem, 0.66vw, 0.68rem); } }
+    @media (max-height: 600px) { :root { --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem); --content-gap: clamp(0.28rem, 0.9vw, 0.7rem); --title-size: clamp(1.1rem, 4vw, 2rem); --body-size: clamp(0.58rem, 0.9vw, 0.78rem); } .nav-dots, .keyboard-hint, .decorative { display: none; } }
+    @media (max-height: 500px) { :root { --slide-padding: clamp(0.4rem, 2vw, 1rem); --title-size: clamp(1rem, 3.5vw, 1.5rem); --h2-size: clamp(0.9rem, 2.3vw, 1.2rem); --body-size: clamp(0.54rem, 0.82vw, 0.72rem); } }
+    @media (max-width: 600px) { :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); } .grid { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; } html { scroll-behavior: auto; } }
+
+    /* === GLOBAL STRUCTURE: SAME TEMPLATE AS PPT1 === */
+    body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-primary); overflow-y: auto; }
+    .slide { background: radial-gradient(circle at 15% 20%, rgba(57, 211, 83, 0.11), transparent 28%), radial-gradient(circle at 80% 10%, rgba(88, 166, 255, 0.10), transparent 30%), linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px), var(--bg-primary); background-size: auto, auto, clamp(2rem, 4vw, 4rem) clamp(2rem, 4vw, 4rem), clamp(2rem, 4vw, 4rem) clamp(2rem, 4vw, 4rem), auto; }
+    .slide::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.025) 0, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px); mix-blend-mode: overlay; opacity: 0.35; }
+    .slide-content { width: min(1180px, 92vw); margin: 0 auto; position: relative; z-index: 1; gap: var(--content-gap); }
+    .progress-bar { position: fixed; top: 0; left: 0; height: clamp(0.18rem, 0.35vw, 0.32rem); width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); z-index: 100; box-shadow: 0 0 18px rgba(57,211,83,0.45); transition: width 0.35s var(--ease-out-expo); }
+    .nav-dots { position: fixed; right: clamp(0.7rem, 1.8vw, 1.3rem); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: clamp(0.26rem, 0.65vh, 0.48rem); z-index: 50; }
+    .nav-dot { width: clamp(0.38rem, 0.65vw, 0.58rem); height: clamp(0.38rem, 0.65vw, 0.58rem); border-radius: 999px; border: 1px solid var(--border); background: transparent; cursor: pointer; transition: all 0.25s ease; }
+    .nav-dot.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 14px rgba(57,211,83,0.8); transform: scale(1.2); }
+
+    /* === TYPOGRAPHY === */
+    h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.038em; line-height: 1.02; }
+    h1 { font-size: clamp(2.35rem, 7.0vw, 6.4rem); }
+    h2 { font-size: var(--h2-size); max-width: min(100%, 26ch); }
+    h3 { font-size: var(--h3-size); }
+    p { font-size: var(--body-size); line-height: 1.65; color: var(--text-secondary); word-break: keep-all; overflow-wrap: anywhere; }
+    .eyebrow { display: inline-flex; align-items: center; gap: clamp(0.35rem, 0.8vw, 0.65rem); color: var(--accent); font-size: var(--label-size); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; line-height: 1.25; }
+    .eyebrow::before { content: "$"; color: var(--accent-2); }
+    .muted { color: var(--text-secondary); } .accent { color: var(--accent); } .blue { color: var(--accent-2); } .warn { color: var(--accent-3); } .danger { color: var(--danger); }
+
+    /* === PREVIEW-SAFE ANIMATION === */
+    .reveal, .reveal-left, .reveal-scale, .reveal-blur { opacity: 1; transform: translate(0,0) scale(1); filter: blur(0); transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo), filter var(--duration-normal) var(--ease-out-expo); }
+    .js-ready .reveal { opacity: 0; transform: translateY(clamp(1rem, 2vw, 1.7rem)); }
+    .js-ready .reveal-left { opacity: 0; transform: translateX(calc(-1 * clamp(1rem, 3vw, 2.6rem))); }
+    .js-ready .reveal-scale { opacity: 0; transform: scale(0.94); }
+    .js-ready .reveal-blur { opacity: 0; filter: blur(clamp(0.25rem, 0.8vw, 0.65rem)); }
+    .js-ready .slide.visible .reveal, .js-ready .slide.visible .reveal-left, .js-ready .slide.visible .reveal-scale, .js-ready .slide.visible .reveal-blur { opacity: 1; transform: translate(0,0) scale(1); filter: blur(0); }
+    .slide.visible .delay-1 { transition-delay: 0.08s; } .slide.visible .delay-2 { transition-delay: 0.16s; } .slide.visible .delay-3 { transition-delay: 0.24s; } .slide.visible .delay-4 { transition-delay: 0.32s; } .slide.visible .delay-5 { transition-delay: 0.40s; }
+
+    /* === REUSABLE COMPONENTS FROM PPT1 === */
+    .topline { position: absolute; top: clamp(1rem, 2vw, 2rem); left: clamp(1rem, 4vw, 4rem); right: clamp(2rem, 5vw, 5rem); display: flex; justify-content: space-between; align-items: center; z-index: 2; color: var(--text-dim); font-size: var(--label-size); letter-spacing: 0.08em; text-transform: uppercase; }
+    .terminal-panel { border: 1px solid var(--border); background: linear-gradient(180deg, rgba(22,27,34,0.98), rgba(13,17,23,0.92)); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .terminal-head { min-height: clamp(1.8rem, 3.4vh, 2.45rem); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(0.75rem, 1.5vw, 1.15rem); border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: var(--label-size); background: rgba(33,38,45,0.62); }
+    .traffic { display: flex; gap: clamp(0.32rem, 0.7vw, 0.5rem); }
+    .traffic span { width: clamp(0.42rem, 0.8vw, 0.64rem); height: clamp(0.42rem, 0.8vw, 0.64rem); border-radius: 50%; display: block; }
+    .traffic span:nth-child(1) { background: #ff7b72; } .traffic span:nth-child(2) { background: #d29922; } .traffic span:nth-child(3) { background: #39d353; }
+    .terminal-body { padding: clamp(0.8rem, 1.55vw, 1.25rem); }
+    .hero-grid { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: clamp(1rem, 3vw, 3rem); align-items: center; }
+    .hero-title { display: flex; flex-direction: column; gap: clamp(0.65rem, 1.6vh, 1.2rem); }
+    .subtitle { font-size: var(--subtitle-size); color: var(--text-secondary); max-width: 56ch; line-height: 1.68; }
+    .cursor::after { content: "_"; display: inline-block; margin-left: 0.08em; color: var(--accent); animation: blink 1s steps(2, start) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .metric-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(0.55rem, 1.1vw, 0.9rem); }
+    .metric { border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.75); padding: clamp(0.72rem, 1.25vw, 1rem); background: rgba(13,17,23,0.74); }
+    .metric strong { display: block; font-family: var(--font-display); font-size: clamp(1.35rem, 2.8vw, 2.65rem); line-height: 0.95; color: var(--accent); }
+    .metric span { color: var(--text-secondary); font-size: var(--small-size); }
+    .section-title { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: clamp(0.8rem, 1.7vw, 1.6rem); align-items: end; margin-bottom: clamp(0.35rem, 1vh, 0.75rem); }
+    .badge { display: inline-flex; align-items: center; gap: 0.5em; border: 1px solid var(--border-strong); border-radius: 999px; padding: clamp(0.34rem, 0.7vw, 0.55rem) clamp(0.55rem, 1vw, 0.9rem); color: var(--accent); background: rgba(57,211,83,0.08); font-size: var(--label-size); font-weight: 700; white-space: nowrap; }
+    .cards-2, .cards-3, .cards-4 { display: grid; gap: clamp(0.62rem, 1.15vw, 1rem); }
+    .cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card { position: relative; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); padding: clamp(0.72rem, 1.25vw, 1.08rem); overflow: hidden; min-height: clamp(5.4rem, 14.5vh, 8.8rem); }
+    .card::after { content: ""; position: absolute; left: 0; top: 0; width: 3px; height: 100%; background: linear-gradient(var(--accent), transparent); opacity: 0.85; }
+    .card h3 { font-family: var(--font-body); font-size: clamp(0.78rem, 1.18vw, 1.05rem); letter-spacing: -0.03em; line-height: 1.28; margin-bottom: clamp(0.36rem, 0.7vh, 0.58rem); }
+    .card p, .card li { font-size: var(--small-size); line-height: 1.58; }
+    .num { font-family: var(--font-display); font-size: clamp(1.65rem, 3.6vw, 3.2rem); line-height: 0.9; color: rgba(57,211,83,0.16); position: absolute; right: clamp(0.5rem, 1vw, 0.85rem); bottom: clamp(0.35rem, 0.8vw, 0.65rem); }
+    .bullet-list { list-style: none; display: grid; max-width: min(100%, 880px); }
+    .bullet-list li { position: relative; padding-left: clamp(1.3rem, 2vw, 1.85rem); color: var(--text-secondary); word-break: keep-all; overflow-wrap: anywhere; }
+    .bullet-list li::before { content: "→"; position: absolute; left: 0; color: var(--accent); font-weight: 800; }
+    .split { display: grid; grid-template-columns: 0.92fr 1.08fr; gap: clamp(1rem, 2.2vw, 2.05rem); align-items: center; }
+    .split-even { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1rem, 2.2vw, 2.05rem); align-items: center; }
+    .diagram { position: relative; min-height: clamp(14rem, 43vh, 23rem); border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(circle at 50% 50%, rgba(57,211,83,0.08), transparent 62%), rgba(13,17,23,0.72); overflow: hidden; padding: clamp(1rem, 2vw, 2rem); }
+    .diagram-svg { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+    .node { position: absolute; display: grid; place-items: center; text-align: center; border: 1px solid var(--border-strong); background: rgba(22,27,34,0.94); color: var(--text-primary); border-radius: clamp(0.75rem, 1.4vw, 1.2rem); padding: clamp(0.42rem, 0.8vw, 0.68rem); font-size: clamp(0.54rem, 0.82vw, 0.74rem); box-shadow: 0 0 28px rgba(57,211,83,0.08); }
+    .node strong { font-size: clamp(0.64rem, 0.98vw, 0.9rem); }
+    .node.big { width: clamp(7.2rem, 15vw, 12.2rem); height: clamp(3.6rem, 9vh, 5.6rem); }
+    .node.small { width: clamp(5.7rem, 11.6vw, 8.8rem); height: clamp(2.8rem, 6.8vh, 4.2rem); }
+    .code-block { font-family: var(--font-mono); font-size: var(--code-size); line-height: 1.64; color: #c9d1d9; white-space: pre-wrap; word-break: break-word; max-height: min(50vh, 390px); overflow: hidden; }
+    .code-block .kw { color: #ff7b72; } .code-block .fn { color: #d2a8ff; } .code-block .str { color: #a5d6ff; } .code-block .com { color: #8b949e; } .code-block .var { color: #79c0ff; } .code-block .ok { color: #39d353; }
+    .callout { border-left: 3px solid var(--accent); background: rgba(57,211,83,0.08); padding: clamp(0.72rem, 1.22vw, 1.02rem); border-radius: 0 var(--radius) var(--radius) 0; color: var(--text-secondary); font-size: var(--body-size); line-height: 1.6; }
+    .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(0.56rem, 1vw, 0.88rem); align-items: stretch; }
+    .timeline.five { grid-template-columns: repeat(5, 1fr); }
+    .step { position: relative; border: 1px solid var(--border); background: rgba(22,27,34,0.86); border-radius: var(--radius); padding: clamp(0.68rem, 1.18vw, 0.95rem); min-height: clamp(6rem, 15vh, 8.5rem); }
+    .step strong { display: block; color: var(--accent); font-family: var(--font-display); font-size: clamp(1.1rem, 2.25vw, 2rem); line-height: 1; margin-bottom: clamp(0.3rem, 0.6vh, 0.48rem); }
+    .step h3 { font-family: var(--font-body); font-size: clamp(0.72rem, 1.1vw, 0.92rem); margin-bottom: 0.35rem; line-height: 1.25; }
+    .step p { font-size: var(--small-size); line-height: 1.55; }
+    .compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(0.8rem, 1.6vw, 1.2rem); align-items: center; }
+    .vs { width: clamp(2.6rem, 5vw, 4.4rem); height: clamp(2.6rem, 5vw, 4.4rem); border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--border-strong); color: var(--accent); font-family: var(--font-display); background: rgba(57,211,83,0.08); }
+    .quiz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(0.62rem, 1.15vw, 1rem); }
+    .quiz { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: clamp(0.75rem, 1.35vw, 1.05rem); background: rgba(57,211,83,0.055); }
+    .quiz h3 { font-family: var(--font-body); font-size: clamp(0.78rem, 1.18vw, 0.98rem); color: var(--accent); margin-bottom: 0.38rem; }
+    .kbd { position: fixed; left: clamp(0.8rem, 1.6vw, 1.2rem); bottom: clamp(0.8rem, 1.6vw, 1.2rem); z-index: 40; color: var(--text-dim); font-size: var(--label-size); background: rgba(13,17,23,0.72); border: 1px solid var(--border); border-radius: 999px; padding: 0.5em 0.8em; }
+    .route-label { font-size: clamp(0.52rem, 0.72vw, 0.68rem); fill: var(--text-secondary); font-family: var(--font-mono); }
+    .flow-label { fill: var(--text-secondary); font-family: var(--font-mono); letter-spacing: 0.02em; }
+    .diagram-label { position: absolute; z-index: 3; font-family: var(--font-mono); font-size: clamp(0.46rem, 0.68vw, 0.62rem); line-height: 1; letter-spacing: 0.04em; color: var(--text-secondary); background: rgba(13,17,23,0.82); border: 1px solid rgba(139,148,158,0.18); border-radius: 999px; padding: 0.28em 0.52em; pointer-events: none; }
+    .diagram .node { z-index: 2; }
+    .diagram .node.compact { width: clamp(5.15rem, 10vw, 7.4rem); height: clamp(2.55rem, 6.1vh, 3.65rem); }
+    .section-num { font-family: var(--font-display); font-size: clamp(4rem, 11vw, 9rem); line-height: 0.85; color: rgba(57,211,83,0.16); }
+    .matrix { display: grid; grid-template-columns: 0.75fr 1fr 1fr; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: rgba(13,17,23,0.72); }
+    .matrix div { padding: clamp(0.42rem, 0.72vw, 0.65rem); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); color: var(--text-secondary); font-size: clamp(0.52rem, 0.78vw, 0.72rem); line-height: 1.48; }
+    .matrix .head { color: var(--text-primary); background: rgba(57,211,83,0.09); font-weight: 800; }
+    .closing-title { font-size: clamp(1.8rem, 4vw, 4.2rem); margin-top: clamp(.5rem, 1vw, 1rem); }
+    .closing-subtitle { margin-top: clamp(.7rem, 1.2vw, 1.1rem); }
+
+    /* === CENTERED STAGE LAYOUT PASS === */
+    .slide-content { min-height: 100%; justify-content: center; padding-top: clamp(3.1rem, 8vh, 5.5rem); padding-bottom: clamp(2.2rem, 6vh, 4.6rem); }
+    .title-slide .slide-content, .section-slide .slide-content { justify-content: center; }
+    .section-slide .hero-grid, .title-slide .hero-grid { min-height: clamp(24rem, 68vh, 37rem); align-items: center; }
+    .balanced-stage .slide-content { justify-content: center; }
+    .balanced-stage .split, .balanced-stage .split-even, .balanced-stage .compare, .balanced-stage .hero-grid { min-height: clamp(23rem, 62vh, 34rem); align-items: center; }
+    .balanced-stage .diagram { min-height: clamp(17rem, 52vh, 28rem); }
+    .balanced-stage .terminal-panel { align-self: center; width: 100%; }
+    .card-stage .cards-2, .card-stage .cards-3, .card-stage .cards-4, .card-stage .quiz-grid { align-items: stretch; min-height: clamp(16rem, 46vh, 25rem); }
+    .card-stage .card, .card-stage .quiz { display: flex; flex-direction: column; justify-content: center; }
+    .timeline-stage .timeline { min-height: clamp(15rem, 42vh, 23rem); align-items: stretch; }
+    .timeline-stage .step { display: flex; flex-direction: column; justify-content: center; }
+    .code-stage .split { min-height: clamp(22rem, 60vh, 33rem); }
+    .code-stage .terminal-panel { align-self: center; width: 100%; }
+    .code-stage .code-block { max-height: min(54vh, 430px); }
+    .matrix-stage .matrix { min-height: clamp(15rem, 44vh, 24rem); }
+    .matrix-stage .matrix div { display: flex; align-items: center; }
+    .sparse-stage .section-num { font-size: clamp(6rem, 15vw, 12rem); justify-self: center; }
+    .sparse-stage h2 { font-size: clamp(1.8rem, 4vw, 3.4rem); max-width: 18ch; }
+    .sparse-stage .subtitle { font-size: clamp(0.88rem, 1.55vw, 1.28rem); max-width: 48ch; }
+    @media (max-height: 700px) { .slide-content { padding-top: clamp(2.6rem, 7vh, 4rem); padding-bottom: clamp(1.5rem, 4vh, 2.8rem); } .balanced-stage .split, .balanced-stage .split-even, .balanced-stage .compare, .balanced-stage .hero-grid, .code-stage .split { min-height: clamp(18rem, 56vh, 28rem); } .balanced-stage .diagram { min-height: clamp(14rem, 47vh, 22rem); } }
+    @media (max-height: 600px) { .slide-content { padding-top: clamp(2.2rem, 6vh, 3.1rem); padding-bottom: clamp(1rem, 3vh, 2rem); } .section-title { margin-bottom: clamp(0.26rem, 0.7vh, 0.5rem); } .card-stage .cards-2, .card-stage .cards-3, .card-stage .cards-4, .card-stage .quiz-grid, .timeline-stage .timeline { min-height: auto; } }
+    @media (max-width: 900px) { .hero-grid, .split, .split-even, .compare { grid-template-columns: 1fr; } .cards-3, .cards-4, .timeline, .timeline.five, .metric-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .section-title { grid-template-columns: 1fr; } }
+    @media (max-width: 620px) { .cards-2, .cards-3, .cards-4, .timeline, .timeline.five, .quiz-grid, .metric-row { grid-template-columns: 1fr; } .nav-dots { display: none; } }
+
+  </style>
+</head>
+<body>
+  <div class="progress-bar" aria-hidden="true"></div>
+  <nav class="nav-dots" aria-label="幻灯片导航"></nav>
+  <div class="kbd keyboard-hint">↑ ↓ / Space</div>
+
+  <!-- === SLIDE 01 === -->
+  <section class="slide title-slide sparse-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>AI Agent 开发系列</span><span>01 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="hero-grid">
+        <div class="hero-title">
+          <span class="eyebrow reveal-left">boot graph.course</span>
+          <h1 class="reveal-left delay-1">LangGraph<br><span class="accent cursor">Multi-Agent</span></h1>
+          <p class="subtitle reveal-left delay-2">从单 Agent 到多智能体协作：用状态图构建可控、可循环、可追踪的复杂 AI 工作流。</p>
+          <div class="metric-row reveal-left delay-3">
+            <div class="metric"><strong>4h</strong><span>建议课时</span></div>
+            <div class="metric"><strong>02</strong><span>课程模块</span></div>
+            <div class="metric"><strong>State</strong><span>核心心智模型</span></div>
+          </div>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>graph.py</span></div>
+      <div class="terminal-body code-block"><span class="com"># 当单 Agent 不够用时</span>
+workflow = StateGraph(AgentState)
+
+<span class="ok">✓</span> 显式状态
+<span class="ok">✓</span> 条件路由
+<span class="ok">✓</span> 多 Agent 调度
+<span class="ok">✓</span> 人机协作与恢复</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 02 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Learning Outcomes</span><span>02 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">what you can build</span><h2 class="reveal-left delay-1">学完本节，你应该能做什么？</h2></div>
+        <span class="badge reveal-scale delay-2">面向 Module 01 之后</span>
+      </div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>解释 LangGraph</h3><p>用 State、Node、Edge、Route 解释图编排与 Agent Loop 的关系。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>构建 StateGraph</h3><p>写出状态、节点、固定边、条件边，并编译成可执行图。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>设计多 Agent</h3><p>使用 Supervisor 模式组织 Research、Writer、Reviewer 等角色。</p><span class="num">03</span></div>
+        <div class="card reveal delay-4"><h3>走向生产</h3><p>加入退出条件、Checkpoint、Context DI 与 Human-in-the-Loop。</p><span class="num">04</span></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 03 === -->
+  <section class="slide timeline-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Course Map</span><span>03 / 34</span></div>
+    <div class="slide-content">
+      
+      <span class="eyebrow reveal-left">from single agent to graph</span>
+      <h2 class="reveal-left delay-1">本节课程路径</h2>
+      <div class="timeline five reveal delay-2">
+        <div class="step"><strong>1</strong><h3>为什么需要图</h3><p>单 Agent 在复杂任务中的边界。</p></div>
+        <div class="step"><strong>2</strong><h3>核心概念</h3><p>State、Node、Edge、Route。</p></div>
+        <div class="step"><strong>3</strong><h3>StateGraph</h3><p>从代码骨架到编译执行。</p></div>
+        <div class="step"><strong>4</strong><h3>多 Agent</h3><p>Supervisor、循环、自我修正。</p></div>
+        <div class="step"><strong>5</strong><h3>生产化</h3><p>Context、HITL、作业批改实战。</p></div>
+      </div>
+      <div class="callout reveal delay-3">教学建议：先建立“图控制复杂性”的心智模型，再进入多 Agent 代码。</div>
+    </div>
+  </section>
+<!-- === SLIDE 04 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Problem Framing</span><span>04 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="compare">
+        <div class="terminal-panel reveal-left"><div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>single_agent</span></div><div class="terminal-body"><h3>单 Agent</h3><ul class="bullet-list"><li>一个 Prompt 承担过多职责</li><li>工具多时容易误选</li><li>状态与退出条件难审计</li></ul></div></div>
+        <div class="vs reveal-scale delay-2">VS</div>
+        <div class="terminal-panel reveal-left delay-2"><div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>state_graph</span></div><div class="terminal-body"><h3>LangGraph</h3><ul class="bullet-list"><li>拆成职责清晰的节点</li><li>State 显式保存中间结果</li><li>条件边控制分支、循环与恢复</li></ul></div></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 05 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Core Concept</span><span>05 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">one sentence</span>
+          <h2 class="reveal-left delay-1">LangGraph 是什么？</h2>
+          <p class="subtitle reveal-left delay-2">LangGraph 是把 Agent 工作流建模为有向状态图的编排方式：节点负责执行，边负责流转，状态负责承载上下文。</p>
+          <div class="callout reveal-left delay-3"><strong class="accent">记住这一句：</strong>LangGraph = State + Node + Edge + Route。</div>
+        </div>
+        <div class="diagram reveal-scale delay-2">
+          <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <line x1="22" y1="22" x2="44" y2="44" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <line x1="78" y1="22" x2="56" y2="44" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <line x1="22" y1="78" x2="44" y2="56" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <line x1="78" y1="78" x2="56" y2="56" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <circle cx="50" cy="50" r="1.2" fill="var(--accent)" opacity="0.4"/>
+          </svg>
+          <div class="node big" style="left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;"><strong>State</strong><span class="muted">共享上下文</span></div>
+          <div class="node small" style="left:6%;top:8%;z-index:1;">Node<br><span class="muted">执行单元</span></div>
+          <div class="node small" style="right:6%;top:8%;z-index:1;">Edge<br><span class="muted">固定流向</span></div>
+          <div class="node small" style="left:6%;bottom:8%;z-index:1;">Route<br><span class="muted">条件分支</span></div>
+          <div class="node small" style="right:6%;bottom:8%;z-index:1;">Checkpoint<br><span class="muted">暂停恢复</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 06 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Fundamentals</span><span>06 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="section-title"><div><span class="eyebrow reveal-left">graph primitives</span><h2 class="reveal-left delay-1">图的四大核心概念</h2></div><span class="badge reveal-scale delay-2">先记结构，再看代码</span></div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>State</h3><p>TypedDict / Pydantic 定义共享数据，节点只返回更新字段。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>Node</h3><p>普通 Python 函数，可封装 Agent、工具、LLM 或业务逻辑。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>Edge</h3><p>确定性连接：A 执行完一定进入 B。</p><span class="num">03</span></div>
+        <div class="card reveal delay-4"><h3>Conditional</h3><p>根据 State 动态选路，是多 Agent 决策的关键。</p><span class="num">04</span></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 07 === -->
+  <section class="slide section-slide sparse-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Part 02</span><span>07 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="hero-grid">
+        <div><span class="eyebrow reveal-left">build your first graph</span><h2 class="reveal-left delay-1">四步构建一个 StateGraph</h2><p class="subtitle reveal-left delay-2">定义状态 → 定义节点 → 连接边与路由 → 编译执行。</p></div>
+        <div class="section-num reveal-scale delay-2">02</div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 08 === -->
+  <section class="slide balanced-stage card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Step 01 · State</span><span>08 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">shared data</span><h2 class="reveal-left delay-1">State 是图中流转的共享数据</h2><p class="subtitle reveal-left delay-2">每个节点读取 State、返回局部更新，LangGraph 负责合并并传递给下一个节点。</p></div>
+        <div class="cards-2 reveal delay-2">
+          <div class="card"><h3>默认合并</h3><p>返回值覆盖同名字段，适合 result、status、next_agent。</p></div>
+          <div class="card"><h3>add_messages</h3><p>消息列表追加，避免覆盖历史对话。</p></div>
+          <div class="card"><h3>operator.add</h3><p>列表或计数型字段可追加合并。</p></div>
+          <div class="card"><h3>自定义 Reducer</h3><p>为复杂结构定义任意合并逻辑。</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 09 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · State</span><span>09 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">minimum state</span><h2 class="reveal-left delay-1">MessagesState 是最常用入口</h2><p class="subtitle reveal-left delay-2">教学重点：不要把 messages 写成普通 list，否则容易覆盖历史消息。</p><div class="callout reveal-left delay-3">State 不是“全局变量”，而是图运行时被框架管理的数据快照。</div></div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>state.py</span></div>
+      <div class="terminal-body code-block"><span class="kw">from</span> langgraph.graph <span class="kw">import</span> MessagesState
+
+<span class="kw">class</span> <span class="fn">AgentState</span>(MessagesState):
+    next_agent: str
+    research_data: str
+    draft: str
+    review_notes: str
+
+<span class="com"># messages 已内置 add_messages reducer</span></div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 10 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Step 02 · Node</span><span>10 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="section-title"><div><span class="eyebrow reveal-left">node concept</span><h2 class="reveal-left delay-1">节点就是普通函数</h2></div><span class="badge reveal-scale delay-2">不要神秘化 Node</span></div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>输入 State</h3><p>节点读取当前状态，包括 messages、草稿、评分、路由字段。</p><span class="num">in</span></div>
+        <div class="card reveal delay-2"><h3>执行职责</h3><p>节点内部可以调用 LLM、Agent、工具或确定性业务逻辑。</p><span class="num">fn</span></div>
+        <div class="card reveal delay-3"><h3>局部更新</h3><p>只返回需要更新的字段，未返回字段保持不变。</p><span class="num">out</span></div>
+        <div class="card reveal delay-4"><h3>交给图流转</h3><p>下一步由固定边、条件边或 Command 决定。</p><span class="num">go</span></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 11 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · Node</span><span>11 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">node.py</span><h2 class="reveal-left delay-1">一个节点的最小骨架</h2><ul class="bullet-list reveal-left delay-2"><li>函数参数是当前 AgentState。</li><li>返回 dict 表示状态增量。</li><li>不要在节点里隐藏复杂全局状态。</li><li>错误处理和日志要靠外层工程兜底。</li></ul></div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>node.py</span></div>
+      <div class="terminal-body code-block"><span class="kw">def</span> <span class="fn">research_node</span>(state: AgentState) -> dict:
+    result = research_agent.invoke(
+        state[<span class="str">"messages"</span>]
+    )
+    <span class="kw">return</span> {
+        <span class="str">"messages"</span>: [result],
+        <span class="str">"research_data"</span>: result.content,
+        <span class="str">"next_agent"</span>: <span class="str">"writer"</span>,
+    }</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 12 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Step 03 · Routing</span><span>12 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">edge and conditional edge</span><h2 class="reveal-left delay-1">固定边负责流程，条件边负责判断</h2><p class="subtitle reveal-left delay-2">条件边像高速匝道口：路由函数读取 State，返回路径 key，再映射到目标节点。</p></div>
+        <div class="diagram reveal-scale delay-2">
+          <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs><marker id="route-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="var(--accent)" opacity="0.88"/></marker></defs>
+            <path d="M20 50 L31 50" stroke="var(--accent)" stroke-width="0.62" fill="none" marker-end="url(#route-arrow)"/>
+            <path d="M45 50 L56 50" stroke="var(--accent-2)" stroke-width="0.62" fill="none" marker-end="url(#route-arrow)"/>
+            <path d="M69 44 C75 33,78 30,84 30" stroke="var(--accent)" stroke-width="0.56" fill="none" marker-end="url(#route-arrow)"/>
+            <path d="M69 56 C75 67,78 70,84 70" stroke="var(--accent-3)" stroke-width="0.56" fill="none" marker-end="url(#route-arrow)" stroke-dasharray="1.8 1"/>
+          </svg>
+          <div class="diagram-label" style="left:75%;top:34%;">ready</div>
+          <div class="diagram-label" style="left:74%;top:61%;color:var(--accent-3);">revise</div>
+          <div class="node small compact" style="left:4%;top:50%;transform:translateY(-50%);"><strong>START</strong><span class="muted">入口</span></div>
+          <div class="node small compact" style="left:31%;top:50%;transform:translateY(-50%);"><strong>Node A</strong><span class="muted">固定执行</span></div>
+          <div class="node small compact" style="left:56%;top:50%;transform:translateY(-50%);"><strong>Router</strong><span class="muted">读取 State</span></div>
+          <div class="node small compact" style="right:4%;top:20%;"><strong>Node B</strong><span class="muted">生成答案</span></div>
+          <div class="node small compact" style="right:4%;bottom:20%;"><strong>Node C</strong><span class="muted">打回修改</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 13 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · Routing</span><span>13 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">conditional edge</span><h2 class="reveal-left delay-1">源节点 · 路由函数 · 路径映射</h2><p class="subtitle reveal-left delay-2">路由函数返回字符串 key，LangGraph 根据映射找到下一个节点。</p></div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>routing.py</span></div>
+      <div class="terminal-body code-block"><span class="kw">def</span> <span class="fn">should_continue</span>(state: AgentState) -> str:
+    <span class="kw">if not</span> state.get(<span class="str">"research_data"</span>):
+        <span class="kw">return</span> <span class="str">"research"</span>
+    <span class="kw">if</span> <span class="str">"通过"</span> <span class="kw">in</span> state.get(<span class="str">"review_notes"</span>, <span class="str">""</span>):
+        <span class="kw">return</span> <span class="str">"END"</span>
+    <span class="kw">return</span> <span class="str">"writer"</span>
+
+graph.add_conditional_edges(
+    <span class="str">"supervisor"</span>, should_continue, paths)</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 14 === -->
+  <section class="slide timeline-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Step 04 · Build</span><span>14 / 34</span></div>
+    <div class="slide-content">
+      
+      <span class="eyebrow reveal-left">stategraph lifecycle</span><h2 class="reveal-left delay-1">创建 → 组装 → 编译 → 执行</h2>
+      <div class="timeline reveal delay-2">
+        <div class="step"><strong>01</strong><h3>StateGraph</h3><p>指定 AgentState，确定共享数据结构。</p></div>
+        <div class="step"><strong>02</strong><h3>add_node</h3><p>注册 research、writer、reviewer 等节点。</p></div>
+        <div class="step"><strong>03</strong><h3>add_edge</h3><p>设置 START、固定边与条件边。</p></div>
+        <div class="step"><strong>04</strong><h3>compile</h3><p>得到可执行 Runnable，支持 invoke / stream。</p></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 15 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · StateGraph</span><span>15 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>build_graph.py</span></div>
+      <div class="terminal-body code-block">builder = StateGraph(AgentState)
+builder.add_node(<span class="str">"research"</span>, research_node)
+builder.add_node(<span class="str">"writer"</span>, writer_node)
+builder.add_node(<span class="str">"reviewer"</span>, review_node)
+
+builder.add_edge(START, <span class="str">"research"</span>)
+builder.add_edge(<span class="str">"research"</span>, <span class="str">"writer"</span>)
+builder.add_conditional_edges(
+    <span class="str">"reviewer"</span>, route, paths)
+
+graph = builder.compile(checkpointer=MemorySaver())</div>
+    </div>
+        <div><span class="eyebrow reveal-left">易错点</span><h2 class="reveal-left delay-1">入口与出口必须清晰</h2><ul class="bullet-list reveal-left delay-2"><li>必须有 START 到某个节点的入口路径。</li><li>至少要存在到 END 的可达路径。</li><li>加 checkpointer 后可支持 thread_id、暂停恢复和持久化。</li></ul></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 16 === -->
+  <section class="slide section-slide sparse-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Part 03</span><span>16 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="hero-grid">
+        <div><span class="eyebrow reveal-left">advanced patterns</span><h2 class="reveal-left delay-1">当多个 Agent 开始协作</h2><p class="subtitle reveal-left delay-2">从单一图构建进入系统设计：协作模式、循环、依赖注入、人机协作。</p></div>
+        <div class="section-num reveal-scale delay-2">03</div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 17 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Patterns</span><span>17 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="section-title"><div><span class="eyebrow reveal-left">multi-agent patterns</span><h2 class="reveal-left delay-1">三种常见组织方式</h2></div><span class="badge reveal-scale delay-2">先用 Supervisor</span></div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>Supervisor</h3><p>中心主管调度子 Agent。简单清晰、易调试，但中心节点可能成为瓶颈。</p><span class="num">S</span></div>
+        <div class="card reveal delay-2"><h3>Network</h3><p>Agent 之间自由通信。灵活，但复杂度和调试难度更高。</p><span class="num">N</span></div>
+        <div class="card reveal delay-3"><h3>Hierarchical</h3><p>上层主管层层委派。适合大型项目，但层级过深会增加延迟。</p><span class="num">H</span></div>
+      </div>
+      <div class="callout reveal delay-4">课堂建议：初学与生产落地优先从 Supervisor 模式开始。</div>
+    </div>
+  </section>
+<!-- === SLIDE 18 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Supervisor</span><span>18 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">central router</span><h2 class="reveal-left delay-1">一个中心节点负责调度</h2><ul class="bullet-list reveal-left delay-2"><li>Supervisor 根据状态选择下一个 Agent。</li><li>子 Agent 完成后回到 Supervisor。</li><li>Supervisor 决定继续、打回或结束。</li></ul></div>
+        <div class="diagram reveal-scale delay-2">
+          <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><defs><marker id="sup-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="var(--accent)" opacity="0.88"/></marker></defs><line x1="50" y1="43" x2="24" y2="66" stroke="var(--accent)" stroke-width="0.48" stroke-dasharray="1.5 1" marker-end="url(#sup-arrow)"/><line x1="50" y1="43" x2="50" y2="66" stroke="var(--accent)" stroke-width="0.48" stroke-dasharray="1.5 1" marker-end="url(#sup-arrow)"/><line x1="50" y1="43" x2="76" y2="66" stroke="var(--accent)" stroke-width="0.48" stroke-dasharray="1.5 1" marker-end="url(#sup-arrow)"/></svg>
+          <div class="node big" style="left:50%;top:18%;transform:translateX(-50%);z-index:1;"><strong>Supervisor</strong><span class="muted">路由决策</span></div>
+          <div class="node small" style="left:6%;bottom:8%;z-index:1;">Research<br><span class="muted">资料搜集</span></div>
+          <div class="node small" style="left:50%;bottom:8%;transform:translateX(-50%);z-index:1;">Writer<br><span class="muted">撰写初稿</span></div>
+          <div class="node small" style="right:6%;bottom:8%;z-index:1;">Reviewer<br><span class="muted">审校反馈</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 19 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · Command</span><span>19 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>supervisor.py</span></div>
+      <div class="terminal-body code-block"><span class="kw">def</span> <span class="fn">supervisor_node</span>(state: AgentState) -> Command:
+    response = llm.invoke([SYSTEM, *state[<span class="str">"messages"</span>]])
+    next_agent = parse_agent_name(response.content)
+
+    <span class="kw">if</span> next_agent == <span class="str">"FINISH"</span>:
+        <span class="kw">return</span> Command(goto=END)
+
+    <span class="kw">return</span> Command(
+        goto=next_agent,
+        update={<span class="str">"next_agent"</span>: next_agent}
+    )</div>
+    </div>
+        <div><span class="eyebrow reveal-left">Command 的价值</span><h2 class="reveal-left delay-1">同时更新状态和指定跳转</h2><p class="subtitle reveal-left delay-2">相比把路由逻辑分散在条件边中，Command 更适合 Supervisor 这类“执行后立即跳转”的节点。</p></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 20 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Loop Workflow</span><span>20 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">self correction</span><h2 class="reveal-left delay-1">自我修正必须有退出条件</h2><p class="subtitle reveal-left delay-2">经典 RAG 循环：检索 → 评估 → 不相关则重写查询 → 再检索。</p></div>
+        <div class="diagram reveal-scale delay-2">
+          <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs><marker id="loop-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="var(--accent)" opacity="0.88"/></marker></defs>
+            <path d="M22 32 L38 32" stroke="var(--accent)" stroke-width="0.62" fill="none" marker-end="url(#loop-arrow)"/>
+            <path d="M62 32 L78 32" stroke="var(--accent)" stroke-width="0.62" fill="none" marker-end="url(#loop-arrow)"/>
+            <path d="M50 44 C50 55,33 58,24 62" stroke="var(--accent-3)" stroke-width="0.56" fill="none" marker-end="url(#loop-arrow)" stroke-dasharray="1.8 1"/>
+            <path d="M18 58 C13 49,13 41,18 36" stroke="var(--accent-3)" stroke-width="0.56" fill="none" marker-end="url(#loop-arrow)" stroke-dasharray="1.8 1"/>
+            <path d="M86 44 L86 62" stroke="var(--danger)" stroke-width="0.56" fill="none" marker-end="url(#loop-arrow)"/>
+          </svg>
+          <div class="diagram-label" style="left:29%;top:57%;color:var(--accent-3);">not relevant</div>
+          <div class="diagram-label" style="right:7%;top:55%;color:var(--danger);">max attempts</div>
+          <div class="node small compact" style="left:5%;top:24%;">Retrieve<br><span class="muted">检索 Top-K</span></div>
+          <div class="node small compact" style="left:50%;top:24%;transform:translateX(-50%);">Grade<br><span class="muted">判断相关性</span></div>
+          <div class="node small compact" style="right:5%;top:24%;">Generate<br><span class="muted">生成答案</span></div>
+          <div class="node small compact" style="left:5%;bottom:18%;">Rewrite<br><span class="muted">重写查询</span></div>
+          <div class="node small compact" style="right:5%;bottom:18%;border-color:rgba(255,123,114,0.52);">Fallback<br><span class="muted">达到上限</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 21 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · Loop</span><span>21 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>loop.py</span></div>
+      <div class="terminal-body code-block">graph.add_node(<span class="str">"retrieve"</span>, retrieve_node)
+graph.add_node(<span class="str">"grade"</span>, grade_documents_node)
+graph.add_node(<span class="str">"rewrite"</span>, rewrite_query_node)
+graph.add_node(<span class="str">"generate"</span>, generate_answer_node)
+
+graph.add_edge(<span class="str">"retrieve"</span>, <span class="str">"grade"</span>)
+graph.add_conditional_edges(
+    <span class="str">"grade"</span>, decide_to_generate,
+    {<span class="str">"generate"</span>: <span class="str">"generate"</span>, <span class="str">"rewrite"</span>: <span class="str">"rewrite"</span>}
+)
+graph.add_edge(<span class="str">"rewrite"</span>, <span class="str">"retrieve"</span>)</div>
+    </div>
+        <div><span class="eyebrow reveal-left">生产提示</span><h2 class="reveal-left delay-1">循环不是越多越聪明</h2><ul class="bullet-list reveal-left delay-2"><li>用 retrieval_attempts 记录尝试次数。</li><li>设置 max_retrieval_attempts 防止死循环。</li><li>用结构化输出稳定 yes / no 判断。</li></ul></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 22 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Context DI</span><span>22 / 34</span></div>
+    <div class="slide-content">
+      
+      <span class="eyebrow reveal-left">production architecture</span><h2 class="reveal-left delay-1">用 Context 注入依赖，而不是全局变量</h2>
+      <div class="cards-2 reveal delay-2">
+        <div class="card"><h3>全局变量的问题</h3><p>LLM、检索器、追踪器写在全局，导致难测试、难切环境、难追踪。</p><span class="num">bad</span></div>
+        <div class="card"><h3>Context 注入的优势</h3><p>图编译时注入依赖，节点通过参数接收，测试时可替换 Mock 对象。</p><span class="num">ctx</span></div>
+      </div>
+      <div class="callout reveal delay-3">工程判断：Demo 可以简单，生产系统的模型客户端、Retriever、Tracing、配置应统一走 Context。</div>
+    </div>
+  </section>
+<!-- === SLIDE 23 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · Context</span><span>23 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">dependency injection</span><h2 class="reveal-left delay-1">节点不再依赖外部全局状态</h2><p class="subtitle reveal-left delay-2">同一个图可以在 Dev 注入小模型，在 Prod 注入大模型，在测试中注入 Mock。</p></div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>context.py</span></div>
+      <div class="terminal-body code-block"><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="fn">GraphContext</span>:
+    llm: BaseChatModel
+    retriever: HybridRetriever
+    max_attempts: int = 3
+
+<span class="kw">async def</span> <span class="fn">retrieve_node</span>(state, *, context):
+    docs = <span class="kw">await</span> context.retriever.search(
+        state[<span class="str">"query"</span>]
+    )
+    <span class="kw">return</span> {<span class="str">"sources"</span>: docs}</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 24 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Practice 01</span><span>24 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">research report system</span><h2 class="reveal-left delay-1">多 Agent 研究报告系统</h2><ul class="bullet-list reveal-left delay-2"><li>Research Agent：搜索资料。</li><li>Writer Agent：基于资料撰写初稿。</li><li>Reviewer Agent：检查质量，不通过则打回。</li><li>Supervisor：调度三类角色并控制退出。</li></ul></div>
+        <div class="diagram reveal-scale delay-2">
+          <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs><marker id="report-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="var(--accent)" opacity="0.88"/></marker></defs>
+            <path d="M25 66 L40 66" stroke="var(--accent)" stroke-width="0.58" fill="none" marker-end="url(#report-arrow)"/>
+            <path d="M60 66 L75 66" stroke="var(--accent)" stroke-width="0.58" fill="none" marker-end="url(#report-arrow)"/>
+            <path d="M50 35 L21 56" stroke="var(--accent-2)" stroke-width="0.46" fill="none" stroke-dasharray="1.6 1" marker-end="url(#report-arrow)"/>
+            <path d="M50 35 L50 56" stroke="var(--accent-2)" stroke-width="0.46" fill="none" stroke-dasharray="1.6 1" marker-end="url(#report-arrow)"/>
+            <path d="M50 35 L79 56" stroke="var(--accent-2)" stroke-width="0.46" fill="none" stroke-dasharray="1.6 1" marker-end="url(#report-arrow)"/>
+            <path d="M76 76 C70 88,56 88,53 76" stroke="var(--accent-3)" stroke-width="0.52" fill="none" marker-end="url(#report-arrow)"/>
+          </svg>
+          <div class="node big" style="left:50%;top:12%;transform:translateX(-50%);">Supervisor<br><span class="muted">调度决策</span></div>
+          <div class="node small compact" style="left:5%;bottom:17%;">Research<br><span class="muted">搜索资料</span></div>
+          <div class="node small compact" style="left:50%;bottom:17%;transform:translateX(-50%);">Writer<br><span class="muted">撰写初稿</span></div>
+          <div class="node small compact" style="right:5%;bottom:17%;">Reviewer<br><span class="muted">审校反馈</span></div>
+          <div class="diagram-label" style="left:64%;top:82%;color:var(--accent-3);">revise</div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 25 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Practice Code 1/2</span><span>25 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>agents.py</span></div>
+      <div class="terminal-body code-block">research_agent = create_agent(
+    llm, [search_web],
+    prompt=<span class="str">"资料搜集专家"</span>
+)
+
+writer_agent = create_agent(
+    llm, [],
+    prompt=<span class="str">"专业写作专家"</span>
+)
+
+reviewer_agent = create_agent(
+    llm, [],
+    prompt=<span class="str">"严格审校专家"</span>
+)</div>
+    </div>
+        <div><span class="eyebrow reveal-left">三个子 Agent</span><h2 class="reveal-left delay-1">角色 Prompt 要足够清晰</h2><ul class="bullet-list reveal-left delay-2"><li>Research 绑定搜索工具。</li><li>Writer 专注结构化写作。</li><li>Reviewer 返回“通过 / 需要修改”的可路由信号。</li></ul></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 26 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Practice Code 2/2</span><span>26 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">supervisor graph</span><h2 class="reveal-left delay-1">所有子 Agent 执行后回到主管</h2><p class="subtitle reveal-left delay-2">使用 recursion_limit 或业务计数器，防止 Reviewer 一直不通过导致循环失控。</p></div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>graph.py</span></div>
+      <div class="terminal-body code-block">builder = StateGraph(AgentState)
+builder.add_node(<span class="str">"supervisor"</span>, supervisor_node)
+builder.add_node(<span class="str">"research"</span>, research_node)
+builder.add_node(<span class="str">"writer"</span>, writer_node)
+builder.add_node(<span class="str">"reviewer"</span>, reviewer_node)
+
+builder.add_edge(START, <span class="str">"supervisor"</span>)
+graph = builder.compile(checkpointer=MemorySaver())
+graph.invoke(input, config={
+    <span class="str">"recursion_limit"</span>: 50
+})</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 27 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Practice 02</span><span>27 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">grading system</span><h2 class="reveal-left delay-1">多 Agent 作业批改系统</h2><p class="subtitle reveal-left delay-2">贴近教学场景：根据作业类型动态调度理解、语义评分、代码检测和反馈生成节点。</p></div>
+        <div class="diagram reveal-scale delay-2">
+          <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs><marker id="grade-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0 0 L10 5 L0 10Z" fill="var(--accent)" opacity="0.88"/></marker></defs>
+            <path d="M50 28 L24 45" stroke="var(--accent)" stroke-width="0.54" fill="none" marker-end="url(#grade-arrow)"/>
+            <path d="M50 28 L50 45" stroke="var(--accent)" stroke-width="0.54" fill="none" marker-end="url(#grade-arrow)"/>
+            <path d="M50 28 L76 45" stroke="var(--accent)" stroke-width="0.54" fill="none" marker-end="url(#grade-arrow)"/>
+            <path d="M24 58 L42 70" stroke="var(--accent-2)" stroke-width="0.54" fill="none" marker-end="url(#grade-arrow)"/>
+            <path d="M50 58 L50 70" stroke="var(--accent-2)" stroke-width="0.54" fill="none" marker-end="url(#grade-arrow)"/>
+            <path d="M76 58 L58 70" stroke="var(--accent-2)" stroke-width="0.54" fill="none" marker-end="url(#grade-arrow)"/>
+          </svg>
+          <div class="node small compact" style="left:50%;top:12%;transform:translateX(-50%);">Supervisor<br><span class="muted">分析类型</span></div>
+          <div class="node small compact" style="left:6%;top:42%;">Understand<br><span class="muted">理解题意</span></div>
+          <div class="node small compact" style="left:50%;top:42%;transform:translateX(-50%);">Semantic<br><span class="muted">语义评分</span></div>
+          <div class="node small compact" style="right:6%;top:42%;">CodeCheck<br><span class="muted">代码检测</span></div>
+          <div class="node small" style="left:50%;bottom:9%;transform:translateX(-50%);">Feedback<br><span class="muted">生成反馈</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 28 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Grading State</span><span>28 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="section-title"><div><span class="eyebrow reveal-left">state design</span><h2 class="reveal-left delay-1">GradingState 覆盖所有评分中间产物</h2></div><span class="badge reveal-scale delay-2">禁止执行不可信代码</span></div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>submission</h3><p>学生提交内容。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>assignment_type</h3><p>code 或 text。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>rubric</h3><p>评分点列表。</p><span class="num">03</span></div>
+        <div class="card reveal delay-4"><h3>scores</h3><p>semantic_score / code_score。</p><span class="num">04</span></div>
+      </div>
+      <div class="callout reveal delay-5">安全提示：代码作业先用 ast.parse 做语法检查，不要直接执行不可信代码。</div>
+    </div>
+  </section>
+<!-- === SLIDE 29 === -->
+  <section class="slide code-stage balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Code · Grading Route</span><span>29 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div class="terminal-panel reveal-scale">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>grading_route.py</span></div>
+      <div class="terminal-body code-block"><span class="kw">def</span> <span class="fn">route_by_type</span>(state: GradingState) -> str:
+    <span class="kw">if</span> state.get(<span class="str">"assignment_type"</span>) == <span class="str">"code"</span>:
+        <span class="kw">return</span> <span class="str">"codecheck"</span>
+    <span class="kw">return</span> <span class="str">"feedback"</span>
+
+builder.add_conditional_edges(
+    <span class="str">"semantic"</span>, route_by_type,
+    {<span class="str">"codecheck"</span>: <span class="str">"codecheck"</span>,
+     <span class="str">"feedback"</span>: <span class="str">"feedback"</span>}
+)</div>
+    </div>
+        <div><span class="eyebrow reveal-left">路由设计</span><h2 class="reveal-left delay-1">编程题和文本题走不同路径</h2><ul class="bullet-list reveal-left delay-2"><li>文本题：Understand → Semantic → Feedback。</li><li>编程题：额外进入 CodeCheck。</li><li>最终都汇入 Feedback 生成结构化评语。</li></ul></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 30 === -->
+  <section class="slide matrix-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Decision Matrix</span><span>30 / 34</span></div>
+    <div class="slide-content">
+      
+      <span class="eyebrow reveal-left">Agent vs LangGraph</span><h2 class="reveal-left delay-1">何时用什么？</h2>
+      <div class="matrix reveal delay-2">
+        <div class="head">维度</div><div class="head">LangChain Agent</div><div class="head">LangGraph StateGraph</div>
+        <div>适用场景</div><div>单 Agent + 少量工具</div><div>多节点工作流 + 条件路由</div>
+        <div>执行模式</div><div>线性 ReAct 循环</div><div>图结构，可循环、可分支</div>
+        <div>状态管理</div><div>主要是 messages</div><div>任意 TypedDict 字段</div>
+        <div>退出条件</div><div>模型自行停止</div><div>显式条件边 + max_attempts</div>
+        <div>生产能力</div><div>适合快速原型</div><div>适合可测试、可追踪系统</div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 31 === -->
+  <section class="slide balanced-stage card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Human-in-the-Loop</span><span>31 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="split">
+        <div><span class="eyebrow reveal-left">human checkpoint</span><h2 class="reveal-left delay-1">在关键步骤暂停，让人确认后继续</h2><p class="subtitle reveal-left delay-2">适合发送邮件、审批、内容安全、评分发布等高风险节点。</p></div>
+        <div class="cards-2 reveal delay-2">
+          <div class="card"><h3>interrupt(value)</h3><p>暂停图执行，把待审核内容返回给调用方。</p></div>
+          <div class="card"><h3>Command(resume)</h3><p>人工确认后用同一个 thread_id 恢复执行。</p></div>
+          <div class="card"><h3>checkpointer</h3><p>保存暂停时状态，支持断点续跑。</p></div>
+          <div class="card"><h3>业务价值</h3><p>把高风险动作从“自动执行”改为“可控确认”。</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 32 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Recap</span><span>32 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="hero-grid">
+        <div><span class="eyebrow reveal-left">module recap</span><h2 class="reveal-left delay-1">LangGraph 的核心价值是显式控制复杂性</h2><ul class="bullet-list reveal-left delay-2"><li>State + Node + Edge 构成图。</li><li>Conditional Edge 让流程能根据状态动态分支。</li><li>Supervisor 是最容易落地的多 Agent 协作模式。</li><li>循环工作流必须配合退出条件。</li><li>生产系统要考虑 Checkpoint、Context DI 与 HITL。</li></ul></div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>next_module.sh</span></div>
+      <div class="terminal-body code-block"><span class="ok">$ module_02 completed</span>
+
+next: MCP Agent
+
+<span class="com"># 下一节：让 Agent 通过标准协议
+# 连接外部工具与数据源。</span></div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 33 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Checkpoint</span><span>33 / 34</span></div>
+    <div class="slide-content">
+      
+      <span class="eyebrow reveal-left">knowledge check</span><h2 class="reveal-left delay-1">4 个问题检验是否掌握</h2>
+      <div class="quiz-grid">
+        <div class="quiz reveal delay-1"><h3>Q1</h3><p>LangGraph 中，用什么定义 Agent 的状态结构？</p></div>
+        <div class="quiz reveal delay-2"><h3>Q2</h3><p>实现“根据评分决定下一节点”需要哪个 API？</p></div>
+        <div class="quiz reveal delay-3"><h3>Q3</h3><p>Supervisor 节点的核心职责是什么？</p></div>
+        <div class="quiz reveal delay-4"><h3>Q4</h3><p>循环工作流的退出条件通常是什么？</p></div>
+      </div>
+      <div class="callout reveal delay-5">课堂互动：请先独立作答；讲师讲解后再逐题揭示参考答案，避免提前暴露答案影响检测效果。</div>
+    </div>
+  </section>
+<!-- === SLIDE 34 === -->
+  <section class="slide balanced-stage sparse-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Exercise</span><span>34 / 34</span></div>
+    <div class="slide-content">
+      
+      <div class="hero-grid">
+        <div><span class="eyebrow reveal-left">hands-on task</span><h2 class="reveal-left delay-1">课后把图真正跑起来</h2><ul class="bullet-list reveal-left delay-2"><li>基础题：构建单节点 StateGraph。</li><li>进阶题：实现 Supervisor 多 Agent 系统。</li><li>挑战题：添加 Human-in-the-Loop 审核。</li><li>提交：代码、运行日志、流程图和一句话复盘。</li></ul></div>
+        <div class="terminal-panel reveal-scale delay-2"><div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>module_02_complete</span></div><div class="terminal-body"><span class="eyebrow">Q & A</span><h2 class="closing-title">下一站：<span class="accent">MCP Agent</span></h2><p class="subtitle closing-subtitle">你已经掌握 StateGraph、多 Agent 协作、条件路由、HITL 与生产化工程实践。</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    /* === SLIDE CONTROLLER: SAME SCROLL BEHAVIOR AS PPT1 === */
+    class SlidePresentation {
+      constructor() {
+        this.slides = document.querySelectorAll(".slide");
+        this.currentSlide = 0;
+        this.setupIntersectionObserver();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupProgressBar();
+        this.setupNavDots();
+        this.goToSlide(0, false);
+      }
+      setupIntersectionObserver() {
+        if (!('IntersectionObserver' in window)) { this.slides.forEach(slide => slide.classList.add('visible')); return; }
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              const idx = Array.from(this.slides).indexOf(entry.target);
+              if (idx !== -1) this.currentSlide = idx;
+              this.updateNavDots();
+              this.updateProgressBar();
+            }
+          });
+        }, { threshold: 0.55 });
+        this.slides.forEach(slide => observer.observe(slide));
+      }
+      setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+          if (['ArrowDown', 'ArrowRight', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.goToSlide(this.currentSlide + 1); }
+          else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); this.goToSlide(this.currentSlide - 1); }
+          else if (e.key === 'Home') { e.preventDefault(); this.goToSlide(0); }
+          else if (e.key === 'End') { e.preventDefault(); this.goToSlide(this.slides.length - 1); }
+        });
+      }
+      setupTouchNav() {
+        let startY = 0, startX = 0;
+        document.addEventListener('touchstart', e => { startY = e.touches[0].clientY; startX = e.touches[0].clientX; }, { passive: true });
+        document.addEventListener('touchend', e => {
+          const diffY = startY - e.changedTouches[0].clientY;
+          const diffX = startX - e.changedTouches[0].clientX;
+          const primary = Math.abs(diffY) > Math.abs(diffX) ? diffY : diffX;
+          if (Math.abs(primary) > 50) this.goToSlide(this.currentSlide + (primary > 0 ? 1 : -1));
+        }, { passive: true });
+      }
+      setupProgressBar() { this.progressBar = document.querySelector('.progress-bar'); this.updateProgressBar(); }
+      setupNavDots() {
+        this.navDotsContainer = document.querySelector('.nav-dots');
+        if (!this.navDotsContainer) return;
+        this.navDotsContainer.innerHTML = "";
+        this.slides.forEach((_, i) => {
+          const dot = document.createElement('button');
+          dot.classList.add('nav-dot');
+          dot.setAttribute('aria-label', '跳转到第 ' + (i + 1) + ' 页');
+          dot.addEventListener('click', () => this.goToSlide(i));
+          this.navDotsContainer.appendChild(dot);
+        });
+        this.updateNavDots();
+      }
+      goToSlide(index, smooth = true) { if (index < 0 || index >= this.slides.length) return; this.slides[index].scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' }); }
+      updateNavDots() { if (!this.navDotsContainer) return; this.navDotsContainer.querySelectorAll('.nav-dot').forEach((dot, i) => dot.classList.toggle('active', i === this.currentSlide)); }
+      updateProgressBar() { if (!this.progressBar || !this.slides.length) return; this.progressBar.style.width = ((this.currentSlide + 1) / this.slides.length * 100) + '%'; }
+    }
+    document.addEventListener('DOMContentLoaded', () => new SlidePresentation());
+
+  </script>
+</body>
+</html>

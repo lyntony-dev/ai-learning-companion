@@ -1,0 +1,47 @@
+{
+  "description": "AI 学习伙伴问答质量 eval:拒答(证据不足不编造)与引用正确性(有证据必带 [n] 且 citation 对齐检索来源)。离线用 FakeRetriever + mock LLM 确定性运行。",
+  "cases": [
+    {
+      "id": "cite-strong-1",
+      "task_type": "rag_answer",
+      "query": "LangGraph 的 State 是什么?",
+      "evidence": "strong",
+      "expect": {
+        "refused": false,
+        "min_citations": 1,
+        "answer_contains": "[1]"
+      }
+    },
+    {
+      "id": "cite-strong-2",
+      "task_type": "rag_answer",
+      "query": "条件边如何决定分支?",
+      "evidence": "strong",
+      "expect": {
+        "refused": false,
+        "min_citations": 1,
+        "answer_contains": "[1]"
+      }
+    },
+    {
+      "id": "refuse-insufficient-1",
+      "task_type": "rag_answer",
+      "query": "课程里没讲过的量子计算细节是什么?",
+      "evidence": "insufficient",
+      "expect": {
+        "refused": true,
+        "max_citations": 0
+      }
+    },
+    {
+      "id": "refuse-insufficient-2",
+      "task_type": "rag_answer",
+      "query": "完全无关的股票明天涨吗?",
+      "evidence": "insufficient",
+      "expect": {
+        "refused": true,
+        "max_citations": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+# AI Agent 课程包清单 (manifest)
+# 约定格式层入口(ADR-0006)。引擎经 CoursePackLoader 读取,零硬编码。
+# taxonomy / questions 为 AI 提取候选,待讲师审核沉淀(approved 字段)。
+
+course_pack_id: ai_agent
+name: AI Agent 工程实战
+description: 从 LangChain 到 LangGraph、MCP、RAG,做出一个能用的 AI Agent。
+version: v1
+
+# 四门课(course_id 形如 ppt3_mcp;对齐 CONTEXT 课程定义)
+courses:
+  - course_id: langchain_agent
+    name: LangChain Agent 基础
+    # 结构化课件 (CoursewareDoc v1):学生端以此为主体;原始 PPT/代码降为附件(见课件 frontmatter)。
+    courseware: langchain_agent.md
+    materials:
+      lecture_note: lecture_notes/01_langchain_agent_learning_doc.md
+      slides:
+        - slides/ppt_01_langchain_agent_v3_fixed.html
+        - slides/frontend_slides_01_agent_langchain.html
+      code_examples: code_examples/langchain_example
+  - course_id: langgraph_multiagent
+    name: LangGraph 多智能体
+    materials:
+      lecture_note: lecture_notes/02_langgraph_multi_agent_learning_doc.md
+      slides:
+        - slides/ppt_02_langgraph_multiagent_v2.html
+        - slides/frontend_slides_02_langgraph_multiagent_ppt1_style.html
+      code_examples: code_examples/langgraph_example
+  - course_id: mcp_agent
+    name: MCP 工具接入
+    materials:
+      lecture_note: lecture_notes/03_mcp_agent_learning_doc.md
+      slides:
+        - slides/ppt_03_mcp_agent.html
+        - slides/frontend_slides_03_mcp_agent_ppt1_style.html
+      code_examples: code_examples/mcp_agent
+  - course_id: rag_vector
+    name: RAG 与向量数据库
+    materials:
+      lecture_note: lecture_notes/04_rag_vector_database_learning_doc.md
+      slides:
+        - slides/ppt_04_rag_vector.html
+        - slides/frontend_slides_04_rag_vector_ppt1_style.html
+      code_examples: code_examples/vector_databases
+
+# 结课项目里程碑序列(F 能力;引擎只认里程碑,内容由课程包定义)
+# 引导字段(可选,供学生端展示):capstone.overview/background/final_deliverable;
+# 每个 milestone 的 deliverable(交付要求)/hint(提示)。
+# 说明:里程碑的 name/deliverable/hint 作为「领域输入」交给 LLM,结合学生立项(goal/audience/
+#      difficulty)与课程包 RAG 证据,生成绑定到学生自己项目的「项目卡 + 个性化可勾选清单」。
+capstone:
+  name: 做一个覆盖 LangChain/LangGraph/MCP/RAG 的可用 Agent
+  overview: |
+    做一个"能用"的 AI Agent:围绕一个你真实关心的场景(如个人知识库问答、
+    代码助手、运营数据分析助手),把课程学到的 LangChain(工具/链)、
+    LangGraph(多节点编排与状态)、MCP(外部工具接入)、RAG(检索增强)
+    串成一个可运行、可演示的完整应用。
+  background: |
+    四门课分别覆盖了 Agent 的四块能力:LangChain 负责单步推理与工具调用,
+    LangGraph 负责把多步流程编排成有状态的图,MCP 负责标准化接入外部工具,
+    RAG 负责让 Agent 基于你的私有资料作答。结课项目要求你把这四块整合进
+    同一个应用,证明你能独立搭出一个端到端的 Agent。
+  final_deliverable: |
+    一个可运行的 Agent 项目仓库,包含:README(场景说明 + 架构图 + 运行方式)、
+    可复现的核心链路代码、至少一个 MCP/自定义工具接入、一段 RAG 检索问答、
+    一份简单的评估记录(几组输入输出 + 你的判断),以及一段演示(录屏或截图)。
+  milestones:
+    - id: topic_selection
+      name: 选题
+      deliverable: |
+        用 3-5 句话说明:你要做什么 Agent、面向谁、解决什么具体问题、
+        为什么这个场景适合用 Agent(而不是普通脚本)。给出 1-2 个典型用户提问示例。
+      hint: 选题不要太大。"覆盖全网的智能客服"太空,"基于我的课程笔记回答问题的助手"刚好。
+    - id: architecture_design
+      name: 架构设计
+      deliverable: |
+        画出/描述系统架构:有哪些节点或模块(如:意图判断 → 检索 → 工具调用 → 生成),
+        数据如何流动,用到哪些技术(LangChain/LangGraph/MCP/RAG 各落在哪里),
+        以及你选型的一句话理由。
+      hint: 用 LangGraph 的"节点 + 状态"视角描述流程比堆技术名词更清楚;先画通路,再谈细节。
+    - id: core_loop
+      name: 核心链路跑通
+      deliverable: |
+        跑通最小可用链路:输入一个问题,Agent 能走完"检索/推理 → 生成回答"并返回结果。
+        贴出关键代码片段和一次真实运行的输入输出。
+      hint: 先让"一条最朴素的路径"能端到端跑起来,再加分支和工具;不要一次接全。
+    - id: tool_integration
+      name: 接入工具
+      deliverable: |
+        接入至少一个工具(MCP server 或自定义 LangChain Tool),让 Agent 能在需要时调用它。
+        说明工具做什么、Agent 如何决定调用、贴一次触发工具的运行结果。
+      hint: 挑一个和你场景相关的小工具(如日期计算、单位换算、网页抓取),证明"会用工具"即可。
+    - id: evaluation
+      name: 评估
+      deliverable: |
+        准备 3-5 组测试问题,记录 Agent 的实际回答,逐条判断是否达到预期,
+        指出目前的主要问题(如检索不准/幻觉/工具误触发)和可能的改进方向。
+      hint: 不需要复杂指标,人工判断"对不对、好不好"并诚实记录 bad case 就是合格的评估。
+    - id: delivery
+      name: 交付
+      deliverable: |
+        整理最终交付:可运行仓库 + README(场景/架构/运行方式)+ 一段演示(录屏或截图)。
+        用几句话总结你做出了什么、学到了什么、还有哪些没做完。
+      hint: README 要让别人能照着跑起来;演示突出"提问 → Agent 检索/调用工具 → 回答"的完整链路。

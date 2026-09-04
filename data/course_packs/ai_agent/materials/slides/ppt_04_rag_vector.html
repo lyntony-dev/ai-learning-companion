@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mira-preview-type" content="html-ppt">
+<meta name="mira-aspect-ratio" content="16:9">
+<title>RAG 与向量数据库</title>
+<style>
+:root {
+  /* PLATFORM — DO NOT OVERRIDE */
+  --slide-width: 1440px;
+  --slide-height: 810px;
+  --deck-scale: 1;
+  --slide-index: 0;
+  --mira-bg-content: #f7f8f9;
+
+  /* STYLE TOKENS — tech-dark */
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --ink: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --accent2: #bc8cff;
+  --accent3: #39c5cf;
+  --border: #30363d;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --chart-1: #58a6ff;
+  --chart-2: #bc8cff;
+  --chart-3: #39c5cf;
+  --chart-4: #d29922;
+  --chart-5: #3fb950;
+  --chart-6: #f85149;
+  --overlay: rgba(88, 166, 255, 0.06);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --radius: 12px;
+  --notes-w: 320px;
+  --font-display: 700 1em/1.2 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-body: 400 1em/1.6 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Consolas", monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+  background: #0d1117;
+}
+.deck-shell {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; margin: 0; padding: 0; background: #0d1117;
+}
+.deck-viewport {
+  flex: 0 0 auto; position: relative;
+  width: var(--slide-width); height: var(--slide-height);
+  transform: scale(var(--deck-scale)); transform-origin: center center;
+  overflow: hidden; margin: 0; padding: 0; max-width: none; max-height: none; border: 0;
+}
+.deck {
+  display: flex; width: max-content; height: var(--slide-height);
+  transform: translate3d(calc(var(--slide-index, 0) * -1 * var(--slide-width)), 0, 0);
+}
+.slide, section[data-mira-slide] {
+  position: relative; flex: 0 0 var(--slide-width);
+  width: var(--slide-width); height: var(--slide-height); overflow: hidden;
+  background: var(--bg);
+}
+.slide-inner {
+  position: relative; width: 100%; height: 100%;
+  padding: 48px 56px 48px calc(var(--notes-w) + 56px);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.slide-body { flex: 1; min-height: 0; overflow: hidden; }
+
+/* Notes Panel */
+.notes-panel {
+  position: absolute; top: 0; left: 0; width: var(--notes-w); height: 100%;
+  background: var(--surface2); border-right: 1px solid var(--border);
+  padding: 16px 14px; overflow-y: auto; font-size: 11px; line-height: 1.6; color: var(--muted);
+}
+.notes-header {
+  font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 10px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border); letter-spacing: 0.5px;
+}
+.notes-section { margin-bottom: 10px; }
+.notes-section-title { font-size: 10px; font-weight: 600; color: var(--accent2); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.notes-section-body { font-size: 11px; color: var(--muted); line-height: 1.6; }
+.notes-section-body ul { margin: 0; padding-left: 14px; }
+.notes-section-body li { margin-bottom: 2px; }
+.notes-section-body code { font-family: var(--font-mono); font-size: 10px; color: var(--accent3); }
+
+/* Page elements */
+.brand-tag { position: absolute; bottom: 14px; right: 20px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 0.5px; }
+.page-num { position: absolute; bottom: 14px; right: 80px; font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+/* Typography */
+.section-kicker { font-size: 12px; color: var(--accent); font-family: var(--font-mono); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+.section-title { font-size: 28px; font-weight: 700; color: var(--ink); margin: 0 0 16px 0; line-height: 1.3; }
+h3 { font-size: 18px; font-weight: 600; color: var(--ink); margin: 0 0 8px 0; }
+
+/* Cover */
+.cover-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 50%, rgba(88,166,255,0.08), transparent 60%), radial-gradient(ellipse at 70% 50%, rgba(188,140,255,0.06), transparent 60%); }
+.cover-grid { position: absolute; inset: 0; background-image: linear-gradient(rgba(88,166,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(88,166,255,0.03) 1px, transparent 1px); background-size: 40px 40px; }
+.cover-content { position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: center; height: 100%; }
+.cover-kicker { font-size: 14px; color: var(--accent); font-family: var(--font-mono); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+.cover-title { font-size: 52px; font-weight: 800; color: var(--ink); margin: 0 0 12px 0; line-height: 1.2; }
+.gradient-text { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.cover-subtitle { font-size: 16px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+.cover-meta { display: flex; gap: 20px; align-items: center; margin-bottom: 24px; }
+.cover-meta-item { display: flex; flex-direction: column; gap: 2px; }
+.cover-meta-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.cover-meta-value { font-size: 14px; color: var(--ink); font-weight: 600; }
+.cover-divider { width: 1px; height: 28px; background: var(--border); }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.card-accent { border-left: 3px solid var(--accent); }
+.card-purple { border-left: 3px solid var(--accent2); }
+.card-green { border-left: 3px solid var(--success); }
+.card-orange { border-left: 3px solid var(--warning); }
+.card-red { border-left: 3px solid var(--danger); }
+.card-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+.card-body { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.card-body strong { color: var(--ink); }
+
+/* Grid */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+/* Lists */
+.bullet-list { list-style: none; padding: 0; margin: 0; }
+.bullet-list li { font-size: 13px; color: var(--muted); line-height: 1.8; padding-left: 16px; position: relative; }
+.bullet-list li::before { content: "▸"; position: absolute; left: 0; color: var(--accent); }
+.bullet-list li strong { color: var(--ink); }
+
+/* Tables */
+.tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tbl th { background: var(--surface2); color: var(--accent); font-weight: 600; padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px; }
+.tbl td { padding: 7px 10px; color: var(--muted); border-bottom: 1px solid var(--border); line-height: 1.5; }
+.tbl td strong { color: var(--ink); }
+.tbl tr:last-child td { border-bottom: none; }
+
+/* Code */
+.code-block { background: #010409; border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--ink); overflow: hidden; white-space: pre-wrap; word-break: break-word; }
+.code-block .kw { color: #ff7b72; }
+.code-block .str { color: #a5d6ff; }
+.code-block .fn { color: #d2a8ff; }
+.code-block .com { color: #8b949e; font-style: italic; }
+.code-block .num { color: #79c0ff; }
+.code-block .cls { color: #ffa657; }
+.code-block .dec { color: #d2a8ff; }
+code { font-family: var(--font-mono); font-size: 12px; color: var(--accent3); background: rgba(57,197,207,0.08); padding: 1px 5px; border-radius: 3px; }
+
+/* Concept boxes */
+.concept-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; }
+.concept-box-title { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 6px; font-family: var(--font-mono); letter-spacing: 0.5px; }
+.concept-box-body { font-size: 13px; color: var(--muted); line-height: 1.7; }
+.concept-box-body strong { color: var(--ink); }
+
+/* Formula */
+.formula-box { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 16px 20px; text-align: center; margin: 8px 0; }
+.formula-box .formula { font-family: var(--font-mono); font-size: 16px; color: var(--accent); font-weight: 600; }
+.formula-box .formula-desc { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* Callout */
+.callout-box { display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 8px; font-size: 13px; line-height: 1.6; }
+.callout-info { background: rgba(88,166,255,0.06); border: 1px solid rgba(88,166,255,0.2); }
+.callout-warn { background: rgba(210,153,34,0.06); border: 1px solid rgba(210,153,34,0.2); }
+.callout-success { background: rgba(63,185,80,0.06); border: 1px solid rgba(63,185,80,0.2); }
+.callout-icon { font-size: 16px; flex-shrink: 0; }
+.callout-text { color: var(--muted); }
+.callout-text strong { color: var(--ink); }
+
+/* Flow steps */
+.flow-step { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--ink); display: flex; align-items: center; gap: 8px; }
+.flow-step-num { font-family: var(--font-mono); font-size: 11px; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+
+/* Timeline */
+.timeline-h { display: flex; gap: 0; align-items: stretch; }
+.timeline-item { flex: 1; text-align: center; position: relative; padding: 0 8px; }
+.timeline-item::after { content: ""; position: absolute; top: 16px; right: -8px; width: 16px; height: 1px; background: var(--border); }
+.timeline-item:last-child::after { display: none; }
+.timeline-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); margin: 10px auto 6px; }
+.timeline-title { font-size: 12px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.timeline-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+/* Quiz */
+.quiz-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; margin-bottom: 10px; border-left: 3px solid var(--accent); }
+.quiz-num { font-size: 12px; color: var(--accent); font-family: var(--font-mono); font-weight: 700; letter-spacing: 1px; margin-bottom: 4px; }
+.quiz-question { font-size: 14px; color: var(--ink); font-weight: 600; margin-bottom: 6px; line-height: 1.5; }
+.quiz-options { display: flex; flex-direction: column; gap: 4px; padding-left: 28px; }
+.quiz-option { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.quiz-option .opt-label { display: inline-block; width: 20px; color: var(--accent2); font-weight: 700; }
+
+/* Homework */
+.hw-item { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 8px; }
+.hw-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.hw-icon-1 { background: rgba(88,166,255,0.15); color: var(--accent); }
+.hw-icon-2 { background: rgba(188,140,255,0.15); color: var(--accent2); }
+.hw-icon-3 { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-content { flex: 1; }
+.hw-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.hw-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.hw-difficulty { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-family: var(--font-mono); margin-left: 6px; }
+.hw-easy { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-medium { background: rgba(210,153,34,0.15); color: var(--warning); }
+.hw-hard { background: rgba(248,81,73,0.15); color: var(--danger); }
+
+/* Misc */
+.flex-row { display: flex; gap: 12px; align-items: center; }
+.flex-col { display: flex; flex-direction: column; gap: 8px; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: var(--font-mono); font-weight: 600; }
+.tag-blue { background: rgba(88,166,255,0.15); color: var(--accent); }
+.tag-purple { background: rgba(188,140,255,0.15); color: var(--accent2); }
+.tag-green { background: rgba(63,185,80,0.15); color: var(--success); }
+.tag-orange { background: rgba(210,153,34,0.15); color: var(--warning); }
+.tag-red { background: rgba(248,81,73,0.15); color: var(--danger); }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const slides = Array.from(document.querySelectorAll('[data-mira-slide]'));
+  if (!slides.length) return;
+  let index = 0;
+  const root = document.documentElement;
+  const width = 1440;
+  const height = 810;
+  const fit = () => {
+    const scale = Math.min(window.innerWidth / width, window.innerHeight / height);
+    root.style.setProperty('--deck-scale', String(Math.max(0.1, scale)));
+  };
+  const render = () => {
+    root.style.setProperty('--slide-index', String(index));
+    fit();
+  };
+  const go = (nextIndex) => {
+    index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+    render();
+  };
+  window.addEventListener('resize', fit);
+  window.addEventListener('keydown', (event) => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(event.key)) go(index + 1);
+    if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(event.key)) go(index - 1);
+    if (event.key === 'Home') go(0);
+    if (event.key === 'End') go(slides.length - 1);
+  });
+  render();
+});
+</script>
+</head>
+<body>
+<div class="deck-shell">
+<div class="deck-viewport">
+<main class="deck" data-mira-preview-type="html-ppt">
+
+<!-- ===== SLIDE 1: 封面 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 1 / 24 · 封面</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">3 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>回顾 Module 3 MCP，引出知识增强需求</li><li>提问："LLM 不知道公司内部文档怎么办？"</li><li>预告：本模块是整个课程的 capstone</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="cover-bg"></div>
+<div class="cover-grid"></div>
+<div class="cover-content">
+<div class="cover-kicker">MODULE 04 · RAG & VECTOR DATABASE</div>
+<h1 class="cover-title">RAG 与<span class="gradient-text">向量数据库</span></h1>
+<p class="cover-subtitle">从 BM25 关键词检索到 Agentic RAG — 构建生产级知识增强系统</p>
+<div class="cover-meta">
+<div class="cover-meta-item"><span class="cover-meta-label">课时</span><span class="cover-meta-value">3.5 课时 · 155 min</span></div>
+<div class="cover-divider"></div>
+<div class="cover-meta-item"><span class="cover-meta-label">页数</span><span class="cover-meta-value">22 + 2 页</span></div>
+<div class="cover-divider"></div>
+<div class="cover-meta-item"><span class="cover-meta-label">前置</span><span class="cover-meta-value">Module 1-3</span></div>
+<div class="cover-divider"></div>
+<div class="cover-meta-item"><span class="cover-meta-label">定位</span><span class="cover-meta-value">Capstone Module</span></div>
+</div>
+<div class="flex-row" style="gap: 8px;">
+<span class="tag tag-blue">BM25</span>
+<span class="tag tag-purple">Vector Search</span>
+<span class="tag tag-green">Hybrid + RRF</span>
+<span class="tag tag-orange">Agentic RAG</span>
+<span class="tag tag-red">Production</span>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">1 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 2: 本课大纲 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 2 / 24 · 课程大纲</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>五部分结构总览</li><li>强调 Part 5 Agentic RAG 是 4 模块综合应用</li><li>标注新增内容：BM25、混合搜索、Agentic RAG、生产化</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">OVERVIEW</div>
+<h2 class="section-title">本课大纲</h2>
+<div class="grid-3" style="gap: 12px;">
+<div class="card card-accent">
+<div class="card-title">Part 1 · RAG 基础</div>
+<div class="card-body">
+<strong>Slides 3-5</strong> · 26 min<br>
+大模型知识局限 → 什么是 RAG → RAG vs Fine-tuning<br>
+<span class="tag tag-blue" style="margin-top: 4px;">概念</span>
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">Part 2 · 检索基础</div>
+<div class="card-body">
+<strong>Slides 6-10</strong> · 52 min<br>
+BM25 → Embedding → 相似度 → ANN → 混合搜索 + RRF<br>
+<span class="tag tag-purple" style="margin-top: 4px;">核心</span>
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">Part 3 · 向量数据库</div>
+<div class="card-body">
+<strong>Slides 11-13</strong> · 28 min<br>
+智能分块 → Chroma 实践 → 选型对比<br>
+<span class="tag tag-green" style="margin-top: 4px;">实践</span>
+</div>
+</div>
+<div class="card card-orange">
+<div class="card-title">Part 4 · RAG 实战</div>
+<div class="card-body">
+<strong>Slides 14-18</strong> · 50 min<br>
+Pipeline → LangChain 实现 → 查询构建 → 优化 → 评估<br>
+<span class="tag tag-orange" style="margin-top: 4px;">实战</span>
+</div>
+</div>
+<div class="card card-red">
+<div class="card-title">Part 5 · 进阶架构</div>
+<div class="card-body">
+<strong>Slides 19-20</strong> · 27 min<br>
+Agentic RAG（Capstone）→ RAG 生产化<br>
+<span class="tag tag-red" style="margin-top: 4px;">进阶</span>
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--accent3);">
+<div class="card-title">课堂检测 + 作业</div>
+<div class="card-body">
+<strong>Slides 21-22</strong> · 15 min<br>
+知识检测 → 实战练习任务<br>
+<span class="tag tag-blue" style="margin-top: 4px;">评估</span>
+</div>
+</div>
+</div>
+<div class="callout-box callout-info" style="margin-top: 14px;">
+<div class="callout-icon">🎯</div>
+<div class="callout-text"><strong>核心哲学</strong>：<strong>先关键词，后向量</strong>。BM25 精确匹配 + Vector 语义匹配 = 生产级混合搜索。Agentic RAG 是 4 模块知识的综合应用。</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">2 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 3: 大模型的知识局限 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 3 / 24 · 知识局限</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>用 GPT 回答"2026年最新论文"的失败案例引入</li><li>让学生分享遇到过的 LLM 幻觉案例</li><li>三大痛点：幻觉、时效性、领域知识缺失</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 互动</div><div class="notes-section-body">提问："你遇到过 LLM '一本正经胡说八道' 吗？"</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PROBLEM</div>
+<h2 class="section-title">大模型的知识局限</h2>
+<div class="grid-3">
+<div class="card card-red">
+<div class="card-title">🧠 幻觉问题</div>
+<div class="card-body">
+LLM 会<strong>"一本正经地胡说八道"</strong><br><br>
+<strong>示例</strong>：问"GPT-4 的训练数据截止时间"，可能回答错误日期，甚至编造不存在的研究论文<br><br>
+<strong>根因</strong>：模型基于概率生成，没有事实校验机制
+</div>
+</div>
+<div class="card card-orange">
+<div class="card-title">⏰ 时效性问题</div>
+<div class="card-body">
+训练数据有<strong>截止日期</strong>，无法知道之后的事<br><br>
+<strong>示例</strong>：问"2026年最新的 AI 论文"，模型只能基于训练时的知识回答<br><br>
+<strong>影响</strong>：新闻、股价、政策等实时信息全部失效
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">📚 领域知识缺失</div>
+<div class="card-body">
+<strong>企业内部知识</strong>不在训练数据中<br><br>
+<strong>示例</strong>：公司内部文档、产品 API、业务流程、员工手册 — LLM 完全不知道<br><br>
+<strong>影响</strong>：无法直接用于企业场景
+</div>
+</div>
+</div>
+<div class="callout-box callout-warn" style="margin-top: 14px;">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>核心矛盾</strong>：LLM 有强大的<strong>推理和生成能力</strong>，但缺乏<strong>准确的知识</strong>。如何让 LLM "开卷考试"？→ RAG（检索增强生成）</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">3 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 4: 什么是 RAG ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 4 / 24 · RAG 概念</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>核心公式：RAG = 检索 + 生成</li><li>类比：开卷考试 — 先翻书找答案，再组织语言回答</li><li>画 RAG 流程图：问题→检索→拼接→生成</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">CONCEPT</div>
+<h2 class="section-title">什么是 RAG？</h2>
+<div class="formula-box" style="margin-bottom: 16px;">
+<div class="formula" style="font-size: 22px;">RAG = Retrieval + Generation</div>
+<div class="formula-desc">检索增强生成 — 先从知识库检索相关文档，再将文档作为上下文交给 LLM 生成答案</div>
+</div>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">类比：开卷考试</div>
+<div class="concept-box-body">
+<strong>闭卷考试</strong>（纯 LLM）：靠记忆答题，可能记错<br>
+<strong>开卷考试</strong>（RAG）：先翻书找到对应章节，再组织语言回答<br>
+<strong>背答案</strong>（Fine-tuning）：把书本内容背进脑子，但背了就改不了
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">核心流程</div>
+<div class="concept-box-body">
+<strong>① 离线</strong>：文档 → 分块 → Embedding → 存入向量数据库<br>
+<strong>② 在线</strong>：用户问题 → 向量化 → 检索 Top-K → 拼接 Prompt → LLM 生成
+</div>
+</div>
+</div>
+<div>
+<div class="code-block" style="height: 100%; font-size: 11px; line-height: 1.55;"><span class="com"># RAG 核心流程伪代码</span>
+
+<span class="com"># 1. 离线索引</span>
+documents = load_documents(<span class="str">"knowledge_base/"</span>)
+chunks = split_into_chunks(documents)
+embeddings = embedding_model.encode(chunks)
+vector_db.add(embeddings, chunks)
+
+<span class="com"># 2. 在线检索 + 生成</span>
+query = <span class="str">"公司的请假政策是什么？"</span>
+query_vec = embedding_model.encode(query)
+results = vector_db.search(query_vec, k=<span class="num">5</span>)
+
+<span class="com"># 3. 拼接上下文 → LLM 生成</span>
+context = <span class="str">"\n"</span>.join([r.text <span class="kw">for</span> r <span class="kw">in</span> results])
+answer = llm.generate(
+    prompt=<span class="str">f"根据以下资料回答问题：\n{context}\n\n问题：{query}"</span>
+)</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">4 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 5: RAG vs Fine-tuning ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 5 / 24 · RAG vs Fine-tuning</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>对比表讲解 6 个维度</li><li>选型建议：知识频繁变化用 RAG，风格/格式调整用 Fine-tuning</li><li>两者可以组合使用</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">COMPARISON</div>
+<h2 class="section-title">RAG vs Fine-tuning</h2>
+<table class="tbl">
+<thead><tr><th style="width: 14%;">维度</th><th style="width: 38%;">RAG（检索增强生成）</th><th style="width: 38%;">Fine-tuning（微调）</th><th style="width: 10%;">胜者</th></tr></thead>
+<tbody>
+<tr><td><strong>知识更新</strong></td><td>实时更新 — 只需更新知识库</td><td>需重新训练 — 成本高、周期长</td><td><span class="tag tag-green">RAG</span></td></tr>
+<tr><td><strong>成本</strong></td><td>低 — 向量数据库 + 检索</td><td>高 — GPU 训练 + 数据标注</td><td><span class="tag tag-green">RAG</span></td></tr>
+<tr><td><strong>准确性</strong></td><td>高 — 基于检索到的真实文档</td><td>中 — 知识融入权重，可能遗忘</td><td><span class="tag tag-green">RAG</span></td></tr>
+<tr><td><strong>风格/格式</strong></td><td>弱 — 依赖 Prompt 控制</td><td>强 — 深度学习输出风格</td><td><span class="tag tag-orange">FT</span></td></tr>
+<tr><td><strong>延迟</strong></td><td>较高 — 多一次检索步骤</td><td>低 — 直接生成</td><td><span class="tag tag-orange">FT</span></td></tr>
+<tr><td><strong>可解释性</strong></td><td>强 — 可追溯引用来源</td><td>弱 — 黑盒模型</td><td><span class="tag tag-green">RAG</span></td></tr>
+</tbody>
+</table>
+<div class="grid-2" style="margin-top: 14px;">
+<div class="callout-box callout-success">
+<div class="callout-icon">✅</div>
+<div class="callout-text"><strong>选 RAG 当</strong>：知识频繁变化、需要引用来源、企业内部文档、成本敏感</div>
+</div>
+<div class="callout-box callout-warn">
+<div class="callout-icon">⚠️</div>
+<div class="callout-text"><strong>选 FT 当</strong>：需要特定输出风格、领域术语深度学习、延迟敏感</div>
+</div>
+</div>
+<div class="callout-box callout-info" style="margin-top: 8px;">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>最佳实践</strong>：RAG + Fine-tuning 组合 — 先 FT 调整模型风格，再用 RAG 注入实时知识。</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">5 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 6: BM25 关键词检索 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 6 / 24 · BM25 检索</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>本模块最重要的新增内容</li><li>建立"先关键词后向量"的思维</li><li>BM25 = TF + IDF + 文档长度归一化</li><li>参数 k₁=1.2, b=0.75</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 互动</div><div class="notes-section-body">"iPhone 15 Pro Max"搜索案例 — BM25 精确匹配 vs 向量语义近似</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">RETRIEVAL · NEW</div>
+<h2 class="section-title">BM25 关键词检索</h2>
+<div class="grid-2">
+<div>
+<div class="formula-box" style="text-align: left; padding: 12px 16px;">
+<div class="formula" style="font-size: 13px; text-align: center;">BM25(D, Q) = Σ IDF(qᵢ) · <span style="color: var(--accent2);">f(qᵢ,D)·(k₁+1)</span> / <span style="color: var(--warning);">(f(qᵢ,D) + k₁·(1-b+b·|D|/avgdl))</span></div>
+<div class="formula-desc" style="margin-top: 8px;">
+<strong style="color: var(--accent);">TF</strong>：词频（f(qᵢ,D)）— 词出现越多，分数越高（有饱和）<br>
+<strong style="color: var(--accent);">IDF</strong>：逆文档频率 — 罕见词权重更高<br>
+<strong style="color: var(--accent);">|D|/avgdl</strong>：文档长度归一化 — 长文档不占便宜<br>
+<strong style="color: var(--warning);">k₁=1.2</strong>：词频饱和速度 · <strong style="color: var(--warning);">b=0.75</strong>：长度归一化强度
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">优势</div>
+<div class="concept-box-body">
+<strong>精确匹配</strong> — 关键词命中即高分<br>
+<strong>零推理成本</strong> — 纯数学计算，无需 GPU<br>
+<strong>可解释</strong> — 分数来源清晰透明<br>
+<strong>实时索引</strong> — 增删文档即时生效
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">局限</div>
+<div class="concept-box-body">
+<strong>无语义理解</strong> — "手机" ≠ "mobile phone"<br>
+<strong>无跨语言</strong> — 中英文混合效果差<br>
+<strong>长查询退化</strong> — 关键词太多导致噪声
+</div>
+</div>
+</div>
+<div>
+<div class="callout-box callout-warn" style="margin-bottom: 10px;">
+<div class="callout-icon">🔍</div>
+<div class="callout-text"><strong>案例</strong>：搜索 <code>"iPhone 15 Pro Max"</code> → 向量检索可能返回 "iPhone 14"（语义相近），但 <strong>BM25 精确匹配 "15 Pro Max"</strong>。电商搜索必须用关键词检索。</div>
+</div>
+<div class="code-block" style="font-size: 11px; line-height: 1.55;"><span class="com"># BM25 检索实现（rank_bm25 库）</span>
+<span class="kw">from</span> rank_bm25 <span class="kw">import</span> BM25Okapi
+
+<span class="com"># 文档库</span>
+docs = [
+    <span class="str">"iPhone 15 Pro Max 钛金属设计"</span>,
+    <span class="str">"iPhone 14 Pro 性能评测"</span>,
+    <span class="str">"MacBook Pro M3 芯片发布"</span>,
+]
+
+<span class="com"># 分词 + 索引</span>
+tokenized = [doc.split() <span class="kw">for</span> doc <span class="kw">in</span> docs]
+bm25 = BM25Okapi(tokenized)
+
+<span class="com"># 检索</span>
+query = <span class="str">"iPhone 15 Pro Max"</span>.split()
+scores = bm25.get_scores(query)
+<span class="com"># → [3.82, 0.91, 0.0]  # 精确匹配得分最高</span>
+
+top_k = bm25.get_top_n(query, docs, n=<span class="num">2</span>)
+<span class="com"># → ['iPhone 15 Pro Max 钛金属设计',</span>
+<span class="com">#    'iPhone 14 Pro 性能评测']</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">6 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 7: 文本向量化 Embedding ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 7 / 24 · Embedding</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>词向量 → 句向量 → 文档向量</li><li>模型选择：OpenAI / BGE / sentence-transformers</li><li>代码演示生成 Embedding</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">RETRIEVAL</div>
+<h2 class="section-title">文本向量化：Embedding</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">什么是 Embedding？</div>
+<div class="concept-box-body">
+将文本映射为<strong>高维稠密向量</strong>（通常 768-1536 维），使语义相近的文本在向量空间中距离更近<br><br>
+<strong>词向量</strong>：king - man + woman ≈ queen<br>
+<strong>句向量</strong>："今天天气好" ≈ "今日阳光明媚"（向量距离近）<br>
+<strong>文档向量</strong>：整篇文章的语义表示
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">模型选择</div>
+<div class="concept-box-body">
+<table class="tbl" style="margin-top: 4px;">
+<thead><tr><th>模型</th><th>维度</th><th>特点</th></tr></thead>
+<tbody>
+<tr><td><strong>text-embedding-3-small</strong></td><td>1536</td><td>OpenAI，性价比高</td></tr>
+<tr><td><strong>BGE-large-zh</strong></td><td>1024</td><td>中文最佳开源</td></tr>
+<tr><td><strong>all-MiniLM-L6-v2</strong></td><td>384</td><td>轻量快速，本地运行</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div>
+<div class="code-block" style="font-size: 11px; line-height: 1.55; height: 100%;"><span class="com"># 使用 sentence-transformers 生成 Embedding</span>
+<span class="kw">from</span> sentence_transformers <span class="kw">import</span> SentenceTransformer
+
+<span class="com"># 加载模型</span>
+model = SentenceTransformer(<span class="str">"all-MiniLM-L6-v2"</span>)
+
+<span class="com"># 生成句向量</span>
+sentences = [
+    <span class="str">"今天天气真好，适合出去散步"</span>,
+    <span class="str">"今日阳光明媚，出门走走"</span>,
+    <span class="str">"Python 是最好的编程语言"</span>,
+]
+
+embeddings = model.encode(sentences)
+<span class="com"># shape: (3, 384) — 3个句子，每个384维</span>
+
+<span class="com"># 计算相似度</span>
+<span class="kw">from</span> sklearn.metrics.pairwise <span class="kw">import</span> cosine_similarity
+
+sim = cosine_similarity([embeddings[<span class="num">0</span>]], [embeddings[<span class="num">1</span>]])
+<span class="com"># → 0.85  # 语义相近，相似度高</span>
+
+sim2 = cosine_similarity([embeddings[<span class="num">0</span>]], [embeddings[<span class="num">2</span>]])
+<span class="com"># → 0.12  # 语义无关，相似度低</span>
+
+<span class="com"># 使用 OpenAI Embedding</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings
+emb = OpenAIEmbeddings(model=<span class="str">"text-embedding-3-small"</span>)
+vec = emb.embed_query(<span class="str">"RAG 检索增强生成"</span>)
+<span class="com"># → 1536维向量</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">7 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 8: 向量相似度计算 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 8 / 24 · 相似度计算</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>三种相似度计算方式对比</li><li>余弦相似度是生产首选</li><li>归一化后点积 = 余弦相似度</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">RETRIEVAL</div>
+<h2 class="section-title">向量相似度计算</h2>
+<div class="grid-3">
+<div class="card card-accent">
+<div class="card-title">余弦相似度</div>
+<div class="card-body" style="text-align: center;">
+<div class="formula-box" style="margin: 4px 0; padding: 8px;">
+<div class="formula" style="font-size: 14px;">cos(A,B) = A·B / (|A|×|B|)</div>
+</div>
+<strong>范围</strong>：[-1, 1]<br>
+<strong>关注方向</strong>，不关注大小<br>
+<strong>生产首选</strong> — 对向量长度不敏感<br>
+<span class="tag tag-green" style="margin-top: 4px;">推荐</span>
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">点积（内积）</div>
+<div class="card-body" style="text-align: center;">
+<div class="formula-box" style="margin: 4px 0; padding: 8px;">
+<div class="formula" style="font-size: 14px;">dot(A,B) = Σ Aᵢ × Bᵢ</div>
+</div>
+<strong>范围</strong>：(-∞, +∞)<br>
+<strong>关注方向 + 大小</strong><br>
+归一化后 = 余弦相似度<br>
+计算最快 — 向量数据库常用
+</div>
+</div>
+<div class="card card-orange">
+<div class="card-title">欧氏距离</div>
+<div class="card-body" style="text-align: center;">
+<div class="formula-box" style="margin: 4px 0; padding: 8px;">
+<div class="formula" style="font-size: 14px;">d(A,B) = √Σ(Aᵢ-Bᵢ)²</div>
+</div>
+<strong>范围</strong>：[0, +∞)<br>
+<strong>关注绝对距离</strong><br>
+几何直觉强，但受向量长度影响<br>
+RAG 中较少使用
+</div>
+</div>
+</div>
+<div class="grid-2" style="margin-top: 14px;">
+<div class="code-block" style="font-size: 11px; line-height: 1.55;"><span class="com"># 三种相似度计算对比</span>
+<span class="kw">import</span> numpy <span class="kw">as</span> np
+
+A = np.array([<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>])
+B = np.array([<span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span>])
+
+<span class="com"># 余弦相似度</span>
+cos_sim = np.dot(A, B) / (np.linalg.norm(A) * np.linalg.norm(B))
+<span class="com"># → 0.9746</span>
+
+<span class="com"># 点积</span>
+dot_product = np.dot(A, B)
+<span class="com"># → 32</span>
+
+<span class="com"># 欧氏距离</span>
+euclidean = np.linalg.norm(A - B)
+<span class="com"># → 5.196</span></div>
+<div>
+<div class="callout-box callout-info">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>生产建议</strong>：向量入库前先<strong>归一化</strong>（L2 normalize），这样点积 = 余弦相似度，检索速度最快。大多数向量数据库默认支持。</div>
+</div>
+<div class="callout-box callout-success" style="margin-top: 8px;">
+<div class="callout-icon">✅</div>
+<div class="callout-text"><strong>选型</strong>：文本检索用<strong>余弦相似度</strong>，图像检索用<strong>点积</strong>，聚类分析用<strong>欧氏距离</strong>。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">8 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 9: 向量索引 ANN ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 9 / 24 · ANN 索引</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>暴力搜索 O(N) → ANN 近似 O(logN)</li><li>HNSW 是生产首选</li><li>权衡：速度 vs 召回率 vs 内存</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">RETRIEVAL</div>
+<h2 class="section-title">向量索引：ANN 近似检索</h2>
+<div class="callout-box callout-info" style="margin-bottom: 14px;">
+<div class="callout-icon">⚡</div>
+<div class="callout-text"><strong>问题</strong>：100 万条文档 × 1536 维 → 暴力搜索需计算 100 万次余弦相似度。<strong>ANN（近似最近邻）</strong>通过牺牲少量精度换取数量级的速度提升。</div>
+</div>
+<div class="grid-3">
+<div class="card card-accent">
+<div class="card-title">HNSW</div>
+<div class="card-body">
+<strong>Hierarchical Navigable Small World</strong><br><br>
+多层图结构，上层稀疏下层稠密<br>
+<strong>查询速度</strong>：极快 O(logN)<br>
+<strong>召回率</strong>：高（>95%）<br>
+<strong>内存</strong>：较高（存图结构）<br>
+<strong>构建速度</strong>：中等<br><br>
+<span class="tag tag-green">生产首选</span>
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">IVF</div>
+<div class="card-body">
+<strong>Inverted File Index</strong><br><br>
+聚类分桶 → 只搜索最近的几个桶<br>
+<strong>查询速度</strong>：快<br>
+<strong>召回率</strong>：中（依赖 nprobe）<br>
+<strong>内存</strong>：低<br>
+<strong>构建速度</strong>：快<br><br>
+<span class="tag tag-blue">大规模首选</span>
+</div>
+</div>
+<div class="card card-orange">
+<div class="card-title">LSH</div>
+<div class="card-body">
+<strong>Locality-Sensitive Hashing</strong><br><br>
+哈希函数将相近向量映射到同一桶<br>
+<strong>查询速度</strong>：极快<br>
+<strong>召回率</strong>：低-中<br>
+<strong>内存</strong>：极低<br>
+<strong>构建速度</strong>：极快<br><br>
+<span class="tag tag-orange">精度要求低时</span>
+</div>
+</div>
+</div>
+<table class="tbl" style="margin-top: 14px;">
+<thead><tr><th>索引</th><th>查询复杂度</th><th>召回率</th><th>内存占用</th><th>适用场景</th></tr></thead>
+<tbody>
+<tr><td><strong>HNSW</strong></td><td>O(logN)</td><td>★★★★★</td><td>高</td><td>百万级以下，精度优先</td></tr>
+<tr><td><strong>IVF</strong></td><td>O(nprobe)</td><td>★★★★</td><td>低</td><td>亿级数据，平衡型</td></tr>
+<tr><td><strong>LSH</strong></td><td>O(1)</td><td>★★★</td><td>极低</td><td>去重、粗筛</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">9 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 10: 混合搜索与 RRF ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 10 / 24 · 混合搜索 + RRF</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>核心思想：BM25 精确匹配 + 向量语义匹配</li><li>RRF 公式：score(d) = Σ 1/(k+rankᵢ(d))</li><li>用具体数字演示 RRF 计算</li><li>对比加权平均 vs RRF</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 互动</div><div class="notes-section-body">学生手动计算两个排名列表的 RRF 分数</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">RETRIEVAL · NEW</div>
+<h2 class="section-title">混合搜索与 RRF 融合</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">核心思想</div>
+<div class="concept-box-body">
+<strong>BM25</strong>：精确关键词匹配 — "iPhone 15" ≠ "iPhone 14"<br>
+<strong>Vector</strong>：语义相似匹配 — "手机" ≈ "mobile phone"<br>
+<strong>取长补短</strong>：两路并行检索 → RRF 融合排名
+</div>
+</div>
+<div class="formula-box" style="text-align: left; padding: 12px 16px;">
+<div class="formula" style="font-size: 16px; text-align: center;">RRF(d) = Σ <span style="color: var(--accent2);">1 / (k + rankᵢ(d))</span></div>
+<div class="formula-desc" style="margin-top: 8px;">
+<strong>k=60</strong>（经验值，抑制高排名的过度优势）<br>
+<strong>rankᵢ(d)</strong>：文档 d 在第 i 路检索中的排名<br>
+<strong>只用排名</strong>，不需要分数归一化 → 更鲁棒
+</div>
+</div>
+<div class="callout-box callout-success">
+<div class="callout-icon">✅</div>
+<div class="callout-text"><strong>RRF 优势</strong>：无需归一化不同检索器的分数，只用排名，对异常值鲁棒，实现简单。</div>
+</div>
+</div>
+<div>
+<div class="concept-box" style="border-left: 3px solid var(--accent);">
+<div class="concept-box-title">RRF 计算示例</div>
+<div class="concept-box-body" style="font-size: 12px;">
+BM25 排名：[d3, d1, d7, d2]<br>
+向量排名：[d1, d5, d3, d8]<br><br>
+<strong>d1</strong>：BM25 rank=2, Vector rank=1<br>
+RRF = 1/(60+2) + 1/(60+1) = 0.0161 + 0.0164 = <strong style="color: var(--success);">0.0325</strong><br><br>
+<strong>d3</strong>：BM25 rank=1, Vector rank=3<br>
+RRF = 1/(60+1) + 1/(60+3) = 0.0164 + 0.0159 = <strong style="color: var(--accent);">0.0323</strong><br><br>
+<strong>结果</strong>：d1 > d3（向量检索的高排名拉了 d1）
+</div>
+</div>
+<div class="code-block" style="font-size: 11px; line-height: 1.55;"><span class="com"># RRF 融合实现</span>
+<span class="kw">def</span> <span class="fn">rrf_fuse</span>(bm25_results, vector_results, k=<span class="num">60</span>):
+    scores = {}
+    <span class="kw">for</span> rank, doc <span class="kw">in</span> <span class="fn">enumerate</span>(bm25_results):
+        scores[doc] = scores.get(doc, <span class="num">0</span>) + <span class="num">1</span>/(k + rank + <span class="num">1</span>)
+    <span class="kw">for</span> rank, doc <span class="kw">in</span> <span class="fn">enumerate</span>(vector_results):
+        scores[doc] = scores.get(doc, <span class="num">0</span>) + <span class="num">1</span>/(k + rank + <span class="num">1</span>)
+    <span class="kw">return</span> <span class="fn">sorted</span>(scores, key=scores.get, reverse=<span class="kw">True</span>)
+
+fused = <span class="fn">rrf_fuse</span>(bm25_top10, vector_top10)
+<span class="com"># → 融合后的最终排名</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">10 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 11: 文档分块策略 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 11 / 24 · 分块策略</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>基础策略：固定大小、递归、语义分块</li><li>智能分块：检测章节 → 过滤 → 合并/拆分 → 去重</li><li>基于章节的优势：语义完整、上下文保留</li><li>常见陷阱：chunk 过大/过小、无 overlap</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">DATABASE · ENHANCED</div>
+<h2 class="section-title">文档分块策略</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">基础策略</div>
+<div class="concept-box-body">
+<strong>固定大小分块</strong> — 按 token 数切分，简单但可能切断语义<br>
+<strong>递归分块</strong> — 按段落 → 句子 → 词递归切分<br>
+<strong>语义分块</strong> — 用 Embedding 检测语义边界
+</div>
+</div>
+<div class="concept-box" style="border-left: 3px solid var(--accent);">
+<div class="concept-box-title">智能分块（基于章节）</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<strong>① 检测章节</strong> — 识别 H1/H2/H3 标题结构<br>
+<strong>② 过滤元数据</strong> — 去除导航、页脚、广告等噪声<br>
+<strong>③ 单块控制在 100-800 词</strong><br>
+&nbsp;&nbsp;• &lt; 100 词 → 与相邻块<strong>合并</strong><br>
+&nbsp;&nbsp;• &gt; 800 词 → 按段落<strong>拆分</strong><br>
+<strong>④ 去重</strong> — 移除重复或高度相似的内容块<br>
+<strong>⑤ 保留 overlap</strong> — 相邻块重叠 50-100 token
+</div>
+</div>
+</div>
+<div>
+<div class="concept-box">
+<div class="concept-box-title">为什么基于章节更好？</div>
+<div class="concept-box-body">
+<strong>语义完整</strong> — 一个 chunk 包含完整的知识点<br>
+<strong>上下文保留</strong> — 章节标题提供上下文<br>
+<strong>检索精度</strong> — 语义完整的 chunk 匹配更准确<br>
+<strong>生成质量</strong> — LLM 拿到完整信息，回答更准确
+</div>
+</div>
+<div class="callout-box callout-warn">
+<div class="callout-icon">⚠️</div>
+<div class="callout-text"><strong>常见陷阱</strong>：chunk 过大（检索噪声多）、过小（信息碎片化）、无 overlap（切断上下文）、忽略元数据（丢失来源信息）。</div>
+</div>
+<div class="code-block" style="font-size: 11px; line-height: 1.5; margin-top: 8px;"><span class="com"># LangChain 递归分块</span>
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=<span class="num">500</span>,
+    chunk_overlap=<span class="num">50</span>,
+    separators=[<span class="str">"\n\n"</span>, <span class="str">"\n"</span>, <span class="str">"。"</span>, <span class="str">" "</span>]
+)
+chunks = splitter.split_text(document)</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">11 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 12: Chroma 向量数据库 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 12 / 24 · Chroma</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>Chroma 快速上手</li><li>API 演示：创建集合、添加、查询</li><li>本地开发首选，生产可换 OpenSearch</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">DATABASE</div>
+<h2 class="section-title">Chroma 向量数据库</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">为什么选 Chroma？</div>
+<div class="concept-box-body">
+<strong>轻量</strong> — 纯 Python，pip install 即用<br>
+<strong>内置 Embedding</strong> — 默认使用 sentence-transformers<br>
+<strong>持久化</strong> — 支持 SQLite 后端存储<br>
+<strong>LangChain 集成</strong> — 开发体验好<br>
+<strong>适合</strong>：原型开发、小规模数据（&lt;100万）
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">核心 API</div>
+<div class="card-body" style="font-size: 12px;">
+<table class="tbl">
+<thead><tr><th>操作</th><th>方法</th></tr></thead>
+<tbody>
+<tr><td>创建集合</td><td><code>client.create_collection()</code></td></tr>
+<tr><td>添加文档</td><td><code>collection.add()</code></td></tr>
+<tr><td>查询</td><td><code>collection.query()</code></td></tr>
+<tr><td>更新</td><td><code>collection.update()</code></td></tr>
+<tr><td>删除</td><td><code>collection.delete()</code></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div>
+<div class="code-block" style="font-size: 11px; line-height: 1.55; height: 100%;"><span class="com"># Chroma 向量数据库快速上手</span>
+<span class="kw">import</span> chromadb
+
+<span class="com"># 创建客户端（持久化到本地）</span>
+client = chromadb.PersistentClient(path=<span class="str">"./chroma_db"</span>)
+
+<span class="com"># 创建集合</span>
+collection = client.create_collection(
+    name=<span class="str">"knowledge_base"</span>,
+    metadata={<span class="str">"description"</span>: <span class="str">"课程知识库"</span>}
+)
+
+<span class="com"># 添加文档</span>
+collection.add(
+    documents=[
+        <span class="str">"RAG 是检索增强生成技术"</span>,
+        <span class="str">"BM25 是关键词检索算法"</span>,
+        <span class="str">"向量数据库存储 Embedding"</span>,
+    ],
+    metadatas=[
+        {<span class="str">"source"</span>: <span class="str">"module4"</span>, <span class="str">"topic"</span>: <span class="str">"rag"</span>},
+        {<span class="str">"source"</span>: <span class="str">"module4"</span>, <span class="str">"topic"</span>: <span class="str">"bm25"</span>},
+        {<span class="str">"source"</span>: <span class="str">"module4"</span>, <span class="str">"topic"</span>: <span class="str">"vector"</span>},
+    ],
+    ids=[<span class="str">"doc1"</span>, <span class="str">"doc2"</span>, <span class="str">"doc3"</span>]
+)
+
+<span class="com"># 查询</span>
+results = collection.query(
+    query_texts=[<span class="str">"什么是检索增强"</span>],
+    n_results=<span class="num">2</span>
+)
+<span class="com"># → 返回最相关的2条文档 + 相似度分数</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">12 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 13: 向量数据库选型 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 13 / 24 · 选型对比</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>4 大向量数据库对比</li><li>选型决策：原型 → Chroma，生产 → OpenSearch</li><li>关注：规模、性能、生态、运维</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">DATABASE</div>
+<h2 class="section-title">向量数据库选型对比</h2>
+<table class="tbl">
+<thead><tr><th>维度</th><th>Chroma</th><th>FAISS</th><th>OpenSearch</th><th>Pinecone</th></tr></thead>
+<tbody>
+<tr><td><strong>类型</strong></td><td>嵌入式数据库</td><td>库（非数据库）</td><td>搜索引擎 + 向量</td><td>托管云服务</td></tr>
+<tr><td><strong>部署</strong></td><td>pip install</td><td>pip install</td><td>Docker / 集群</td><td>云端 API</td></tr>
+<tr><td><strong>规模</strong></td><td>百万级</td><td>亿级</td><td>十亿级</td><td>十亿级</td></tr>
+<tr><td><strong>混合搜索</strong></td><td>需手动实现</td><td>不支持</td><td><strong>原生支持</strong></td><td>支持</td></tr>
+<tr><td><strong>持久化</strong></td><td>SQLite</td><td>内存 / 文件</td><td>分布式存储</td><td>自动管理</td></tr>
+<tr><td><strong>运维成本</strong></td><td>零</td><td>低</td><td>高</td><td>零（托管）</td></tr>
+<tr><td><strong>费用</strong></td><td>免费</td><td>免费</td><td>免费（自部署）</td><td>按用量付费</td></tr>
+<tr><td><strong>适用场景</strong></td><td>原型 / 教学</td><td>高性能计算</td><td>生产级 RAG</td><td>快速上线</td></tr>
+</tbody>
+</table>
+<div class="grid-4" style="margin-top: 14px;">
+<div class="card card-green">
+<div class="card-title">原型开发</div>
+<div class="card-body" style="font-size: 12px;"><strong>Chroma</strong> — 零配置，快速上手</div>
+</div>
+<div class="card card-accent">
+<div class="card-title">高性能计算</div>
+<div class="card-body" style="font-size: 12px;"><strong>FAISS</strong> — GPU 加速，亿级检索</div>
+</div>
+<div class="card card-orange">
+<div class="card-title">生产 RAG</div>
+<div class="card-body" style="font-size: 12px;"><strong>OpenSearch</strong> — 混合搜索 + 分布式</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">快速上线</div>
+<div class="card-body" style="font-size: 12px;"><strong>Pinecone</strong> — 免运维，按量付费</div>
+</div>
+</div>
+<div class="callout-box callout-info" style="margin-top: 10px;">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>课程推荐</strong>：教学用 Chroma，生产用 OpenSearch（原生支持 BM25 + Vector 混合搜索 + RRF 融合）。</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">13 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 14: RAG Pipeline ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 14 / 24 · RAG Pipeline</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>端到端流程图讲解</li><li>离线 vs 在线流程</li><li>每个环节的技术选型</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PIPELINE</div>
+<h2 class="section-title">RAG 完整 Pipeline</h2>
+<div style="display: flex; gap: 0; align-items: stretch; margin-bottom: 14px;">
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent);">
+<div style="font-size: 11px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px;">OFFLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">文档加载</div>
+<div style="font-size: 11px; color: var(--muted);">PDF/HTML/MD</div>
+</div>
+<div style="display: flex; align-items: center; padding: 0 4px; color: var(--accent); font-size: 18px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent);">
+<div style="font-size: 11px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px;">OFFLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">智能分块</div>
+<div style="font-size: 11px; color: var(--muted);">章节 + 合并/拆分</div>
+</div>
+<div style="display: flex; align-items: center; padding: 0 4px; color: var(--accent); font-size: 18px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent);">
+<div style="font-size: 11px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px;">OFFLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">Embedding</div>
+<div style="font-size: 11px; color: var(--muted);">向量化</div>
+</div>
+<div style="display: flex; align-items: center; padding: 0 4px; color: var(--accent); font-size: 18px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent);">
+<div style="font-size: 11px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px;">OFFLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">存入索引</div>
+<div style="font-size: 11px; color: var(--muted);">Chroma/OpenSearch</div>
+</div>
+</div>
+<div style="display: flex; gap: 0; align-items: stretch;">
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent2);">
+<div style="font-size: 11px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 4px;">ONLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">用户提问</div>
+<div style="font-size: 11px; color: var(--muted);">Query</div>
+</div>
+<div style="display: flex; align-items: center; padding: 0 4px; color: var(--accent2); font-size: 18px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent2);">
+<div style="font-size: 11px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 4px;">ONLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">混合检索</div>
+<div style="font-size: 11px; color: var(--muted);">BM25 + Vector + RRF</div>
+</div>
+<div style="display: flex; align-items: center; padding: 0 4px; color: var(--accent2); font-size: 18px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent2);">
+<div style="font-size: 11px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 4px;">ONLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">拼接上下文</div>
+<div style="font-size: 11px; color: var(--muted);">Prompt 构建</div>
+</div>
+<div style="display: flex; align-items: center; padding: 0 4px; color: var(--accent2); font-size: 18px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; border-top: 3px solid var(--accent2);">
+<div style="font-size: 11px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 4px;">ONLINE</div>
+<div style="font-size: 14px; color: var(--ink); font-weight: 600;">LLM 生成</div>
+<div style="font-size: 11px; color: var(--muted);">答案 + 引用</div>
+</div>
+</div>
+<div class="grid-2" style="margin-top: 14px;">
+<div class="concept-box">
+<div class="concept-box-title">离线流程（索引构建）</div>
+<div class="concept-box-body">
+文档加载 → 智能分块 → Embedding → 存入向量数据库<br>
+<strong>频率</strong>：文档更新时触发（日/周级）<br>
+<strong>工具</strong>：LangChain Loader + Splitter + Embedding + Chroma
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">在线流程（查询回答）</div>
+<div class="concept-box-body">
+用户提问 → 混合检索 → 拼接上下文 → LLM 生成<br>
+<strong>频率</strong>：每次用户提问（秒级）<br>
+<strong>工具</strong>：BM25 + Vector Search + RRF + LLM
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">14 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 15: LangChain RAG 实现 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 15 / 24 · LangChain RAG</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>完整代码走读</li><li>从文档加载到生成回答</li><li>终端演示运行效果</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">CODE</div>
+<h2 class="section-title">LangChain RAG 完整实现</h2>
+<div class="code-block" style="font-size: 11px; line-height: 1.55; height: calc(100% - 44px);"><span class="com"># ─── LangChain RAG 完整实现 ───</span>
+
+<span class="kw">from</span> langchain_community.document_loaders <span class="kw">import</span> DirectoryLoader
+<span class="kw">from</span> langchain_text_splitters <span class="kw">import</span> RecursiveCharacterTextSplitter
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> OpenAIEmbeddings, ChatOpenAI
+<span class="kw">from</span> langchain_community.vectorstores <span class="kw">import</span> Chroma
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+<span class="kw">from</span> langchain_core.runnables <span class="kw">import</span> RunnablePassthrough
+<span class="kw">from</span> langchain_core.output_parsers <span class="kw">import</span> StrOutputParser
+
+<span class="com"># 1. 文档加载 + 分块</span>
+loader = DirectoryLoader(<span class="str">"./docs"</span>, glob=<span class="str">"**/*.md"</span>)
+docs = loader.load()
+splitter = RecursiveCharacterTextSplitter(chunk_size=<span class="num">500</span>, chunk_overlap=<span class="num">50</span>)
+chunks = splitter.split_documents(docs)
+
+<span class="com"># 2. Embedding + 存入 Chroma</span>
+embeddings = OpenAIEmbeddings(model=<span class="str">"text-embedding-3-small"</span>)
+vectorstore = Chroma.from_documents(chunks, embeddings, persist_directory=<span class="str">"./chroma_db"</span>)
+retriever = vectorstore.as_retriever(search_kwargs={<span class="str">"k"</span>: <span class="num">5</span>})
+
+<span class="com"># 3. Prompt 模板</span>
+template = <span class="str">"""根据以下资料回答问题。如果资料中没有答案，请说"我不知道"。
+
+资料：{context}
+
+问题：{question}
+
+回答："""</span>
+prompt = ChatPromptTemplate.from_template(template)
+
+<span class="com"># 4. 构建 RAG Chain</span>
+llm = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>, temperature=<span class="num">0</span>)
+
+<span class="kw">def</span> <span class="fn">format_docs</span>(docs):
+    <span class="kw">return</span> <span class="str">"\n\n"</span>.join([d.page_content <span class="kw">for</span> d <span class="kw">in</span> docs])
+
+rag_chain = (
+    {<span class="str">"context"</span>: retriever | format_docs, <span class="str">"question"</span>: RunnablePassthrough()}
+    | prompt
+    | llm
+    | StrOutputParser()
+)
+
+<span class="com"># 5. 提问</span>
+answer = rag_chain.invoke(<span class="str">"什么是 BM25 检索？"</span>)
+<span class="fn">print</span>(answer)
+<span class="com"># → "BM25 是一种基于关键词的文本检索算法..."</span></div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">15 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 16: 查询构建 多字段加权 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 16 / 24 · 查询构建</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>多字段加权：chunk_text^3, title^2</li><li>模糊匹配：fuzziness AUTO</li><li>高亮：mark 标签标注命中</li><li>分类过滤和分页</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">QUERY · NEW</div>
+<h2 class="section-title">查询构建：多字段加权</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">多字段加权</div>
+<div class="concept-box-body">
+不同字段重要性不同，用 <strong>^N</strong> 设置权重<br><br>
+<strong>chunk_text^3</strong> — 正文内容，权重最高<br>
+<strong>title^2</strong> — 文档标题，权重次高<br>
+<strong>abstract^1</strong> — 摘要，权重最低<br><br>
+标题匹配 → 精准定位文档<br>
+正文匹配 → 深度检索内容
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">高级特性</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>模糊匹配</strong> — <code>fuzziness: AUTO</code> 容忍拼写错误<br>
+<strong>高亮</strong> — 返回 <code>&lt;mark&gt;</code> 标签标注命中位置<br>
+<strong>分类过滤</strong> — 按元数据筛选（source/date/topic）<br>
+<strong>分页</strong> — <code>from + size</code> 控制返回数量
+</div>
+</div>
+</div>
+<div>
+<div class="code-block" style="font-size: 11px; line-height: 1.55; height: 100%;"><span class="com"># OpenSearch 多字段加权查询</span>
+query = {
+    <span class="str">"query"</span>: {
+        <span class="str">"multi_match"</span>: {
+            <span class="str">"query"</span>: <span class="str">"BM25 检索算法"</span>,
+            <span class="str">"fields"</span>: [
+                <span class="str">"chunk_text^3"</span>,   <span class="com"># 正文权重最高</span>
+                <span class="str">"title^2"</span>,         <span class="com"># 标题权重次高</span>
+                <span class="str">"abstract^1"</span>       <span class="com"># 摘要权重最低</span>
+            ],
+            <span class="str">"fuzziness"</span>: <span class="str">"AUTO"</span>,  <span class="com"># 容忍拼写错误</span>
+            <span class="str">"type"</span>: <span class="str">"best_fields"</span>
+        }
+    },
+    <span class="str">"highlight"</span>: {
+        <span class="str">"fields"</span>: {
+            <span class="str">"chunk_text"</span>: {
+                <span class="str">"pre_tags"</span>: [<span class="str">"&lt;mark&gt;"</span>],
+                <span class="str">"post_tags"</span>: [<span class="str">"&lt;/mark&gt;"</span>]
+            }
+        }
+    },
+    <span class="str">"from"</span>: <span class="num">0</span>,
+    <span class="str">"size"</span>: <span class="num">10</span>
+}
+
+<span class="com"># 返回结果包含高亮片段</span>
+<span class="com"># "BM25 是一种&lt;mark&gt;检索&lt;/mark&gt;算法..."</span>
+<span class="com"># 用户可直接看到命中位置</span></div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">16 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 17: 检索优化策略 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 17 / 24 · 检索优化</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>查询扩展：同义词 + 拼写纠正</li><li>重排序：Cross-Encoder 精排</li><li>上下文压缩：去除冗余信息</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">OPTIMIZATION</div>
+<h2 class="section-title">检索优化策略</h2>
+<div class="grid-3">
+<div class="card card-accent">
+<div class="card-title">🔍 查询扩展</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>同义词扩展</strong><br>
+"手机" → "手机 OR mobile OR smartphone"<br><br>
+<strong>拼写纠正</strong><br>
+"iphon" → "iphone"<br><br>
+<strong>查询改写</strong><br>
+LLM 将口语改写为关键词<br>
+"怎么请假" → "请假 流程 政策"<br><br>
+<strong>HyDE</strong><br>
+LLM 先生成假设答案 → 用答案向量检索
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">📊 重排序（Rerank）</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>问题</strong>：向量检索召回 100 条，但排序不够精确<br><br>
+<strong>方案</strong>：Cross-Encoder 精排 Top-K<br><br>
+<strong>流程</strong>：<br>
+向量检索 Top-100 → Cross-Encoder 重新打分 → 取 Top-5<br><br>
+<strong>模型</strong>：<br>
+BGE-reranker / Cohere Rerank<br><br>
+<strong>效果</strong>：Recall@5 提升 10-20%
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">✂️ 上下文压缩</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>问题</strong>：检索到的文档太长，浪费 token<br><br>
+<strong>方案</strong>：LLM 压缩/提取关键信息<br><br>
+<strong>LangChain 支持</strong>：<br>
+<code>LLMChainExtractor</code> — LLM 提取相关段落<br>
+<code>LLMChainFilter</code> — LLM 过滤无关文档<br><br>
+<strong>效果</strong>：减少 50%+ token 消耗，生成质量不变
+</div>
+</div>
+</div>
+<div class="callout-box callout-info" style="margin-top: 14px;">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>生产建议</strong>：查询扩展 → 混合检索 → RRF 融合 → Rerank 精排 → 上下文压缩。五步流水线是生产 RAG 的标配。</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">17 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 18: RAG 效果评估 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 18 / 24 · RAG 评估</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>三层评估：检索质量 + 生成质量 + 端到端</li><li>RAGAS 开源评估框架</li><li>Langfuse 全链路追踪</li><li>构建 50-100 条标注数据集</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">EVALUATION · ENHANCED</div>
+<h2 class="section-title">RAG 效果评估</h2>
+<table class="tbl">
+<thead><tr><th style="width: 18%;">评估层</th><th style="width: 30%;">指标</th><th style="width: 30%;">含义</th><th style="width: 22%;">工具</th></tr></thead>
+<tbody>
+<tr><td><strong style="color: var(--accent);">检索质量</strong></td><td>Recall@K</td><td>Top-K 结果中包含正确答案的比例</td><td>RAGAS</td></tr>
+<tr><td></td><td>MRR</td><td>第一个正确答案的排名倒数</td><td>RAGAS</td></tr>
+<tr><td></td><td>NDCG</td><td>考虑排名位置的归一化增益</td><td>RAGAS</td></tr>
+<tr><td><strong style="color: var(--accent2);">生成质量</strong></td><td>Faithfulness</td><td>答案是否忠于检索到的文档（不幻觉）</td><td>RAGAS</td></tr>
+<tr><td></td><td>Answer Relevance</td><td>答案与问题的相关程度</td><td>RAGAS</td></tr>
+<tr><td><strong style="color: var(--warning);">端到端</strong></td><td>幻觉率</td><td>答案中编造信息的比例</td><td>Langfuse</td></tr>
+<tr><td></td><td>延迟（Latency）</td><td>从提问到回答的总耗时</td><td>Langfuse</td></tr>
+</tbody>
+</table>
+<div class="grid-2" style="margin-top: 14px;">
+<div class="card card-accent">
+<div class="card-title">RAGAS — 开源评估框架</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>自动评估</strong>：用 LLM 自动打分，无需人工标注<br>
+<strong>四维评估</strong>：Faithfulness + Answer Relevance + Context Precision + Context Recall<br>
+<strong>使用</strong>：<code>pip install ragas</code> → 传入 QA 对 + 检索结果 → 输出分数<br>
+<strong>建议</strong>：构建 50-100 条标注数据集，定期评估
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">Langfuse — 全链路追踪</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>Trace</strong>：记录每次查询的完整链路<br>
+<strong>监控</strong>：延迟、token 消耗、检索命中率<br>
+<strong>对比</strong>：A/B 测试不同检索策略<br>
+<strong>告警</strong>：幻觉率超阈值自动通知<br>
+<strong>集成</strong>：LangChain / OpenTelemetry 原生支持
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">18 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 19: Agentic RAG ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 19 / 24 · Agentic RAG</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">15 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>整个课程的 capstone — 串联 Module 1-4</li><li>5 步工作流：Guardrail → Retrieve → Grade → Rewrite → Generate</li><li>与传统 RAG 的区别：判断 + 循环重试</li><li>LangGraph 实现</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 互动</div><div class="notes-section-body">学生画出 5 步工作流图，标注退出条件</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">CAPSTONE · NEW</div>
+<h2 class="section-title">Agentic RAG — 课程综合应用</h2>
+<div style="display: flex; gap: 6px; align-items: stretch; margin-bottom: 12px;">
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; border-top: 3px solid var(--danger);">
+<div style="font-size: 11px; color: var(--danger); font-family: var(--font-mono);">STEP 1</div>
+<div style="font-size: 13px; color: var(--ink); font-weight: 600;">Guardrail</div>
+<div style="font-size: 10px; color: var(--muted);">输入校验</div>
+<div style="font-size: 9px; color: var(--accent2); margin-top: 2px;">Module 1</div>
+</div>
+<div style="display: flex; align-items: center; color: var(--accent); font-size: 16px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; border-top: 3px solid var(--accent);">
+<div style="font-size: 11px; color: var(--accent); font-family: var(--font-mono);">STEP 2</div>
+<div style="font-size: 13px; color: var(--ink); font-weight: 600;">Retrieve</div>
+<div style="font-size: 10px; color: var(--muted);">混合检索</div>
+<div style="font-size: 9px; color: var(--accent2); margin-top: 2px;">Module 3-4</div>
+</div>
+<div style="display: flex; align-items: center; color: var(--accent); font-size: 16px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; border-top: 3px solid var(--warning);">
+<div style="font-size: 11px; color: var(--warning); font-family: var(--font-mono);">STEP 3</div>
+<div style="font-size: 13px; color: var(--ink); font-weight: 600;">Grade</div>
+<div style="font-size: 10px; color: var(--muted);">文档评分</div>
+<div style="font-size: 9px; color: var(--accent2); margin-top: 2px;">Module 1</div>
+</div>
+<div style="display: flex; align-items: center; color: var(--accent); font-size: 16px;">↻</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; border-top: 3px solid var(--accent2);">
+<div style="font-size: 11px; color: var(--accent2); font-family: var(--font-mono);">STEP 4</div>
+<div style="font-size: 13px; color: var(--ink); font-weight: 600;">Rewrite</div>
+<div style="font-size: 10px; color: var(--muted);">查询重写</div>
+<div style="font-size: 9px; color: var(--accent2); margin-top: 2px;">Module 2</div>
+</div>
+<div style="display: flex; align-items: center; color: var(--accent); font-size: 16px;">→</div>
+<div style="flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center; border-top: 3px solid var(--success);">
+<div style="font-size: 11px; color: var(--success); font-family: var(--font-mono);">STEP 5</div>
+<div style="font-size: 13px; color: var(--ink); font-weight: 600;">Generate</div>
+<div style="font-size: 10px; color: var(--muted);">生成答案</div>
+<div style="font-size: 9px; color: var(--accent2); margin-top: 2px;">Module 1</div>
+</div>
+</div>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">与传统 RAG 的区别</div>
+<div class="concept-box-body">
+<strong>传统 RAG</strong>：Retrieve → Generate（一条路走到底）<br>
+<strong>Agentic RAG</strong>：加入<strong>判断节点</strong>和<strong>循环重试</strong><br><br>
+① <strong>Guardrail</strong>：拦截无关请求（Module 1 概念）<br>
+② <strong>Grade Docs</strong>：LLM 评分检索结果是否相关<br>
+③ <strong>Rewrite Query</strong>：不相关时重写查询 → 重新检索<br>
+④ <strong>循环退出</strong>：<code>retrieval_attempts ≥ max_retries</code>
+</div>
+</div>
+</div>
+<div>
+<div class="concept-box">
+<div class="concept-box-title">4 模块知识串联</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<strong>Module 1</strong>：Guardrail + Agent 工具调用<br>
+<strong>Module 2</strong>：LangGraph StateGraph + 条件路由 + 循环<br>
+&nbsp;&nbsp;<code>add_conditional_edges</code> 实现 Grade → Rewrite/Generate<br>
+<strong>Module 3</strong>：MCP 封装检索能力 → 标准化工具<br>
+<strong>Module 4</strong>：BM25 + Vector 混合搜索 + RRF
+</div>
+</div>
+<div class="callout-box callout-success">
+<div class="callout-icon">🎯</div>
+<div class="callout-text"><strong>Capstone</strong>：Agentic RAG 是 4 模块知识的<strong>综合应用</strong>，也是期末项目的核心要求。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">19 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 20: RAG 生产化 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 20 / 24 · RAG 生产化</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>三大生产系统：Langfuse + Redis + Airflow</li><li>Docker Compose 全栈部署</li><li>测试体系：单元/集成/API/评估</li><li>CI/CD 流程</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">📎 核心观点</div><div class="notes-section-body">生产 RAG ≠ Demo RAG。Demo 只需查到答案，生产需要可追踪、可缓存、可更新、可测试、可回滚。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PRODUCTION · NEW</div>
+<h2 class="section-title">RAG 生产化</h2>
+<div class="grid-3">
+<div class="card card-accent">
+<div class="card-title">📊 Langfuse 追踪</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>全链路追踪</strong>：Query → Retrieve → Generate<br>
+<strong>监控指标</strong>：<br>
+&nbsp;• 检索 Recall@K<br>
+&nbsp;• 生成 Faithfulness<br>
+&nbsp;• 端到端延迟<br>
+&nbsp;• Token 消耗<br>
+<strong>告警</strong>：幻觉率 > 5% 自动通知<br>
+<strong>A/B 测试</strong>：对比不同检索策略
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">⚡ Redis 缓存</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>查询缓存</strong>：相同问题直接返回缓存<br>
+<strong>Embedding 缓存</strong>：避免重复向量化<br>
+<strong>语义缓存</strong>：相似问题命中缓存<br>
+<strong>TTL</strong>：文档更新时自动失效<br>
+<strong>效果</strong>：延迟降低 80%+，成本降低 60%+
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">🔄 Airflow 数据管道</div>
+<div class="card-body" style="font-size: 12px;">
+<strong>定时同步</strong>：每日/每周更新索引<br>
+<strong>DAG 流程</strong>：<br>
+&nbsp;① 抓取文档<br>
+&nbsp;② 分块 + Embedding<br>
+&nbsp;③ 更新向量数据库<br>
+&nbsp;④ 评估检索质量<br>
+&nbsp;⑤ 失败告警 + 重试
+</div>
+</div>
+</div>
+<div class="grid-2" style="margin-top: 12px;">
+<div class="concept-box">
+<div class="concept-box-title">Docker Compose 全栈部署</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<strong>OpenSearch</strong> — 向量 + 关键词混合搜索<br>
+<strong>Redis</strong> — 查询/Embedding 缓存<br>
+<strong>PostgreSQL</strong> — 用户数据 + 反馈<br>
+<strong>Langfuse</strong> — 追踪 + 评估<br>
+<strong>Airflow</strong> — 数据管道调度<br>
+<strong>RAG API</strong> — FastAPI 服务
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">测试体系 + CI/CD</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<strong>单元测试</strong> — 分块、检索、生成函数<br>
+<strong>集成测试</strong> — 端到端 RAG Pipeline<br>
+<strong>API 测试</strong> — 接口响应 + 性能<br>
+<strong>评估测试</strong> — RAGAS 指标回归<br>
+<strong>CI/CD</strong>：提交 → 测试 → 构建 → 部署 → 评估 → 发布
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">20 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 21: 课后知识检测 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 21 / 24 · 课堂检测</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>4 道选择题，每题请举手回答</li><li>重点考察 BM25、RRF、Agentic RAG、分块策略</li><li>Q4 的 Agentic RAG 工作流是 capstone 内容</li><li>错误率高的知识点需重新讲解</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 答案</div><div class="notes-section-body"><ul><li>Q1: B（BM25 = TF + IDF + 长度归一化）</li><li>Q2: C（RRF 只用排名，无需归一化）</li><li>Q3: C（基于章节分块语义完整）</li><li>Q4: C（Guardrail → Retrieve → Grade → Rewrite → Generate）</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">QUIZ</div>
+<h2 class="section-title">课后知识检测</h2>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 6px;">
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; border-left: 3px solid var(--accent);">
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px; letter-spacing: 1px;">Q1</div>
+<div style="font-size: 14px; color: var(--ink); line-height: 1.5;">BM25 检索算法的核心组成部分不包括以下哪个？</div>
+<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">A. 词频(TF) &nbsp;&nbsp; B. 向量相似度 &nbsp;&nbsp; C. 逆文档频率(IDF) &nbsp;&nbsp; D. 文档长度归一化</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; border-left: 3px solid var(--accent);">
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 4px; letter-spacing: 1px;">Q2</div>
+<div style="font-size: 14px; color: var(--ink); line-height: 1.5;">RRF（Reciprocal Rank Fusion）相比加权平均的优势是什么？</div>
+<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">A. 计算更快 &nbsp;&nbsp; B. 支持任意路检索 &nbsp;&nbsp; C. 只用排名无需分数归一化 &nbsp;&nbsp; D. 召回率更高</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; border-left: 3px solid var(--accent2);">
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 4px; letter-spacing: 1px;">Q3</div>
+<div style="font-size: 14px; color: var(--ink); line-height: 1.5;">生产环境中最推荐的文档分块策略是？</div>
+<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">A. 固定大小分块 &nbsp;&nbsp; B. 随机分块 &nbsp;&nbsp; C. 基于章节的智能分块 &nbsp;&nbsp; D. 单句分块</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; border-left: 3px solid var(--accent2);">
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 4px; letter-spacing: 1px;">Q4</div>
+<div style="font-size: 14px; color: var(--ink); line-height: 1.5;">Agentic RAG 的正确工作流顺序是？</div>
+<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">A. Retrieve → Generate → Grade &nbsp;&nbsp; B. Grade → Retrieve → Generate &nbsp;&nbsp; C. Guardrail → Retrieve → Grade → Rewrite → Generate &nbsp;&nbsp; D. Retrieve → Rewrite → Grade → Generate</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">21 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 22: 课后作业 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 22 / 24 · 课后作业</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5 min（布置 + 说明）</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>三个难度梯度，基础题必做确保掌握 RAG 基本流程</li><li>进阶题训练混合搜索和 RRF 融合</li><li>挑战题实现 Agentic RAG，接近期末项目</li><li>提交方式：代码 + 评估报告 + 运行截图</li><li>截止时间：下节课前</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">📎 参考资料</div><div class="notes-section-body"><ul><li>LangChain 文档：<code>python.langchain.com</code></li><li>RAGAS：<code>docs.ragas.io</code></li><li>课程源码：<code>example/rag_system/</code></li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">HOMEWORK</div>
+<h2 class="section-title">实战练习任务</h2>
+<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px;">
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; border-left: 3px solid var(--success);">
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+<span style="font-size: 12px; background: rgba(63,185,80,0.15); color: var(--success); padding: 2px 10px; border-radius: 4px; font-weight: 600;">基础题 · 必做</span>
+<span style="font-size: 14px; color: var(--ink); font-weight: 600;">构建完整 RAG 系统</span>
+</div>
+<div style="font-size: 12px; color: var(--muted); line-height: 1.6; padding-left: 12px; border-left: 2px solid var(--border);">
+文档加载 → 智能分块 → Embedding → Chroma 索引 → 检索 → LLM 生成<br>
+<span style="color: var(--accent);">要求：</span>使用 LangChain，支持 Markdown 文档，返回答案 + 引用来源
+</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; border-left: 3px solid var(--warning);">
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+<span style="font-size: 12px; background: rgba(210,153,34,0.15); color: var(--warning); padding: 2px 10px; border-radius: 4px; font-weight: 600;">进阶题 · 必做</span>
+<span style="font-size: 14px; color: var(--ink); font-weight: 600;">BM25 + Vector 混合搜索 + RRF</span>
+</div>
+<div style="font-size: 12px; color: var(--muted); line-height: 1.6; padding-left: 12px; border-left: 2px solid var(--border);">
+在基础题上增加 BM25 关键词检索，两路并行检索后用 RRF 融合排名<br>
+<span style="color: var(--accent);">要求：</span>对比纯向量搜索 vs 混合搜索的 Recall@5，提交对比数据
+</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 18px; border-left: 3px solid var(--accent2);">
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+<span style="font-size: 12px; background: rgba(188,140,255,0.15); color: var(--accent2); padding: 2px 10px; border-radius: 4px; font-weight: 600;">挑战题 · 选做</span>
+<span style="font-size: 14px; color: var(--ink); font-weight: 600;">Agentic RAG 工作流</span>
+</div>
+<div style="font-size: 12px; color: var(--muted); line-height: 1.6; padding-left: 12px; border-left: 2px solid var(--border);">
+用 LangGraph 实现 5 步工作流：Guardrail → Retrieve → Grade → Rewrite → Generate<br>
+<span style="color: var(--accent);">要求：</span>添加循环退出条件（max_retries=3），用 RAGAS 评估效果，提交评估报告
+</div>
+</div>
+<div style="display: flex; gap: 16px; margin-top: 4px;">
+<div style="font-size: 12px; color: var(--muted);">📋 提交方式：代码 + 评估报告 + 运行截图 → 课程仓库</div>
+<div style="font-size: 12px; color: var(--muted);">⏰ 截止时间：下节课前</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">22 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 23: 本课总结 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 23 / 24 · 总结</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>五部分总结回顾</li><li>强调"先关键词后向量"的生产哲学</li><li>回顾 4 模块知识关联</li><li>预告期末项目要求</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">RECAP</div>
+<h2 class="section-title">核心知识点回顾</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">基础概念</div>
+<div class="concept-box-body">
+<strong>RAG</strong> = 检索 + 生成（开卷考试）<br>
+<strong>vs Fine-tuning</strong> — RAG 实时更新、可追溯、低成本<br>
+<strong>幻觉/时效性/领域知识</strong> — RAG 三大解决场景
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">检索基础</div>
+<div class="concept-box-body">
+<strong>BM25</strong> — TF + IDF + 长度归一化，精确匹配<br>
+<strong>Embedding</strong> — 文本 → 高维向量，语义相似<br>
+<strong>ANN 索引</strong> — HNSW 生产首选<br>
+<strong>混合搜索</strong> — BM25 + Vector → RRF 融合
+</div>
+</div>
+</div>
+<div>
+<div class="concept-box">
+<div class="concept-box-title">数据库与实战</div>
+<div class="concept-box-body">
+<strong>智能分块</strong> — 基于章节，100-800 词，合并/拆分<br>
+<strong>Chroma</strong> — 教学首选 / <strong>OpenSearch</strong> — 生产首选<br>
+<strong>查询构建</strong> — 多字段加权 + 模糊匹配 + 高亮<br>
+<strong>评估</strong> — RAGAS（检索+生成质量）+ Langfuse（追踪）
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">进阶架构</div>
+<div class="concept-box-body">
+<strong>Agentic RAG</strong> — Guardrail → Retrieve → Grade → Rewrite → Generate<br>
+<strong>串联 4 模块</strong>：M1 Guardrail + M2 LangGraph + M3 MCP + M4 RAG<br>
+<strong>生产化</strong> — Langfuse 追踪 + Redis 缓存 + Airflow 管道<br>
+<strong>核心理念</strong>：生产 RAG ≠ Demo RAG
+</div>
+</div>
+</div>
+</div>
+<div class="callout-box callout-info" style="margin-top: 12px;">
+<div class="callout-icon">🔗</div>
+<div class="callout-text"><strong>课程关联</strong>：Module 1 的 <code>@tool</code> + Guardrail → Module 2 的 LangGraph 循环工作流 → Module 3 的 MCP 封装检索 → Module 4 的 Agentic RAG 综合应用。4 个模块形成完整的 AI Agent 开发能力闭环。</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">23 / 24</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 24: Q&A ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 24 / 24 · Q&A</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5+ min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>开放问答</li><li>收集课程整体反馈</li><li>布置期末项目</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 常见问题预判</div><div class="notes-section-body"><ul><li>"BM25 和向量该用哪个？" → 不是二选一，用混合搜索</li><li>"RAG 什么时候不够用？" → 需要 Agent 自主决策时 → Agentic RAG</li><li>"生产 RAG 最重要的是什么？" → 评估体系 + 持续监控</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="cover-bg"></div>
+<div class="cover-grid"></div>
+<div class="cover-content" style="padding-left: 0;">
+<div class="cover-kicker">COURSE COMPLETE · MODULE 04</div>
+<h1 class="cover-title" style="font-size: 48px;">Q&A<br><span class="gradient-text">课程完结</span></h1>
+<p class="cover-subtitle" style="margin-bottom: 24px;">恭喜完成全部 4 个模块学习！你已具备构建生产级 Agentic RAG 系统的完整能力</p>
+<div class="grid-2" style="margin-bottom: 20px;">
+<div class="card card-accent">
+<div class="card-title">4 模块知识体系</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>Module 1</strong> — LangChain Agent 基础</li>
+<li><strong>Module 2</strong> — LangGraph 多智能体编排</li>
+<li><strong>Module 3</strong> — MCP 模型上下文协议</li>
+<li><strong>Module 4</strong> — RAG 与向量数据库</li>
+</ul>
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">课后资源</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>LangChain</strong> — <code>python.langchain.com</code></li>
+<li><strong>RAGAS</strong> — <code>docs.ragas.io</code></li>
+<li><strong>Langfuse</strong> — <code>langfuse.com</code></li>
+<li><strong>课程源码</strong> — <code>example/rag_system/</code></li>
+</ul>
+</div>
+</div>
+</div>
+<div class="callout-box callout-success" style="margin-bottom: 12px;">
+<div class="callout-icon">🏆</div>
+<div class="callout-text"><strong>期末项目</strong>：构建生产级 Agentic RAG 系统 — BM25+Vector 混合搜索 + LangGraph 工作流（Guardrail+评分+重写循环）+ MCP Server 暴露检索 + Langfuse 追踪 + RAGAS 评估 + Docker Compose 部署</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 4</div>
+<div class="page-num">24 / 24</div>
+</div>
+</section>
+
+</main>
+</div>
+</div>
+</body>
+</html>

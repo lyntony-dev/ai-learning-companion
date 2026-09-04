@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mira-preview-type" content="html-ppt" />
+  <meta name="mira-aspect-ratio" content="16:9" />
+  <title>Module 01 · LangChain Agent 智能助手</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Archivo:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    /* === THEME TOKENS: TERMINAL GREEN + SWISS GRID === */
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #111827;
+      --bg-panel: rgba(22, 27, 34, 0.92);
+      --bg-panel-2: rgba(13, 17, 23, 0.78);
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-dim: #64748b;
+      --accent: #39d353;
+      --accent-2: #58a6ff;
+      --accent-3: #d29922;
+      --danger: #ff7b72;
+      --border: rgba(139, 148, 158, 0.28);
+      --border-strong: rgba(57, 211, 83, 0.42);
+      --grid-line: rgba(139, 148, 158, 0.08);
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --font-display: "Archivo", sans-serif;
+      --font-body: "JetBrains Mono", monospace;
+      --font-mono: "JetBrains Mono", monospace;
+      --subtitle-size: clamp(0.8rem, 1.7vw, 1.25rem);
+      --label-size: clamp(0.62rem, 0.9vw, 0.82rem);
+      --code-size: clamp(0.58rem, 1vw, 0.88rem);
+      --radius: clamp(0.75rem, 1.5vw, 1.4rem);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --duration-normal: 0.65s;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ===========================================
+       VIEWPORT FITTING: MANDATORY BASE STYLES
+       Include this ENTIRE file in every presentation.
+       These styles ensure slides fit exactly in the viewport.
+       =========================================== */
+
+    /* 1. Lock html/body to viewport */
+    html, body {
+        height: 100%;
+        overflow-x: hidden;
+    }
+
+    html {
+        scroll-snap-type: y mandatory;
+        scroll-behavior: smooth;
+    }
+
+    /* 2. Each slide = exact viewport height */
+    .slide {
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile browsers */
+        overflow: hidden; /* CRITICAL: Prevent ANY overflow */
+        scroll-snap-align: start;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    /* 3. Content container with flex for centering */
+    .slide-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        max-height: 100%;
+        overflow: hidden; /* Double-protection against overflow */
+        padding: var(--slide-padding);
+    }
+
+    /* 4. ALL typography uses clamp() for responsive scaling */
+    :root {
+        /* Titles scale from mobile to desktop */
+        --title-size: clamp(1.5rem, 5vw, 4rem);
+        --h2-size: clamp(1.25rem, 3.5vw, 2.5rem);
+        --h3-size: clamp(1rem, 2.5vw, 1.75rem);
+
+        /* Body text */
+        --body-size: clamp(0.75rem, 1.5vw, 1.125rem);
+        --small-size: clamp(0.65rem, 1vw, 0.875rem);
+
+        /* Spacing scales with viewport */
+        --slide-padding: clamp(1rem, 4vw, 4rem);
+        --content-gap: clamp(0.5rem, 2vw, 2rem);
+        --element-gap: clamp(0.25rem, 1vw, 1rem);
+    }
+
+    /* 5. Cards/containers use viewport-relative max sizes */
+    .card, .container, .content-box {
+        max-width: min(90vw, 1000px);
+        max-height: min(80vh, 700px);
+    }
+
+    /* 6. Lists auto-scale with viewport */
+    .feature-list, .bullet-list {
+        gap: clamp(0.4rem, 1vh, 1rem);
+    }
+
+    .feature-list li, .bullet-list li {
+        font-size: var(--body-size);
+        line-height: 1.4;
+    }
+
+    /* 7. Grids adapt to available space */
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+        gap: clamp(0.5rem, 1.5vw, 1rem);
+    }
+
+    /* 8. Images constrained to viewport */
+    img, .image-container {
+        max-width: 100%;
+        max-height: min(50vh, 400px);
+        object-fit: contain;
+    }
+
+    /* ===========================================
+       RESPONSIVE BREAKPOINTS
+       Aggressive scaling for smaller viewports
+       =========================================== */
+
+    /* Short viewports (< 700px height) */
+    @media (max-height: 700px) {
+        :root {
+            --slide-padding: clamp(0.75rem, 3vw, 2rem);
+            --content-gap: clamp(0.4rem, 1.5vw, 1rem);
+            --title-size: clamp(1.25rem, 4.5vw, 2.5rem);
+            --h2-size: clamp(1rem, 3vw, 1.75rem);
+        }
+    }
+
+    /* Very short viewports (< 600px height) */
+    @media (max-height: 600px) {
+        :root {
+            --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem);
+            --content-gap: clamp(0.3rem, 1vw, 0.75rem);
+            --title-size: clamp(1.1rem, 4vw, 2rem);
+            --body-size: clamp(0.7rem, 1.2vw, 0.95rem);
+        }
+
+        /* Hide non-essential elements */
+        .nav-dots, .keyboard-hint, .decorative {
+            display: none;
+        }
+    }
+
+    /* Extremely short (landscape phones, < 500px height) */
+    @media (max-height: 500px) {
+        :root {
+            --slide-padding: clamp(0.4rem, 2vw, 1rem);
+            --title-size: clamp(1rem, 3.5vw, 1.5rem);
+            --h2-size: clamp(0.9rem, 2.5vw, 1.25rem);
+            --body-size: clamp(0.65rem, 1vw, 0.85rem);
+        }
+    }
+
+    /* Narrow viewports (< 600px width) */
+    @media (max-width: 600px) {
+        :root {
+            --title-size: clamp(1.25rem, 7vw, 2.5rem);
+        }
+
+        /* Stack grids vertically */
+        .grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ===========================================
+       REDUCED MOTION
+       Respect user preferences
+       =========================================== */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.2s !important;
+        }
+
+        html {
+            scroll-behavior: auto;
+        }
+    }
+
+    /* === GLOBAL STRUCTURE === */
+    body {
+      font-family: var(--font-body);
+      color: var(--text-primary);
+      background: var(--bg-primary);
+      overflow-y: auto;
+    }
+
+    .slide {
+      background:
+        radial-gradient(circle at 15% 20%, rgba(57, 211, 83, 0.11), transparent 28%),
+        radial-gradient(circle at 80% 10%, rgba(88, 166, 255, 0.10), transparent 30%),
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px),
+        var(--bg-primary);
+      background-size: auto, auto, clamp(2rem, 4vw, 4rem) clamp(2rem, 4vw, 4rem), clamp(2rem, 4vw, 4rem) clamp(2rem, 4vw, 4rem), auto;
+    }
+
+    .slide::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0.025) 0,
+        rgba(255, 255, 255, 0.025) 1px,
+        transparent 1px,
+        transparent 5px
+      );
+      mix-blend-mode: overlay;
+      opacity: 0.35;
+    }
+
+    .slide-content {
+      width: min(1180px, 94vw);
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+      gap: var(--content-gap);
+    }
+
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: clamp(0.18rem, 0.35vw, 0.32rem);
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      z-index: 100;
+      box-shadow: 0 0 18px rgba(57, 211, 83, 0.45);
+      transition: width 0.35s var(--ease-out-expo);
+    }
+
+    .nav-dots {
+      position: fixed;
+      right: clamp(0.7rem, 1.8vw, 1.3rem);
+      top: 50%;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.32rem, 0.8vh, 0.55rem);
+      z-index: 50;
+    }
+
+    .nav-dot {
+      width: clamp(0.42rem, 0.75vw, 0.66rem);
+      height: clamp(0.42rem, 0.75vw, 0.66rem);
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .nav-dot.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 14px rgba(57, 211, 83, 0.8);
+      transform: scale(1.25);
+    }
+
+    /* === TYPOGRAPHY === */
+    h1, h2, h3 {
+      font-family: var(--font-display);
+      letter-spacing: -0.04em;
+      line-height: 0.96;
+    }
+
+    h1 { font-size: clamp(2.4rem, 7.4vw, 6.7rem); }
+    h2 { font-size: var(--h2-size); }
+    h3 { font-size: var(--h3-size); }
+
+    p { font-size: var(--body-size); line-height: 1.65; color: var(--text-secondary); }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: clamp(0.35rem, 0.8vw, 0.65rem);
+      color: var(--accent);
+      font-size: var(--label-size);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      font-weight: 700;
+    }
+
+    .eyebrow::before {
+      content: "$";
+      color: var(--accent-2);
+    }
+
+    .muted { color: var(--text-secondary); }
+    .accent { color: var(--accent); }
+    .blue { color: var(--accent-2); }
+    .warn { color: var(--accent-3); }
+    .danger { color: var(--danger); }
+
+    /* === ANIMATION === */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo);
+    }
+
+    .reveal-left {
+      opacity: 0;
+      transform: translateX(-42px);
+      transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo);
+    }
+
+    .reveal-scale {
+      opacity: 0;
+      transform: scale(0.94);
+      transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo);
+    }
+
+    .slide.visible .reveal,
+    .slide.visible .reveal-left,
+    .slide.visible .reveal-scale {
+      opacity: 1;
+      transform: translate(0, 0) scale(1);
+    }
+
+    .slide.visible .delay-1 { transition-delay: 0.08s; }
+    .slide.visible .delay-2 { transition-delay: 0.16s; }
+    .slide.visible .delay-3 { transition-delay: 0.24s; }
+    .slide.visible .delay-4 { transition-delay: 0.32s; }
+    .slide.visible .delay-5 { transition-delay: 0.40s; }
+
+    /* === REUSABLE COMPONENTS === */
+    .topline {
+      position: absolute;
+      top: clamp(1rem, 2vw, 2rem);
+      left: clamp(1rem, 4vw, 4rem);
+      right: clamp(2rem, 5vw, 5rem);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2;
+      color: var(--text-dim);
+      font-size: var(--label-size);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .terminal-panel {
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(22, 27, 34, 0.98), rgba(13, 17, 23, 0.92));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .terminal-head {
+      min-height: clamp(2rem, 4vh, 2.8rem);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 clamp(0.8rem, 1.7vw, 1.3rem);
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: var(--label-size);
+      background: rgba(33, 38, 45, 0.62);
+    }
+
+    .traffic {
+      display: flex;
+      gap: clamp(0.32rem, 0.7vw, 0.5rem);
+    }
+
+    .traffic span {
+      width: clamp(0.45rem, 0.9vw, 0.7rem);
+      height: clamp(0.45rem, 0.9vw, 0.7rem);
+      border-radius: 50%;
+      display: block;
+    }
+
+    .traffic span:nth-child(1) { background: #ff7b72; }
+    .traffic span:nth-child(2) { background: #d29922; }
+    .traffic span:nth-child(3) { background: #39d353; }
+
+    .terminal-body {
+      padding: clamp(1rem, 2vw, 1.6rem);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: clamp(1rem, 3vw, 3rem);
+      align-items: center;
+    }
+
+    .hero-title {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.7rem, 2vh, 1.4rem);
+    }
+
+    .subtitle {
+      font-size: var(--subtitle-size);
+      color: var(--text-secondary);
+      max-width: 64ch;
+    }
+
+    .cursor::after {
+      content: "_";
+      display: inline-block;
+      margin-left: 0.08em;
+      color: var(--accent);
+      animation: blink 1s steps(2, start) infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: clamp(0.6rem, 1.3vw, 1rem);
+    }
+
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: calc(var(--radius) * 0.75);
+      padding: clamp(0.8rem, 1.5vw, 1.2rem);
+      background: rgba(13, 17, 23, 0.74);
+    }
+
+    .metric strong {
+      display: block;
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3.3vw, 3rem);
+      line-height: 0.95;
+      color: var(--accent);
+    }
+
+    .metric span { color: var(--text-secondary); font-size: var(--small-size); }
+
+    .section-title {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: clamp(1rem, 2vw, 2rem);
+      align-items: end;
+      margin-bottom: clamp(0.5rem, 1.5vh, 1rem);
+    }
+
+    .section-title p { max-width: 42ch; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5em;
+      border: 1px solid var(--border-strong);
+      border-radius: 999px;
+      padding: clamp(0.38rem, 0.8vw, 0.6rem) clamp(0.6rem, 1.2vw, 1rem);
+      color: var(--accent);
+      background: rgba(57, 211, 83, 0.08);
+      font-size: var(--label-size);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .cards-2, .cards-3, .cards-4 {
+      display: grid;
+      gap: clamp(0.7rem, 1.4vw, 1.2rem);
+    }
+
+    .cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+    .card {
+      position: relative;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg-panel);
+      padding: clamp(0.85rem, 1.7vw, 1.35rem);
+      overflow: hidden;
+      min-height: clamp(6rem, 18vh, 11rem);
+    }
+
+    .card::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 3px;
+      height: 100%;
+      background: linear-gradient(var(--accent), transparent);
+      opacity: 0.85;
+    }
+
+    .card h3 {
+      font-family: var(--font-body);
+      font-size: clamp(0.9rem, 1.6vw, 1.25rem);
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: clamp(0.45rem, 1vh, 0.75rem);
+    }
+
+    .card p { font-size: var(--small-size); line-height: 1.55; }
+
+    .num {
+      font-family: var(--font-display);
+      font-size: clamp(2rem, 5vw, 4.2rem);
+      line-height: 0.9;
+      color: rgba(57, 211, 83, 0.18);
+      position: absolute;
+      right: clamp(0.6rem, 1.2vw, 1rem);
+      bottom: clamp(0.4rem, 1vw, 0.8rem);
+    }
+
+    .bullet-list {
+      list-style: none;
+      display: grid;
+      max-width: min(100%, 880px);
+    }
+
+    .bullet-list li {
+      position: relative;
+      padding-left: clamp(1.4rem, 2.2vw, 2rem);
+      color: var(--text-secondary);
+    }
+
+    .bullet-list li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 800;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      gap: clamp(1rem, 2.4vw, 2.3rem);
+      align-items: center;
+    }
+
+    .diagram {
+      position: relative;
+      min-height: clamp(15rem, 48vh, 26rem);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: radial-gradient(circle at 50% 50%, rgba(57, 211, 83, 0.08), transparent 62%), rgba(13, 17, 23, 0.72);
+      overflow: hidden;
+      padding: clamp(1rem, 2vw, 2rem);
+    }
+
+    .node {
+      position: absolute;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border: 1px solid var(--border-strong);
+      background: rgba(22, 27, 34, 0.94);
+      color: var(--text-primary);
+      border-radius: clamp(0.75rem, 1.4vw, 1.2rem);
+      padding: clamp(0.5rem, 1vw, 0.8rem);
+      font-size: clamp(0.58rem, 0.95vw, 0.82rem);
+      box-shadow: 0 0 28px rgba(57, 211, 83, 0.08);
+    }
+
+    .node.big {
+      width: clamp(8rem, 18vw, 15rem);
+      height: clamp(4rem, 11vh, 6.5rem);
+    }
+
+    .node.small {
+      width: clamp(6.2rem, 13vw, 10rem);
+      height: clamp(3rem, 8vh, 4.8rem);
+    }
+
+    .line {
+      position: absolute;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      transform-origin: left center;
+      opacity: 0.75;
+    }
+
+    .code-block {
+      font-family: var(--font-mono);
+      font-size: var(--code-size);
+      line-height: 1.58;
+      color: #c9d1d9;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: min(52vh, 420px);
+      overflow: hidden;
+    }
+
+    .code-block .kw { color: #ff7b72; }
+    .code-block .fn { color: #d2a8ff; }
+    .code-block .str { color: #a5d6ff; }
+    .code-block .com { color: #8b949e; }
+    .code-block .var { color: #79c0ff; }
+    .code-block .ok { color: #39d353; }
+
+    .callout {
+      border-left: 3px solid var(--accent);
+      background: rgba(57, 211, 83, 0.08);
+      padding: clamp(0.8rem, 1.5vw, 1.2rem);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: var(--text-secondary);
+      font-size: var(--body-size);
+      line-height: 1.6;
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: clamp(0.6rem, 1.2vw, 1rem);
+      align-items: stretch;
+    }
+
+    .step {
+      position: relative;
+      border: 1px solid var(--border);
+      background: rgba(22, 27, 34, 0.86);
+      border-radius: var(--radius);
+      padding: clamp(0.75rem, 1.4vw, 1.1rem);
+      min-height: clamp(7rem, 19vh, 10rem);
+    }
+
+    .step strong {
+      display: block;
+      color: var(--accent);
+      font-family: var(--font-display);
+      font-size: clamp(1.4rem, 3vw, 2.5rem);
+      line-height: 1;
+      margin-bottom: clamp(0.35rem, 0.8vh, 0.55rem);
+    }
+
+    .step h3 { font-family: var(--font-body); font-size: clamp(0.82rem, 1.35vw, 1.05rem); margin-bottom: 0.45rem; }
+    .step p { font-size: var(--small-size); }
+
+    .compare {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: clamp(0.8rem, 1.6vw, 1.2rem);
+      align-items: center;
+    }
+
+    .vs {
+      width: clamp(3rem, 6vw, 5rem);
+      height: clamp(3rem, 6vw, 5rem);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--border-strong);
+      color: var(--accent);
+      font-family: var(--font-display);
+      background: rgba(57, 211, 83, 0.08);
+    }
+
+    .quiz-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: clamp(0.7rem, 1.4vw, 1.2rem);
+    }
+
+    .quiz {
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius);
+      padding: clamp(0.85rem, 1.6vw, 1.25rem);
+      background: rgba(57, 211, 83, 0.055);
+    }
+
+    .quiz h3 { font-family: var(--font-body); font-size: clamp(0.9rem, 1.4vw, 1.1rem); color: var(--accent); margin-bottom: 0.45rem; }
+
+    .kbd {
+      position: fixed;
+      left: clamp(0.8rem, 1.6vw, 1.2rem);
+      bottom: clamp(0.8rem, 1.6vw, 1.2rem);
+      z-index: 40;
+      color: var(--text-dim);
+      font-size: var(--label-size);
+      background: rgba(13, 17, 23, 0.72);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 0.5em 0.8em;
+    }
+
+    @media (max-width: 900px) {
+      .hero-grid, .split, .compare { grid-template-columns: 1fr; }
+      .cards-3, .cards-4, .timeline, .metric-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .section-title { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 620px) {
+      .cards-2, .cards-3, .cards-4, .timeline, .quiz-grid, .metric-row { grid-template-columns: 1fr; }
+      .nav-dots { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="progress-bar" aria-hidden="true"></div>
+  <nav class="nav-dots" aria-label="幻灯片导航"></nav>
+  <div class="kbd keyboard-hint">↑ ↓ / Space</div>
+
+  <!-- === SLIDE 01: TITLE === -->
+  <section class="slide title-slide">
+    <div class="topline"><span>AI Agent 开发系列</span><span>MODULE 01 / 21</span></div>
+    <div class="slide-content">
+      <div class="hero-grid">
+        <div class="hero-title">
+          <span class="eyebrow reveal-left">boot agent.course</span>
+          <h1 class="reveal-left delay-1">LangChain<br><span class="accent cursor">Agent</span></h1>
+          <p class="subtitle reveal-left delay-2">从 Prompt 模板到工具调用：构建第一个能执行任务的智能助手。</p>
+          <div class="metric-row reveal-left delay-3">
+            <div class="metric"><strong>4h</strong><span>建议课时</span></div>
+            <div class="metric"><strong>01</strong><span>完整 Demo</span></div>
+            <div class="metric"><strong>0→1</strong><span>Agent 入门</span></div>
+          </div>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>agent.py</span></div>
+          <div class="terminal-body code-block"><span class="com"># 目标：让 LLM 不只会聊天，还能调用工具</span>
+<span class="kw">agent</span> = LLM + Tools + State + Loop
+
+<span class="ok">✓</span> 理解 Agent 工作循环
+<span class="ok">✓</span> 定义工具并绑定模型
+<span class="ok">✓</span> 加入记忆与流式输出
+<span class="ok">✓</span> 完成天气查询助手</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 02: LEARNING OUTCOMES === -->
+  <section class="slide">
+    <div class="topline"><span>Learning Outcomes</span><span>02 / 21</span></div>
+    <div class="slide-content">
+      <div class="section-title">
+        <div>
+          <span class="eyebrow reveal-left">what you can build</span>
+          <h2 class="reveal-left delay-1">学完本节，你应该能做什么？</h2>
+        </div>
+        <span class="badge reveal-scale delay-2">面向零 Agent 基础</span>
+      </div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>解释 Agent</h3><p>用“模型 + 工具 + 状态 + 循环”解释 Agent 与普通 Chatbot 的区别。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>写出工具</h3><p>用 LangChain 的工具定义方式，把普通函数暴露给模型调用。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>跑通循环</h3><p>理解模型如何决定是否调用工具，以及如何把结果继续交还给模型。</p><span class="num">03</span></div>
+        <div class="card reveal delay-4"><h3>完成助手</h3><p>实现一个支持上下文记忆与流式输出的天气查询 Agent。</p><span class="num">04</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 03: COURSE MAP === -->
+  <section class="slide">
+    <div class="topline"><span>Course Map</span><span>03 / 21</span></div>
+    <div class="slide-content">
+      <span class="eyebrow reveal-left">from llm to agent</span>
+      <h2 class="reveal-left delay-1">本节课程路径</h2>
+      <div class="timeline reveal delay-2">
+        <div class="step"><strong>1</strong><h3>为什么需要 Agent</h3><p>从“只能回答”到“能够执行”。</p></div>
+        <div class="step"><strong>2</strong><h3>Prompt 与工具</h3><p>把模型意图转成可调用能力。</p></div>
+        <div class="step"><strong>3</strong><h3>Agent Loop</h3><p>决策、调用、观察、总结。</p></div>
+        <div class="step"><strong>4</strong><h3>状态与记忆</h3><p>让对话跨轮次保持一致。</p></div>
+        <div class="step"><strong>5</strong><h3>完整实战</h3><p>天气助手 + 流式响应 + 作业。</p></div>
+      </div>
+      <div class="callout reveal delay-3">教学建议：本模块先建立 Agent 心智模型，再逐步落到 LangChain 代码；不要一开始就堆完整工程。</div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 04: PROBLEM INTRO === -->
+  <section class="slide">
+    <div class="topline"><span>Problem Framing</span><span>04 / 21</span></div>
+    <div class="slide-content">
+      <div class="compare">
+        <div class="terminal-panel reveal-left">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>chatbot</span></div>
+          <div class="terminal-body">
+            <h3>普通 LLM 聊天</h3>
+            <ul class="bullet-list">
+              <li>回答依赖模型已有知识</li>
+              <li>不会主动查询外部系统</li>
+              <li>不能稳定执行多步任务</li>
+              <li>无法保存结构化执行状态</li>
+            </ul>
+          </div>
+        </div>
+        <div class="vs reveal-scale delay-2">VS</div>
+        <div class="terminal-panel reveal-left delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>agent</span></div>
+          <div class="terminal-body">
+            <h3>Agent 智能助手</h3>
+            <ul class="bullet-list">
+              <li>能判断是否需要调用工具</li>
+              <li>能把工具结果纳入下一步推理</li>
+              <li>能围绕目标进行多轮执行</li>
+              <li>能结合状态、记忆和上下文</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 05: AGENT DEFINITION === -->
+  <section class="slide">
+    <div class="topline"><span>Core Concept</span><span>05 / 21</span></div>
+    <div class="slide-content">
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">one sentence</span>
+          <h2 class="reveal-left delay-1">Agent 是什么？</h2>
+          <p class="subtitle reveal-left delay-2">Agent 不是“更会聊天的模型”，而是一个由模型驱动、能使用工具并维护执行状态的任务系统。</p>
+          <div class="callout reveal-left delay-3"><strong class="accent">记住这一句：</strong>Agent = LLM + Tools + State + Loop。</div>
+        </div>
+        <div class="diagram reveal-scale delay-2">
+          <!-- SVG connections: stable lines anchored to node centers -->
+          <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;">
+            <!-- Tools → LLM -->
+            <line x1="22" y1="22" x2="44" y2="44" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <!-- State → LLM -->
+            <line x1="78" y1="22" x2="56" y2="44" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <!-- Loop → LLM -->
+            <line x1="22" y1="78" x2="44" y2="56" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <!-- Memory → LLM -->
+            <line x1="78" y1="78" x2="56" y2="56" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.7" stroke-dasharray="1.5 1"/>
+            <!-- Center glow dot -->
+            <circle cx="50" cy="50" r="1.2" fill="var(--accent)" opacity="0.4"/>
+          </svg>
+          <!-- Nodes positioned at consistent corners + center -->
+          <div class="node big" style="left:50%;top:50%;transform:translate(-50%,-50%);z-index:1;"><strong>LLM</strong><span class="muted">Reasoning Core</span></div>
+          <div class="node small" style="left:6%;top:8%;z-index:1;">Tools<br><span class="muted">外部能力</span></div>
+          <div class="node small" style="right:6%;top:8%;z-index:1;">State<br><span class="muted">当前上下文</span></div>
+          <div class="node small" style="left:6%;bottom:8%;z-index:1;">Loop<br><span class="muted">执行循环</span></div>
+          <div class="node small" style="right:6%;bottom:8%;z-index:1;">Memory<br><span class="muted">长期上下文</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 06: AGENT LOOP === -->
+  <section class="slide">
+    <div class="topline"><span>Agent Loop</span><span>06 / 21</span></div>
+    <div class="slide-content">
+      <span class="eyebrow reveal-left">how it runs</span>
+      <h2 class="reveal-left delay-1">Agent 工作循环：不是一次调用，而是一轮决策</h2>
+      <div class="timeline reveal delay-2">
+        <div class="step"><strong>01</strong><h3>User Input</h3><p>用户提出目标或问题。</p></div>
+        <div class="step"><strong>02</strong><h3>Reason</h3><p>模型判断是否需要工具。</p></div>
+        <div class="step"><strong>03</strong><h3>Act</h3><p>调用工具并传入参数。</p></div>
+        <div class="step"><strong>04</strong><h3>Observe</h3><p>读取工具返回结果。</p></div>
+        <div class="step"><strong>05</strong><h3>Answer</h3><p>生成最终回复或继续循环。</p></div>
+      </div>
+      <div class="callout reveal delay-3">教学重点：Agent 的价值不在“多调用一次模型”，而在于模型能基于观察结果继续决策。</div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 07: PROMPT TEMPLATE === -->
+  <section class="slide">
+    <div class="topline"><span>Prompt Template</span><span>07 / 21</span></div>
+    <div class="slide-content">
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">instruction interface</span>
+          <h2 class="reveal-left delay-1">Prompt 模板：给 Agent 设定行为边界</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>告诉模型它扮演什么角色</li>
+            <li>定义回答风格与约束</li>
+            <li>声明何时应该使用工具</li>
+            <li>保留对话历史与用户输入入口</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>prompt.py</span></div>
+          <div class="terminal-body code-block"><span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+prompt = ChatPromptTemplate.<span class="fn">from_messages</span>([
+  (<span class="str">"system"</span>, <span class="str">"你是一个天气查询助手。"</span>),
+  (<span class="str">"placeholder"</span>, <span class="str">"{messages}"</span>),
+])</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 08: TOOL DECORATOR === -->
+  <section class="slide">
+    <div class="topline"><span>Python Primer</span><span>08 / 21</span></div>
+    <div class="slide-content">
+      <div class="section-title">
+        <div>
+          <span class="eyebrow reveal-left">30-second primer</span>
+          <h2 class="reveal-left delay-1">先理解：@tool 装饰器做了什么？</h2>
+        </div>
+        <span class="badge reveal-scale delay-2">不要陷入 Python 细节</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>普通函数</h3><p>只是一段 Python 能力，例如查询天气、搜索网页、读数据库。</p><span class="num">fn</span></div>
+        <div class="card reveal delay-2"><h3>加上 @tool</h3><p>把函数名称、参数、说明包装成模型能理解的工具描述。</p><span class="num">@</span></div>
+        <div class="card reveal delay-3"><h3>暴露给模型</h3><p>模型不能直接执行代码，但可以请求调用这个工具。</p><span class="num">api</span></div>
+      </div>
+      <div class="callout reveal delay-4">一句话：装饰器不是“魔法”，它是在函数外面加了一层可被 Agent 调用的工具元数据。</div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 09: DEFINE TOOL === -->
+  <section class="slide">
+    <div class="topline"><span>Tool Definition</span><span>09 / 21</span></div>
+    <div class="slide-content">
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">minimum viable tool</span>
+          <h2 class="reveal-left delay-1">工具定义：让模型拥有外部能力</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>函数名要表达工具意图</li>
+            <li>参数类型要清晰</li>
+            <li>docstring 要说明何时使用</li>
+            <li>返回值要便于模型继续推理</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>tools.py</span></div>
+          <div class="terminal-body code-block"><span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="fn">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="kw">str</span>) -> <span class="kw">str</span>:
+    <span class="str">"""查询指定城市的实时天气。"""</span>
+    <span class="kw">return</span> <span class="str">f"{city}：晴，26°C，微风"</span>
+
+tools = [get_weather]</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 10: ENV CONFIG === -->
+  <section class="slide">
+    <div class="topline"><span>LLM Setup</span><span>10 / 21</span></div>
+    <div class="slide-content">
+      <span class="eyebrow reveal-left">model initialization</span>
+      <h2 class="reveal-left delay-1">LLM 环境配置：先让模型能被稳定调用</h2>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>API Key</h3><p>从环境变量读取密钥，不要写死在代码里。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>Model</h3><p>教学阶段优先选择稳定、延迟可控、支持工具调用的模型。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>Temperature</h3><p>工具调用教学建议使用较低温度，降低随机性。</p><span class="num">03</span></div>
+      </div>
+      <div class="terminal-panel reveal delay-4">
+        <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>llm.py</span></div>
+        <div class="terminal-body code-block">llm = ChatOpenAI(model=<span class="str">"gpt-4o-mini"</span>, temperature=0)
+<span class="com"># 真实课程中替换为你可用的模型供应商与配置</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 11: BIND TOOLS === -->
+  <section class="slide">
+    <div class="topline"><span>bind_tools()</span><span>11 / 21</span></div>
+    <div class="slide-content">
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">critical bridge</span>
+          <h2 class="reveal-left delay-1">绑定工具：把“可用能力”告诉模型</h2>
+          <p class="subtitle reveal-left delay-2">`bind_tools()` 不会立即执行工具，它只是让模型知道：遇到合适问题时，可以请求调用哪些工具。</p>
+          <div class="callout reveal-left delay-3">课堂强调：模型输出的是“工具调用意图”，真正执行工具的是 Agent 框架。</div>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>bind.py</span></div>
+          <div class="terminal-body code-block">llm_with_tools = llm.<span class="fn">bind_tools</span>(tools)
+
+response = llm_with_tools.<span class="fn">invoke</span>(
+    <span class="str">"北京今天需要带伞吗？"</span>
+)
+
+<span class="com"># response.tool_calls 可能包含 get_weather</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 12: STATE === -->
+  <section class="slide">
+    <div class="topline"><span>State Management</span><span>12 / 21</span></div>
+    <div class="slide-content">
+      <span class="eyebrow reveal-left">agent needs state</span>
+      <h2 class="reveal-left delay-1">状态管理：Agent 不只是对话历史</h2>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>messages</h3><p>用户输入、模型回复、工具调用结果都进入消息序列。</p><span class="num">msg</span></div>
+        <div class="card reveal delay-2"><h3>tool_calls</h3><p>记录模型请求调用了什么工具，以及传入了什么参数。</p><span class="num">call</span></div>
+        <div class="card reveal delay-3"><h3>intermediate results</h3><p>保存中间观察结果，让下一步推理有依据。</p><span class="num">obs</span></div>
+      </div>
+      <div class="terminal-panel reveal delay-4">
+        <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>state.py</span></div>
+        <div class="terminal-body code-block"><span class="kw">from</span> typing <span class="kw">import</span> TypedDict
+
+<span class="kw">class</span> <span class="fn">AgentState</span>(TypedDict):
+    messages: list
+    next_step: str | None</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 13: CREATE AGENT === -->
+  <section class="slide">
+    <div class="topline"><span>Create Agent</span><span>13 / 21</span></div>
+    <div class="slide-content">
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">minimal agent</span>
+          <h2 class="reveal-left delay-1">创建 Agent：把模型、工具、提示词连接起来</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>Prompt 决定行为边界</li>
+            <li>LLM 决定推理与工具调用意图</li>
+            <li>Tools 提供外部执行能力</li>
+            <li>AgentExecutor 或图编排负责运行循环</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>agent_min.py</span></div>
+          <div class="terminal-body code-block">agent = create_tool_calling_agent(
+    llm=llm,
+    tools=tools,
+    prompt=prompt,
+)
+
+executor = AgentExecutor(
+    agent=agent,
+    tools=tools,
+)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 14: MEMORY === -->
+  <section class="slide">
+    <div class="topline"><span>Memory</span><span>14 / 21</span></div>
+    <div class="slide-content">
+      <span class="eyebrow reveal-left">multi-turn context</span>
+      <h2 class="reveal-left delay-1">会话记忆：让 Agent 记住“刚才发生了什么”</h2>
+      <div class="compare reveal delay-2">
+        <div class="card"><h3>没有记忆</h3><p>每次调用都像第一次见面，模型不知道上一轮查询了哪个城市。</p><span class="num">stateless</span></div>
+        <div class="vs">→</div>
+        <div class="card"><h3>有会话记忆</h3><p>同一个 thread 中保留上下文，支持“那明天呢？”这类追问。</p><span class="num">thread</span></div>
+      </div>
+      <div class="terminal-panel reveal delay-3">
+        <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>memory.py</span></div>
+        <div class="terminal-body code-block">config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"demo-001"</span>}}
+<span class="com"># 同一个 thread_id 下，保存多轮上下文</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 15: SYNC ASYNC === -->
+  <section class="slide">
+    <div class="topline"><span>Async Primer</span><span>15 / 21</span></div>
+    <div class="slide-content">
+      <div class="section-title">
+        <div>
+          <span class="eyebrow reveal-left">before streaming</span>
+          <h2 class="reveal-left delay-1">同步 vs 异步：为什么流式输出需要 async？</h2>
+        </div>
+        <span class="badge reveal-scale delay-2">讲直觉，不讲语法细节</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>同步调用</h3><p>等模型完整生成后一次性返回，简单但等待感强。</p><span class="num">sync</span></div>
+        <div class="card reveal delay-2"><h3>异步调用</h3><p>等待模型时不阻塞主流程，适合并发和流式场景。</p><span class="num">async</span></div>
+        <div class="card reveal delay-3"><h3>流式输出</h3><p>边生成边展示，用户能更早看到结果，体验更接近真实助手。</p><span class="num">stream</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 16: STREAMING === -->
+  <section class="slide">
+    <div class="topline"><span>Streaming</span><span>16 / 21</span></div>
+    <div class="slide-content">
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">astream()</span>
+          <h2 class="reveal-left delay-1">流式输出：让 Agent 像真实产品一样响应</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>适合长回答、工具执行进度、实时反馈</li>
+            <li>能降低用户等待焦虑</li>
+            <li>教学时只展示关键结构，不堆完整回调逻辑</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>stream.py</span></div>
+          <div class="terminal-body code-block"><span class="kw">async for</span> event <span class="kw">in</span> app.<span class="fn">astream</span>(
+    {<span class="str">"messages"</span>: user_messages},
+    config=config,
+):
+    <span class="fn">print</span>(event)</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 17: COMPLETE DEMO === -->
+  <section class="slide">
+    <div class="topline"><span>Demo Architecture</span><span>17 / 21</span></div>
+    <div class="slide-content">
+      <span class="eyebrow reveal-left">weather assistant</span>
+      <h2 class="reveal-left delay-1">完整实战：天气查询助手</h2>
+      <div class="diagram reveal-scale delay-2">
+        <!-- Scheme A: main flow + memory branch, aligned with Slide 05 visual style -->
+        <svg class="diagram-svg" viewBox="0 0 100 100" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;">
+          <defs>
+            <marker id="scheme-a-arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)" opacity="0.86"></path>
+            </marker>
+            <marker id="scheme-a-arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-2)" opacity="0.86"></path>
+            </marker>
+            <marker id="scheme-a-arrow-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent-3)" opacity="0.82"></path>
+            </marker>
+          </defs>
+          <!-- Main path: User → Agent → Tool → Answer -->
+          <path d="M 22 31 L 28 31" fill="none" stroke="var(--accent)" stroke-width="0.55" stroke-opacity="0.82" stroke-dasharray="1.6 1" stroke-linecap="round" marker-end="url(#scheme-a-arrow-green)"></path>
+          <path d="M 46 31 L 52 31" fill="none" stroke="var(--accent-2)" stroke-width="0.55" stroke-opacity="0.82" stroke-dasharray="1.6 1" stroke-linecap="round" marker-end="url(#scheme-a-arrow-blue)"></path>
+          <path d="M 70 31 L 76 31" fill="none" stroke="var(--accent)" stroke-width="0.55" stroke-opacity="0.82" stroke-dasharray="1.6 1" stroke-linecap="round" marker-end="url(#scheme-a-arrow-green)"></path>
+          <!-- Memory branch: Agent → Memory → Answer -->
+          <path d="M 37 43 L 37 62" fill="none" stroke="var(--accent-3)" stroke-width="0.48" stroke-opacity="0.76" stroke-dasharray="1.6 1" stroke-linecap="round" marker-end="url(#scheme-a-arrow-warn)"></path>
+          <path d="M 46 76 C 58 76, 68 76, 80 49" fill="none" stroke="var(--accent-3)" stroke-width="0.48" stroke-opacity="0.76" stroke-dasharray="1.6 1" stroke-linecap="round" marker-end="url(#scheme-a-arrow-warn)"></path>
+        </svg>
+        <div class="node big" style="left:4%;top:18%;z-index:1;width:clamp(6.8rem,14vw,11rem);height:clamp(3.7rem,9.5vh,5.8rem);"><strong><span class="accent">01</span> User</strong><span class="muted">提出天气问题</span></div>
+        <div class="node big" style="left:28%;top:18%;z-index:1;width:clamp(6.8rem,14vw,11rem);height:clamp(3.7rem,9.5vh,5.8rem);"><strong><span class="accent">02</span> Agent</strong><span class="muted">判断是否查天气</span></div>
+        <div class="node big" style="left:52%;top:18%;z-index:1;width:clamp(6.8rem,14vw,11rem);height:clamp(3.7rem,9.5vh,5.8rem);"><strong><span class="blue">03</span> Tool</strong><span class="muted">get_weather(city)</span></div>
+        <div class="node big" style="right:4%;top:18%;z-index:1;width:clamp(6.8rem,14vw,11rem);height:clamp(3.7rem,9.5vh,5.8rem);"><strong><span class="accent">05</span> Answer</strong><span class="muted">自然语言建议</span></div>
+        <div class="node big" style="left:28%;bottom:10%;z-index:1;width:clamp(6.8rem,14vw,11rem);height:clamp(3.7rem,9.5vh,5.8rem);"><strong><span class="warn">04</span> Memory</strong><span class="muted">thread_id 上下文</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 18: GUARDRAILS === -->
+  <section class="slide">
+    <div class="topline"><span>Guardrails</span><span>18 / 21</span></div>
+    <div class="slide-content">
+      <div class="section-title">
+        <div>
+          <span class="eyebrow reveal-left">production mindset</span>
+          <h2 class="reveal-left delay-1">Guardrail：Agent 的第一道防线</h2>
+        </div>
+        <span class="badge reveal-scale delay-2">不要盲目信任工具调用</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>输入校验</h3><p>检查城市名、参数类型、范围与非法输入。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>工具权限</h3><p>限制 Agent 能调用什么，以及能访问哪些数据。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>失败兜底</h3><p>工具失败时返回可解释错误，而不是让模型编造结果。</p><span class="num">03</span></div>
+      </div>
+      <div class="callout reveal delay-4">工程建议：教学 Demo 可以简单，但生产 Agent 必须设计边界、重试、日志和审计。</div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 19: CHECKPOINT === -->
+  <section class="slide">
+    <div class="topline"><span>Checkpoint</span><span>19 / 21</span></div>
+    <div class="slide-content">
+      <span class="eyebrow reveal-left">knowledge check</span>
+      <h2 class="reveal-left delay-1">课堂知识检测</h2>
+      <div class="quiz-grid">
+        <div class="quiz reveal delay-1"><h3>Q1</h3><p>Agent 与普通 Chatbot 的本质区别是什么？</p></div>
+        <div class="quiz reveal delay-2"><h3>Q2</h3><p>`@tool` 的作用是执行函数，还是包装工具元数据？</p></div>
+        <div class="quiz reveal delay-3"><h3>Q3</h3><p>`bind_tools()` 会立刻调用工具吗？为什么？</p></div>
+        <div class="quiz reveal delay-4"><h3>Q4</h3><p>为什么多轮追问需要 thread_id 或类似会话标识？</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 20: EXERCISE === -->
+  <section class="slide">
+    <div class="topline"><span>Exercise</span><span>20 / 21</span></div>
+    <div class="slide-content">
+      <div class="section-title">
+        <div>
+          <span class="eyebrow reveal-left">hands-on task</span>
+          <h2 class="reveal-left delay-1">实战练习：扩展你的第一个 Agent</h2>
+        </div>
+        <span class="badge reveal-scale delay-2">建议 30–45 min</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>基础任务</h3><p>实现 `get_weather(city)`，支持至少 3 个城市的模拟天气返回。</p><span class="num">A</span></div>
+        <div class="card reveal delay-2"><h3>进阶任务</h3><p>加入多轮追问能力，例如“那明天呢？”能复用上一轮城市。</p><span class="num">B</span></div>
+        <div class="card reveal delay-3"><h3>验收标准</h3><p>能展示工具调用路径、最终回答、错误兜底和一段运行截图。</p><span class="num">✓</span></div>
+      </div>
+      <div class="callout reveal delay-4">提交建议：代码 + 运行日志 + 你对 Agent Loop 的一句话解释。</div>
+    </div>
+  </section>
+
+  <!-- === SLIDE 21: SUMMARY === -->
+  <section class="slide">
+    <div class="topline"><span>Recap</span><span>21 / 21</span></div>
+    <div class="slide-content">
+      <div class="hero-grid">
+        <div>
+          <span class="eyebrow reveal-left">module complete</span>
+          <h2 class="reveal-left delay-1">本模块核心回顾</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>Agent = LLM + Tools + State + Loop</li>
+            <li>Prompt 负责行为边界，Tools 提供外部能力</li>
+            <li>Agent Loop 让模型能“观察后继续决策”</li>
+            <li>Memory 与 Streaming 让 Demo 更接近真实产品</li>
+            <li>生产环境必须考虑 Guardrail 与失败兜底</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>next_module.sh</span></div>
+          <div class="terminal-body code-block"><span class="ok">$ module_01 completed</span>
+
+next: LangGraph 多智能体编排
+
+<span class="com"># 当单 Agent 不够用时，
+# 我们需要状态图来管理复杂工作流。</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    /* === SLIDE CONTROLLER === */
+    class SlidePresentation {
+      constructor() {
+        this.slides = document.querySelectorAll(".slide");
+        this.currentSlide = 0;
+        this.setupIntersectionObserver();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupProgressBar();
+        this.setupNavDots();
+        this.goToSlide(0, false);
+      }
+
+      setupIntersectionObserver() {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('visible');
+              const idx = Array.from(this.slides).indexOf(entry.target);
+              if (idx !== -1) this.currentSlide = idx;
+              this.updateNavDots();
+              this.updateProgressBar();
+            }
+          });
+        }, { threshold: 0.55 });
+        this.slides.forEach(slide => observer.observe(slide));
+      }
+
+      setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+          if (['ArrowDown', 'ArrowRight', ' ', 'PageDown'].includes(e.key)) {
+            e.preventDefault();
+            this.goToSlide(this.currentSlide + 1);
+          } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) {
+            e.preventDefault();
+            this.goToSlide(this.currentSlide - 1);
+          } else if (e.key === 'Home') {
+            e.preventDefault();
+            this.goToSlide(0);
+          } else if (e.key === 'End') {
+            e.preventDefault();
+            this.goToSlide(this.slides.length - 1);
+          }
+        });
+      }
+
+      setupTouchNav() {
+        let startY = 0;
+        let startX = 0;
+        document.addEventListener('touchstart', e => {
+          startY = e.touches[0].clientY;
+          startX = e.touches[0].clientX;
+        }, { passive: true });
+        document.addEventListener('touchend', e => {
+          const diffY = startY - e.changedTouches[0].clientY;
+          const diffX = startX - e.changedTouches[0].clientX;
+          const primary = Math.abs(diffY) > Math.abs(diffX) ? diffY : diffX;
+          if (Math.abs(primary) > 50) this.goToSlide(this.currentSlide + (primary > 0 ? 1 : -1));
+        }, { passive: true });
+      }
+
+      setupProgressBar() {
+        this.progressBar = document.querySelector('.progress-bar');
+        this.updateProgressBar();
+      }
+
+      setupNavDots() {
+        this.navDotsContainer = document.querySelector('.nav-dots');
+        if (!this.navDotsContainer) return;
+        this.navDotsContainer.innerHTML = "";
+        this.slides.forEach((_, i) => {
+          const dot = document.createElement('button');
+          dot.classList.add('nav-dot');
+          dot.setAttribute('aria-label', '跳转到第 ' + (i + 1) + ' 页');
+          dot.addEventListener('click', () => this.goToSlide(i));
+          this.navDotsContainer.appendChild(dot);
+        });
+        this.updateNavDots();
+      }
+
+      goToSlide(index, smooth = true) {
+        if (index < 0 || index >= this.slides.length) return;
+        this.slides[index].scrollIntoView({ behavior: smooth ? 'smooth' : 'auto' });
+      }
+
+      updateNavDots() {
+        if (!this.navDotsContainer) return;
+        this.navDotsContainer.querySelectorAll('.nav-dot').forEach((dot, i) => {
+          dot.classList.toggle('active', i === this.currentSlide);
+        });
+      }
+
+      updateProgressBar() {
+        if (!this.progressBar || !this.slides.length) return;
+        this.progressBar.style.width = ((this.currentSlide + 1) / this.slides.length * 100) + '%';
+      }
+    }
+
+    new SlidePresentation();
+  </script>
+</body>
+</html>

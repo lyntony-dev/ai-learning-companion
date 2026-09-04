@@ -1,0 +1,82 @@
+# LangGraph 多智能体课程预置题库
+# 覆盖 topic: langgraph.state / langgraph.nodes_edges / langgraph.conditional_edges / langgraph.loops_exit
+# difficulty: easy | medium | hard
+
+status: candidate
+
+questions:
+  # --- State 与共享状态 ---
+  - id: state_role
+    topic_id: langgraph.state
+    difficulty: easy
+    prompt: 在 LangGraph 中,State(状态)的作用是什么?
+    reference_answer: State 是在图的各节点之间传递与共享的数据结构,承载对话历史、中间结果等,每个节点读取并返回对 State 的更新。
+
+  - id: state_reducer
+    topic_id: langgraph.state
+    difficulty: medium
+    prompt: 为什么 LangGraph 的 State 字段常配合 reducer(如把消息列表做 append)?直接覆盖会有什么问题?
+    reference_answer: reducer 定义多个节点/多次更新如何合并同一字段,例如消息用 append 累积;若直接覆盖会丢掉此前节点写入的内容,导致历史或并行分支结果被冲掉。
+
+  - id: state_design
+    topic_id: langgraph.state
+    difficulty: hard
+    prompt: 设计一个「检索-写作-审校」三节点协作的图,请给出 State 需要包含哪些字段以及各字段由哪个节点写入。
+    reference_answer: State 至少含 query、retrieved_docs(检索节点写)、draft(写作节点写)、review_comments/approved(审校节点写)以及 messages 累积;每字段标注写入方,审校不通过时回写状态驱动重写。
+
+  # --- 节点与边 ---
+  - id: nodes_edges_basic
+    topic_id: langgraph.nodes_edges
+    difficulty: easy
+    prompt: LangGraph 中「节点(node)」和「边(edge)」分别代表什么?
+    reference_answer: 节点是一个处理步骤(通常是函数/可调用对象,读 State 并返回更新),边定义节点之间的执行流转顺序即从哪个节点到哪个节点。
+
+  - id: nodes_edges_entry
+    topic_id: langgraph.nodes_edges
+    difficulty: medium
+    prompt: 构建一个 LangGraph 图时,除了添加节点和边,还必须指定什么才能让图可运行?
+    reference_answer: 必须指定入口点(entry point / START 到首节点的边)和终止(END),即从哪里开始、在哪里结束,否则图无法确定执行起止。
+
+  - id: nodes_edges_parallel
+    topic_id: langgraph.nodes_edges
+    difficulty: hard
+    prompt: 若希望两个检索节点并行执行再汇总,LangGraph 中如何组织节点与边?汇总节点读取结果需要注意什么?
+    reference_answer: 从同一上游节点连出到两个检索节点形成并行分支,再各自连到汇总节点(fan-out/fan-in);汇总依赖的 State 字段需用 reducer 合并两分支写入,避免相互覆盖,并处理某分支为空的情况。
+
+  # --- 条件边与分支 ---
+  - id: conditional_what
+    topic_id: langgraph.conditional_edges
+    difficulty: easy
+    prompt: 什么是条件边(conditional edge)?它和普通边有什么不同?
+    reference_answer: 条件边根据一个判定函数返回的分支键动态决定下一个节点,而普通边是固定地从 A 到 B;条件边让图能按 State 走不同路径。
+
+  - id: conditional_router
+    topic_id: langgraph.conditional_edges
+    difficulty: medium
+    prompt: 用条件边实现「模型决定是调用工具还是直接回答」的路由,判定函数应依据 State 中的什么来返回分支?
+    reference_answer: 判定函数检查最近一条模型输出是否包含工具调用(tool_calls):有则路由到工具执行节点,无则路由到结束/回答节点,依据 State 的 messages 最新消息内容返回对应分支键。
+
+  - id: conditional_design
+    topic_id: langgraph.conditional_edges
+    difficulty: hard
+    prompt: 一个审校节点可能返回「通过 / 需小改 / 需重写」三种结果,如何用条件边把它们分别导向不同后续流程?需要防范什么?
+    reference_answer: 判定函数根据审校结果返回三个分支键,分别连到「结束」「局部修订节点」「回到写作节点」;需防范重写分支无限循环,故加重试计数或最大迭代限制,超限强制走结束或人工介入。
+
+  # --- 循环与退出条件 ---
+  - id: loops_why
+    topic_id: langgraph.loops_exit
+    difficulty: easy
+    prompt: 为什么 LangGraph 的图允许存在环(循环)?举一个需要循环的场景。
+    reference_answer: 因为 Agent 常需反复「调用工具-观察-再决策」直到满足条件,循环让节点可多次执行;典型场景如工具调用循环、反复修订直到审校通过。
+
+  - id: loops_exit_condition
+    topic_id: langgraph.loops_exit
+    difficulty: medium
+    prompt: 一个带循环的图如何避免无限循环?列举至少两种退出条件的设计方式。
+    reference_answer: 一是设置最大迭代/步数上限,达到即强制走 END;二是基于 State 的完成标志(如已获得答案、审校通过、无更多工具调用)通过条件边退出;可两者结合并对超限给出兜底回答。
+
+  - id: loops_exit_design
+    topic_id: langgraph.loops_exit
+    difficulty: hard
+    prompt: 设计一个「反复调用搜索工具直到收集足够证据再作答」的循环,请说明循环体、退出判据与防失控措施。
+    reference_answer: 循环体为「模型决定检索关键词→执行搜索→把结果写回 State」;退出判据为模型判断证据充分或命中覆盖阈值则路由到作答节点;防失控用最大检索轮数与重复查询检测,超限即用现有证据作答或说明证据不足。

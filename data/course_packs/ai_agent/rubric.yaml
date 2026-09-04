@@ -1,0 +1,87 @@
+# AI Agent 课程包批改评分标准 (rubric)
+# 按课程模块不同(CONTEXT: Rubric)。MVP 登记,Grader Agent(E)据此批改。
+# status: candidate | approved
+#
+# 契约(feat 训练闭环增强):
+#   default.dimensions      通用维度,所有题默认适用。
+#   by_course.<id>.dimensions        引用 default 里的 key 子集(缺省=全部默认维度)。
+#   by_course.<id>.extra_dimensions  该课特有的额外维度(不在 default 里)。
+# 说明:历史上此处曾写散文式 focus,与维度 key 匹配不上导致专项维度从不生效;
+#       现改为「引用默认 key + 课程额外维度」,专项维度真正参与加权评分。
+
+status: candidate
+
+# 通用维度(所有题默认适用)
+default:
+  dimensions:
+    - key: correctness
+      name: 正确性
+      weight: 0.5
+    - key: reasoning
+      name: 推理与依据
+      weight: 0.3
+    - key: completeness
+      name: 完整性
+      weight: 0.2
+
+# 按课程覆盖的专项维度
+# dimensions 复用默认维度;extra_dimensions 追加该课特有的考查点。
+by_course:
+  langchain_agent:
+    dimensions:
+      - correctness
+      - reasoning
+    extra_dimensions:
+      - key: tool_use
+        name: Agent 与工具使用是否恰当
+        weight: 0.3
+      - key: context_memory
+        name: 记忆与上下文处理是否合理
+        weight: 0.2
+
+  langgraph_multiagent:
+    dimensions:
+      - correctness
+      - reasoning
+    extra_dimensions:
+      - key: state_design
+        name: State 定义是否清晰
+        weight: 0.25
+      - key: graph_topology
+        name: 节点与边是否正确
+        weight: 0.25
+      - key: exit_condition
+        name: 条件边与退出条件是否完备
+        weight: 0.2
+
+  mcp_agent:
+    dimensions:
+      - correctness
+      - completeness
+    extra_dimensions:
+      - key: protocol_understanding
+        name: 协议理解是否准确
+        weight: 0.3
+      - key: tool_definition
+        name: 工具定义是否规范
+        weight: 0.2
+      - key: server_client
+        name: Server/Client 交互是否正确
+        weight: 0.2
+
+  rag_vector:
+    dimensions:
+      - correctness
+    extra_dimensions:
+      - key: chunking
+        name: 分块策略是否合理
+        weight: 0.2
+      - key: retrieval
+        name: 检索与召回是否有效
+        weight: 0.25
+      - key: rerank_citation
+        name: 是否有 Rerank 与引用
+        weight: 0.2
+      - key: evaluation
+        name: 是否包含评估
+        weight: 0.15

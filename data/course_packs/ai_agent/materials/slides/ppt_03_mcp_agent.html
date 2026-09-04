@@ -1,0 +1,1995 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mira-preview-type" content="html-ppt">
+<meta name="mira-aspect-ratio" content="16:9">
+<title>MCP 模型上下文协议</title>
+<style>
+:root {
+  /* PLATFORM — DO NOT OVERRIDE */
+  --slide-width: 1440px;
+  --slide-height: 810px;
+  --deck-scale: 1;
+  --slide-index: 0;
+  --mira-bg-content: #f7f8f9;
+
+  /* STYLE TOKENS — tech-dark */
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --ink: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --accent2: #bc8cff;
+  --accent3: #39c5cf;
+  --border: #30363d;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --chart-1: #58a6ff;
+  --chart-2: #bc8cff;
+  --chart-3: #39c5cf;
+  --chart-4: #d29922;
+  --chart-5: #3fb950;
+  --chart-6: #f85149;
+  --overlay: rgba(88, 166, 255, 0.06);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --radius: 12px;
+  --notes-w: 320px;
+  --font-display: 700 1em/1.2 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-body: 400 1em/1.6 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Consolas", monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+  background: #0d1117;
+}
+.deck-shell {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; margin: 0; padding: 0; background: #0d1117;
+}
+.deck-viewport {
+  flex: 0 0 auto; position: relative;
+  width: var(--slide-width); height: var(--slide-height);
+  transform: scale(var(--deck-scale)); transform-origin: center center;
+  overflow: hidden; margin: 0; padding: 0; max-width: none; max-height: none; border: 0;
+}
+.deck {
+  display: flex; width: max-content; height: var(--slide-height);
+  transform: translate3d(calc(var(--slide-index, 0) * -1 * var(--slide-width)), 0, 0);
+}
+.slide, section[data-mira-slide] {
+  position: relative; flex: 0 0 var(--slide-width);
+  width: var(--slide-width); height: var(--slide-height); overflow: hidden;
+  background: var(--bg);
+}
+.slide-inner {
+  position: relative; width: 100%; height: 100%;
+  padding: 44px 48px 44px calc(var(--notes-w) + 32px);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.slide-body { flex: 1; min-height: 0; overflow: hidden; }
+
+/* ---- Speaker Notes Panel ---- */
+.notes-panel {
+  position: absolute; top: 0; left: 0; width: var(--notes-w); height: 100%;
+  background: #010409; border-right: 1px solid var(--border);
+  padding: 20px 16px; overflow-y: auto; z-index: 10;
+  font-family: var(--font-body);
+}
+.notes-panel::-webkit-scrollbar { width: 4px; }
+.notes-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.notes-header {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.notes-section { margin-bottom: 14px; }
+.notes-section-title {
+  font-size: 12px; font-weight: 700; color: var(--accent2);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 4px;
+}
+.notes-section-body {
+  font-size: 12px; color: #b1bac4; line-height: 1.6;
+}
+.notes-section-body ul { margin: 0; padding-left: 14px; }
+.notes-section-body li { margin-bottom: 3px; }
+.notes-section-body code {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 1px 4px; border-radius: 3px;
+}
+.notes-section-body strong { color: var(--ink); }
+
+/* ---- Page number / Brand ---- */
+.page-num {
+  position: absolute; bottom: 18px; right: 28px;
+  font-size: 12px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 1px;
+}
+.brand-tag {
+  position: absolute; bottom: 18px; left: calc(var(--notes-w) + 28px);
+  font-size: 12px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 1px;
+}
+
+/* ---- Common ---- */
+.section-kicker {
+  font-family: var(--font-mono); font-size: 13px; color: var(--accent);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
+}
+.section-title {
+  font-family: var(--font-display); font-size: 34px; font-weight: 700;
+  color: var(--ink); line-height: 1.2; margin-bottom: 24px;
+}
+
+/* ---- Code blocks ---- */
+.code-block {
+  background: #010409; border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 18px; font-family: var(--font-mono); font-size: 13px;
+  line-height: 1.65; margin: 8px 0;
+  white-space: pre; overflow: auto;
+  tab-size: 4;
+  color: #e6edf3;
+}
+.code-block::-webkit-scrollbar { height: 6px; width: 6px; }
+.code-block::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+.code-block::-webkit-scrollbar-track { background: transparent; }
+.code-block .kw { color: #ff7b72; }
+.code-block .str { color: #a5d6ff; }
+.code-block .fn { color: #d2a8ff; }
+.code-block .com { color: #8b949e; font-style: italic; }
+.code-block .num { color: #79c0ff; }
+.code-block .cls { color: #ffa657; }
+.code-block .dec { color: #d2a8ff; }
+.code-block .var { color: #e6edf3; }
+.code-block .op { color: #ff7b72; }
+
+/* ---- Cover ---- */
+.cover-bg {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 700px 400px at 65% 30%, rgba(88,166,255,0.12), transparent 70%),
+    radial-gradient(ellipse 500px 350px at 35% 70%, rgba(188,140,255,0.10), transparent 70%),
+    var(--bg);
+  z-index: 0;
+}
+.cover-grid {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(88,166,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88,166,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+}
+.cover-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; justify-content: center;
+  height: 100%; padding: 0 60px 0 0;
+}
+.cover-kicker {
+  font-family: var(--font-mono); font-size: 15px; color: var(--accent);
+  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 18px;
+}
+.cover-title {
+  font-family: var(--font-display); font-size: 56px; font-weight: 800;
+  color: var(--ink); line-height: 1.15; margin-bottom: 16px; letter-spacing: -1px;
+}
+.cover-title .gradient-text {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.cover-subtitle {
+  font-family: var(--font-body); font-size: 20px; color: var(--muted);
+  margin-bottom: 36px; line-height: 1.5;
+}
+.cover-meta { display: flex; gap: 32px; align-items: center; }
+.cover-meta-item { display: flex; flex-direction: column; gap: 4px; }
+.cover-meta-label {
+  font-size: 11px; color: var(--muted); font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.cover-meta-value { font-size: 16px; color: var(--ink); font-weight: 600; }
+.cover-divider { width: 1px; height: 32px; background: var(--border); }
+.cover-badge {
+  position: absolute; top: 40px; right: 48px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: 1px solid var(--border); border-radius: 100px;
+  background: rgba(22,27,34,0.8); backdrop-filter: blur(8px);
+}
+.cover-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); box-shadow: 0 0 8px var(--success);
+}
+.cover-badge-text { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ---- Cards ---- */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px 20px;
+}
+.card-title { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+.card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.card-body code {
+  font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 2px 5px; border-radius: 3px;
+}
+.card-accent { border-left: 3px solid var(--accent); }
+.card-purple { border-left: 3px solid var(--accent2); }
+.card-green { border-left: 3px solid var(--success); }
+.card-orange { border-left: 3px solid var(--warning); }
+.card-red { border-left: 3px solid var(--danger); }
+
+/* ---- Table ---- */
+.tbl { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.tbl th {
+  background: var(--surface2); padding: 10px 14px; font-size: 12px; font-weight: 600;
+  color: var(--muted); text-align: left; border-bottom: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.tbl td { padding: 12px 14px; font-size: 13px; color: var(--ink); border-bottom: 1px solid var(--border); background: var(--surface); }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl .hl { color: var(--accent); font-weight: 600; }
+.tbl .hl2 { color: var(--accent2); font-weight: 600; }
+.tbl .hl-green { color: var(--success); font-weight: 600; }
+.tbl .hl-red { color: var(--danger); font-weight: 600; }
+
+/* ---- Concept box ---- */
+.concept-box {
+  padding: 16px 20px; background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; margin-bottom: 12px;
+}
+.concept-box-title { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+.concept-box-body { font-size: 13px; color: var(--ink); line-height: 1.6; }
+.concept-box-body strong { color: var(--accent2); }
+
+/* ---- Formula ---- */
+.formula-box {
+  padding: 20px; background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(188,140,255,0.06));
+  border: 1px solid rgba(88,166,255,0.2); border-radius: 10px; text-align: center; margin-bottom: 16px;
+}
+.formula-text { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: 2px; }
+.formula-plus { color: var(--accent); margin: 0 6px; }
+.formula-eq { color: var(--muted); margin: 0 10px; }
+.formula-result {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+/* ---- Tag ---- */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-family: var(--font-mono); letter-spacing: 0.5px;
+}
+.tag-blue { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+.tag-purple { background: rgba(188,140,255,0.15); color: var(--accent2); border: 1px solid rgba(188,140,255,0.3); }
+.tag-green { background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
+.tag-orange { background: rgba(210,153,34,0.15); color: var(--warning); border: 1px solid rgba(210,153,34,0.3); }
+.tag-red { background: rgba(248,81,73,0.15); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+
+/* ---- Flow steps ---- */
+.flow-step {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px; color: var(--ink);
+}
+.flow-arrow { color: var(--accent); font-size: 16px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.flex-row { display: flex; gap: 12px; align-items: center; }
+.flex-col { display: flex; flex-direction: column; gap: 12px; }
+
+/* ---- Architecture diagram ---- */
+.arch-layer {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 20px; margin-bottom: 4px; position: relative;
+}
+.arch-layer-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.arch-layer-desc { font-size: 12px; color: var(--muted); }
+.arch-arrow {
+  text-align: center; font-size: 18px; color: var(--accent); margin: 2px 0;
+}
+.arch-box {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 12px; font-size: 12px; color: var(--ink);
+}
+
+/* ---- Big number ---- */
+.big-num {
+  font-family: var(--font-display); font-size: 48px; font-weight: 800; line-height: 1;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+/* ---- Bullet list ---- */
+.bullet-list { list-style: none; padding: 0; margin: 0; }
+.bullet-list li {
+  font-size: 14px; color: var(--ink); line-height: 1.7; padding-left: 20px; position: relative;
+}
+.bullet-list li::before {
+  content: "▸"; position: absolute; left: 0; color: var(--accent); font-size: 14px;
+}
+.bullet-list li strong { color: var(--accent2); }
+.bullet-list li code {
+  font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 2px 5px; border-radius: 3px;
+}
+
+/* ---- Diagram: host-client-server ---- */
+.hcs-diagram { display: flex; flex-direction: column; gap: 0; align-items: center; }
+.hcs-layer {
+  width: 80%; border-radius: 10px; padding: 16px 24px; text-align: center;
+  position: relative;
+}
+.hcs-layer-host { background: rgba(88,166,255,0.1); border: 1px solid rgba(88,166,255,0.3); }
+.hcs-layer-client { background: rgba(188,140,255,0.1); border: 1px solid rgba(188,140,255,0.3); }
+.hcs-layer-server { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); }
+.hcs-layer-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.hcs-layer-desc { font-size: 12px; color: var(--muted); }
+.hcs-connector {
+  width: 2px; height: 28px; background: var(--border); position: relative;
+}
+.hcs-connector::after {
+  content: ""; position: absolute; bottom: -4px; left: -4px;
+  width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 6px solid var(--border);
+}
+.hcs-label {
+  position: absolute; left: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+  font-size: 11px; color: var(--accent); font-family: var(--font-mono); white-space: nowrap;
+}
+
+/* ---- Comparison cards ---- */
+.cmp-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 20px; text-align: center;
+}
+.cmp-card-title { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 12px; }
+.cmp-card-formula { font-family: var(--font-mono); font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+.cmp-card-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* ---- Quiz ---- */
+.quiz-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 18px; margin-bottom: 10px;
+}
+.quiz-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: #0d1117; font-size: 12px; font-weight: 700;
+  font-family: var(--font-mono); margin-right: 8px; flex-shrink: 0;
+}
+.quiz-question { font-size: 14px; color: var(--ink); font-weight: 600; margin-bottom: 6px; display: flex; align-items: flex-start; line-height: 1.5; }
+.quiz-options { display: flex; flex-direction: column; gap: 4px; padding-left: 32px; }
+.quiz-option { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.quiz-option .opt-label { display: inline-block; width: 20px; color: var(--accent2); font-weight: 700; }
+.quiz-answer { margin-top: 6px; padding-left: 32px; font-size: 12px; color: var(--success); font-family: var(--font-mono); }
+.quiz-answer::before { content: "✓ "; }
+
+/* ---- Homework ---- */
+.hw-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 18px; margin-bottom: 10px;
+}
+.hw-icon {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; font-family: var(--font-mono);
+}
+.hw-icon-1 { background: rgba(88,166,255,0.15); color: var(--accent); }
+.hw-icon-2 { background: rgba(188,140,255,0.15); color: var(--accent2); }
+.hw-icon-3 { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-content { flex: 1; }
+.hw-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.hw-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.hw-desc code {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 1px 4px; border-radius: 3px;
+}
+.hw-difficulty { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-family: var(--font-mono); margin-left: 6px; }
+.hw-easy { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-medium { background: rgba(210,153,34,0.15); color: var(--warning); }
+.hw-hard { background: rgba(248,81,73,0.15); color: var(--danger); }
+
+/* ---- Misc ---- */
+.callout-box {
+  padding: 14px 18px; border-radius: 8px; margin-bottom: 12px;
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.callout-info { background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.2); }
+.callout-warn { background: rgba(210,153,34,0.08); border: 1px solid rgba(210,153,34,0.2); }
+.callout-danger { background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.2); }
+.callout-success { background: rgba(63,185,80,0.08); border: 1px solid rgba(63,185,80,0.2); }
+.callout-icon { font-size: 18px; flex-shrink: 0; }
+.callout-text { font-size: 13px; color: var(--ink); line-height: 1.6; }
+.callout-text strong { color: var(--accent); }
+
+/* ---- Timeline horizontal ---- */
+.timeline-h { display: flex; gap: 0; margin-bottom: 16px; }
+.timeline-h-item {
+  flex: 1; position: relative; padding: 14px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-right: none;
+}
+.timeline-h-item:last-child { border-right: 1px solid var(--border); border-radius: 0 10px 10px 0; }
+.timeline-h-item:first-child { border-radius: 10px 0 0 10px; }
+.timeline-h-num { font-family: var(--font-mono); font-size: 11px; color: var(--accent); margin-bottom: 4px; }
+.timeline-h-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.timeline-h-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+/* ---- Server card ---- */
+.server-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; text-align: center;
+}
+.server-card-icon { font-size: 28px; margin-bottom: 6px; }
+.server-card-title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.server-card-desc { font-size: 11px; color: var(--muted); line-height: 1.4; }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const slides = Array.from(document.querySelectorAll('[data-mira-slide]'));
+  if (!slides.length) return;
+  let index = 0;
+  const root = document.documentElement;
+  const width = 1440;
+  const height = 810;
+  const fit = () => {
+    const scale = Math.min(window.innerWidth / width, window.innerHeight / height);
+    root.style.setProperty('--deck-scale', String(Math.max(0.1, scale)));
+  };
+  const render = () => {
+    root.style.setProperty('--slide-index', String(index));
+    fit();
+  };
+  const go = (nextIndex) => {
+    index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+    render();
+  };
+  window.addEventListener('resize', fit);
+  window.addEventListener('keydown', (event) => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(event.key)) go(index + 1);
+    if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(event.key)) go(index - 1);
+    if (event.key === 'Home') go(0);
+    if (event.key === 'End') go(slides.length - 1);
+  });
+  render();
+});
+</script>
+</head>
+<body>
+<div class="deck-shell">
+<div class="deck-viewport">
+<main class="deck">
+
+<!-- ===== SLIDE 1: COVER ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="cover-bg"></div>
+<div class="cover-grid"></div>
+<div class="notes-panel">
+<div class="notes-header">SLIDE 1 / 20 · 封面</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">3 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>回顾 Module 2 LangGraph 的核心知识点</li><li>引出工具集成的痛点</li><li>预告本节课将学习 MCP 协议</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 开场白</div><div class="notes-section-body">"上节课我们学了 LangGraph 多智能体编排，但有一个问题——Agent 怎么连接外部工具？每个框架都要单独写适配，太痛苦了。今天我们学习 MCP 协议，它就像 AI 界的 USB-C 接口。"</div></div>
+</div>
+<div class="slide-inner">
+<div class="cover-content">
+<div class="cover-kicker">MODULE 03 · AI Agent 系列课程</div>
+<h1 class="cover-title">MCP<br><span class="gradient-text">模型上下文协议</span></h1>
+<p class="cover-subtitle">Model Context Protocol — 工具调用的通用标准<br>从协议原理到 FastMCP 实战构建</p>
+<div class="cover-meta">
+<div class="cover-meta-item"><span class="cover-meta-label">DURATION</span><span class="cover-meta-value">3 课时 · 135 min</span></div>
+<div class="cover-divider"></div>
+<div class="cover-meta-item"><span class="cover-meta-label">PAGES</span><span class="cover-meta-value">20 Slides</span></div>
+<div class="cover-divider"></div>
+<div class="cover-meta-item"><span class="cover-meta-label">LEVEL</span><span class="cover-meta-value">Intermediate</span></div>
+</div>
+</div>
+<div class="cover-badge"><div class="cover-badge-dot"></div><span class="cover-badge-text">Model Context Protocol · by Anthropic</span></div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">01 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 2: COURSE OVERVIEW ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 2 / 20 · 课程总览</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>讲解四部分结构</li><li>强调本模块在课程中的位置</li><li>明确学习目标</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎯 教学目标</div><div class="notes-section-body">掌握 MCP 协议原理，能用 <strong>FastMCP</strong> 构建 Server，理解 MCP 在 RAG 和生产系统中的角色，掌握工具调用错误处理。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">COURSE OVERVIEW</div>
+<h2 class="section-title">课程总览</h2>
+<div class="timeline-h">
+<div class="timeline-h-item"><div class="timeline-h-num">PART 1</div><div class="timeline-h-title">概念与架构</div><div class="timeline-h-desc">痛点 → MCP 定义 → 三层架构 → 三大能力</div></div>
+<div class="timeline-h-item"><div class="timeline-h-num">PART 2</div><div class="timeline-h-title">核心构建</div><div class="timeline-h-desc">FastMCP → 文件 Server → Agent 接入 → 通信流程</div></div>
+<div class="timeline-h-item"><div class="timeline-h-num">PART 3</div><div class="timeline-h-title">生产实践</div><div class="timeline-h-desc">对比 → Inspector → RAG 角色 → 错误处理 → 完整实现</div></div>
+<div class="timeline-h-item"><div class="timeline-h-num">PART 4</div><div class="timeline-h-title">生态与安全</div><div class="timeline-h-desc">SSE 远程 → 生态社区 → 安全实践 → 总结</div></div>
+</div>
+<div class="grid-2" style="margin-top: 16px;">
+<div class="card card-accent">
+<div class="card-title">前置要求</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li>完成 Module 1：LangChain Agent 基础</li>
+<li>完成 Module 2：LangGraph 多智能体编排</li>
+<li>了解 <code>@tool</code> 装饰器和 <code>bind_tools()</code></li>
+</ul>
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">你将学会</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li>用 <code>FastMCP</code> 构建工具服务器</li>
+<li>将 MCP Server 接入 LangChain Agent</li>
+<li>MCP 在 RAG 系统中的角色</li>
+<li>工具调用的错误处理与重试策略</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">02 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 3: PAIN POINTS ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 3 / 20 · 痛点分析</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>N×M 集成问题</li><li>重复实现</li><li>版本碎片化</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎯 互动</div><div class="notes-section-body">"你的项目有多少工具集成点？"让学员算一下：框架数 × 工具数 = ?</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 1 · CONCEPT</div>
+<h2 class="section-title">工具集成的三大痛点</h2>
+<div class="grid-3" style="margin-bottom: 20px;">
+<div class="card card-red">
+<div style="font-size: 32px; margin-bottom: 8px;">🔗</div>
+<div class="card-title">N × M 集成地狱</div>
+<div class="card-body">
+5 个 Agent 框架 × 10 个工具 = <strong style="color:var(--danger)">50 个适配器</strong><br>
+每新增一个框架或工具，集成点指数级增长
+</div>
+</div>
+<div class="card card-orange">
+<div style="font-size: 32px; margin-bottom: 8px;">🔄</div>
+<div class="card-title">重复实现</div>
+<div class="card-body">
+同一个"查天气"工具，为 OpenAI、Claude、LangChain<br>各写一遍，逻辑相同但接口不同
+</div>
+</div>
+<div class="card card-orange">
+<div style="font-size: 32px; margin-bottom: 8px;">📦</div>
+<div class="card-title">版本碎片化</div>
+<div class="card-body">
+工具 A 依赖 LangChain 0.2<br>
+工具 B 依赖 LangChain 0.3<br>
+<strong style="color:var(--warning)">依赖冲突无解</strong>
+</div>
+</div>
+</div>
+<div class="callout-box callout-info">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>核心问题</strong>：缺少一个<strong>标准化协议</strong>，让工具开发者写一次，所有 Agent 框架都能用。就像 USB 出现之前，每个设备用不同的充电线。</div>
+</div>
+<div class="formula-box" style="margin-top: 12px;">
+<span class="formula-text">现状: N × M 个适配器</span>
+<span class="formula-eq">→</span>
+<span class="formula-text formula-result">MCP: N + M 个集成</span>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">03 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 4: WHAT IS MCP ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 4 / 20 · 什么是 MCP</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>Anthropic 2024.11 开源</li><li>类比 USB-C 接口</li><li>2026 已捐赠 Linux Foundation</li><li>主流模型/IDE 均已支持</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">⚠️ 常见混淆</div><div class="notes-section-body">学生容易把 MCP 和 API 混淆。MCP 是<strong>协议层</strong>，不是具体的 API。它定义了"怎么通信"，而不是"通信什么"。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 1 · CONCEPT</div>
+<h2 class="section-title">什么是 MCP？</h2>
+<div class="concept-box" style="margin-bottom: 16px;">
+<div class="concept-box-title">一句话定义</div>
+<div class="concept-box-body"><strong>MCP（Model Context Protocol）</strong>是由 Anthropic 于 2024 年 11 月开源的<strong>标准化协议</strong>，定义了 LLM 应用与外部数据源/工具之间的通信方式，让大模型能以标准化方式<strong>读数据、调工具、套模板</strong>。</div>
+</div>
+<div class="grid-2" style="margin-bottom: 16px;">
+<div class="card card-accent">
+<div class="card-title">🔌 USB-C 类比</div>
+<div class="card-body">
+过去每个工具为每个模型单独写适配器（不同手机不同充电线）<br>
+→ MCP = AI 界的 USB-C 接口，写一次，即插即用
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">📊 生态现状（2026）</div>
+<div class="card-body">
+<ul style="margin:0; padding-left:14px; line-height:1.8;">
+<li>MCP 已捐赠 <strong style="color:var(--success)">Linux Foundation</strong></li>
+<li>Claude / ChatGPT / Gemini / Cursor / VS Code 均已支持</li>
+<li>社区已有数千个 MCP Server</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="grid-3">
+<div class="card" style="text-align:center; padding: 14px;">
+<div class="big-num" style="font-size: 36px;">2024.11</div>
+<div style="font-size:12px; color:var(--muted); margin-top:4px;">Anthropic 开源</div>
+</div>
+<div class="card" style="text-align:center; padding: 14px;">
+<div class="big-num" style="font-size: 36px;">JSON-RPC</div>
+<div style="font-size:12px; color:var(--muted); margin-top:4px;">底层通信协议</div>
+</div>
+<div class="card" style="text-align:center; padding: 14px;">
+<div class="big-num" style="font-size: 36px;">3</div>
+<div style="font-size:12px; color:var(--muted); margin-top:4px;">核心原语：Tools / Resources / Prompts</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">04 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 5: MCP ARCHITECTURE ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 5 / 20 · MCP 架构</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>白板画三层架构图</li><li>类比：餐厅厨房 / 服务员 / 顾客</li><li>强调 Host 可以有多个 Client</li><li>每个 Client 连接一个 Server</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">📌 关键概念</div><div class="notes-section-body"><strong>Host</strong> 不一定是 LLM 本身，而是运行 LLM 的<strong>应用程序</strong>（如 Claude Desktop、Cursor IDE）。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 1 · CONCEPT</div>
+<h2 class="section-title">MCP 三层架构</h2>
+<div class="grid-2">
+<div>
+<div class="hcs-diagram">
+<div class="hcs-layer hcs-layer-host">
+<div class="hcs-layer-title">🖥️ Host（宿主应用）</div>
+<div class="hcs-layer-desc">运行 LLM 的应用程序 — Claude Desktop / Cursor / VS Code</div>
+<span class="hcs-label">用户交互</span>
+</div>
+<div class="hcs-connector"></div>
+<div class="hcs-layer hcs-layer-client">
+<div class="hcs-layer-title">🔗 Client（客户端）</div>
+<div class="hcs-layer-desc">Host 内部的 MCP 客户端，管理连接、协议协商</div>
+<span class="hcs-label">JSON-RPC</span>
+</div>
+<div class="hcs-connector"></div>
+<div class="hcs-layer hcs-layer-server">
+<div class="hcs-layer-title">⚙️ Server（工具服务）</div>
+<div class="hcs-layer-desc">暴露 Tools / Resources / Prompts 的独立进程</div>
+<span class="hcs-label">能力暴露</span>
+</div>
+</div>
+</div>
+<div>
+<div class="concept-box">
+<div class="concept-box-title">🍽️ 餐厅类比</div>
+<div class="concept-box-body">
+<strong>Host</strong> = 顾客（决定吃什么）<br>
+<strong>Client</strong> = 服务员（传话、协调）<br>
+<strong>Server</strong> = 厨房（实际做菜）<br><br>
+顾客不需要知道厨房怎么做菜，只需通过服务员点单。
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">通信协议</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>JSON-RPC 2.0</strong> — 消息格式标准</li>
+<li><strong>stdio</strong> — 本地进程间通信</li>
+<li><strong>SSE / Streamable HTTP</strong> — 远程传输</li>
+</ul>
+</div>
+</div>
+<div class="callout-box callout-success">
+<div class="callout-icon">✅</div>
+<div class="callout-text">一个 Host 可以有<strong>多个 Client</strong>，每个连接不同的 Server，实现工具组合。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">05 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 6: THREE CAPABILITIES ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 6 / 20 · 三大能力</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>Tools 最常用，类似 Function Call</li><li>Resources 是被动数据源</li><li>Prompts 是预置模板</li><li>重点讲 Tools，后两个了解即可</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎯 互动</div><div class="notes-section-body">"天气查询属于哪种能力？" → Tools（模型主动调用）</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 1 · CONCEPT</div>
+<h2 class="section-title">MCP Server 三大能力</h2>
+<div class="grid-3" style="margin-bottom: 16px;">
+<div class="card card-accent" style="padding: 20px;">
+<div style="font-size: 36px; margin-bottom: 8px;">🔧</div>
+<div class="card-title" style="font-size: 18px;">Tools（工具）</div>
+<div style="margin: 8px 0;">
+<span class="tag tag-blue">模型主动调用</span>
+</div>
+<div class="card-body">
+模型自主决定何时调用的<strong style="color:var(--accent)">可执行函数</strong>。<br><br>
+<strong>示例</strong>：<code>get_weather(city)</code>、<code>send_email(to, subject)</code>、<code>query_database(sql)</code>
+</div>
+</div>
+<div class="card card-purple" style="padding: 20px;">
+<div style="font-size: 36px; margin-bottom: 8px;">📚</div>
+<div class="card-title" style="font-size: 18px;">Resources（资源）</div>
+<div style="margin: 8px 0;">
+<span class="tag tag-purple">客户端读取</span>
+</div>
+<div class="card-body">
+Server 暴露的<strong style="color:var(--accent2)">数据内容</strong>，供客户端读取作为 LLM 上下文。<br><br>
+<strong>示例</strong>：<code>file:///config.json</code>、<code>db://schema/users</code>、<code>api://docs/openapi</code>
+</div>
+</div>
+<div class="card card-green" style="padding: 20px;">
+<div style="font-size: 36px; margin-bottom: 8px;">📝</div>
+<div class="card-title" style="font-size: 18px;">Prompts（模板）</div>
+<div style="margin: 8px 0;">
+<span class="tag tag-green">用户选择</span>
+</div>
+<div class="card-body">
+预定义的<strong style="color:var(--success)">提示词模板</strong>，用户可从列表中选择使用。<br><br>
+<strong>示例</strong>：<code>code_review(code)</code>、<code>summarize(document)</code>、<code>translate(text, lang)</code>
+</div>
+</div>
+</div>
+<div class="callout-box callout-info">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>对比 Function Call</strong>：MCP Tools 类似 Function Call，但关键区别是<strong>跨框架标准化</strong> — 写一次 MCP Server，Claude / ChatGPT / LangChain 都能调用。</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">06 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 7: FASTMCP BUILD SERVER ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 7 / 20 · FastMCP 构建</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>对比 Module 1 的 <code>@tool</code> 装饰器</li><li><code>@mcp.tool()</code> — 装饰器定义工具</li><li>类型注解自动生成 schema</li><li>docstring 自动成为 description</li><li>终端运行，展示输出</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">💻 代码演示</div><div class="notes-section-body">现场运行 <code>python server.py</code>，展示 Server 启动日志。强调类型注解和 docstring 的重要性。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 2 · BUILD</div>
+<h2 class="section-title">用 FastMCP 构建 Server</h2>
+<div class="grid-2">
+<div>
+<div class="code-block" style="font-size: 12px; max-height: 420px;"><span class="com"># weather_server.py</span>
+<span class="kw">from</span> <span class="cls">FastMCP</span> <span class="kw">import</span> <span class="cls">FastMCP</span>
+
+<span class="com"># 创建 MCP Server 实例</span>
+mcp = <span class="cls">FastMCP</span>(
+    <span class="str">"weather-server"</span>,
+    instructions=<span class="str">"提供天气查询服务"</span>
+)
+
+<span class="com"># 用装饰器定义工具</span>
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="cls">str</span>) -> <span class="cls">str</span>:
+    <span class="str">"""查询指定城市的天气
+
+    Args:
+        city: 城市名称，如 "北京"
+
+    Returns:
+        天气信息字符串
+    """</span>
+    <span class="com"># 实际调用天气 API</span>
+    <span class="kw">return</span> <span class="fn">fetch_weather_api</span>(city)
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">get_forecast</span>(
+    city: <span class="cls">str</span>,
+    days: <span class="cls">int</span> = <span class="num">3</span>
+) -> <span class="cls">list</span>[<span class="cls">dict</span>]:
+    <span class="str">"""获取未来几天的天气预报"""</span>
+    <span class="kw">return</span> <span class="fn">fetch_forecast</span>(city, days)
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    mcp.run(transport=<span class="str">"stdio"</span>)</div>
+</div>
+<div>
+<div class="concept-box">
+<div class="concept-box-title">关键设计点</div>
+<div class="concept-box-body">
+<ul class="bullet-list">
+<li><strong><code>@mcp.tool()</code></strong> 装饰器注册工具</li>
+<li><strong>类型注解</strong>自动生成 JSON Schema</li>
+<li><strong>docstring</strong> 自动成为工具描述</li>
+<li>与 Module 1 的 <code>@tool</code> 对比：MCP 工具是<strong>跨框架</strong>的</li>
+</ul>
+</div>
+</div>
+<div class="card card-accent">
+<div class="card-title">运行方式</div>
+<div class="card-body">
+<div class="code-block" style="font-size: 12px; margin: 4px 0;"><span class="com"># 安装 FastMCP</span>
+pip install fastmcp
+
+<span class="com"># 启动 Server（stdio 传输）</span>
+python weather_server.py</div>
+</div>
+</div>
+<div class="callout-box callout-warn">
+<div class="callout-icon">⚠️</div>
+<div class="callout-text"><strong>注意</strong>：stdio 模式下 Server 不会输出到 stdout（被协议占用），调试用 <code>logging</code> 写 stderr。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">07 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 8: FILE SYSTEM MCP SERVER ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 8 / 20 · 文件系统 Server</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>实战：读写文件的 MCP Server</li><li>展示 Tools + Resources 结合</li><li>路径安全：禁止访问敏感目录</li><li>终端运行演示</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🔒 安全提醒</div><div class="notes-section-body">文件系统 Server 必须做<strong>路径校验</strong>，禁止 <code>../</code> 越权访问。生产环境应限制在指定目录下。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 2 · BUILD</div>
+<h2 class="section-title">实战：文件系统 MCP Server</h2>
+<div class="grid-2">
+<div>
+<div class="code-block" style="font-size: 12px; max-height: 400px;"><span class="kw">from</span> <span class="cls">FastMCP</span> <span class="kw">import</span> <span class="cls">FastMCP</span>
+<span class="kw">from</span> pathlib <span class="kw">import</span> <span class="cls">Path</span>
+<span class="kw">import</span> json
+
+mcp = <span class="cls">FastMCP</span>(<span class="str">"file-server"</span>)
+BASE_DIR = <span class="cls">Path</span>(<span class="str">"./workspace"</span>).resolve()
+
+<span class="kw">def</span> <span class="fn">safe_path</span>(filename: <span class="cls">str</span>) -> <span class="cls">Path</span>:
+    <span class="str">"""防止路径穿越攻击"""</span>
+    path = (BASE_DIR / filename).resolve()
+    <span class="kw">if</span> <span class="kw">not</span> path.is_relative_to(BASE_DIR):
+        <span class="kw">raise</span> <span class="cls">ValueError</span>(<span class="str">"路径越权！"</span>)
+    <span class="kw">return</span> path
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">read_file</span>(filename: <span class="cls">str</span>) -> <span class="cls">str</span>:
+    <span class="str">"""读取文件内容"""</span>
+    path = <span class="fn">safe_path</span>(filename)
+    <span class="kw">return</span> path.read_text()
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">write_file</span>(
+    filename: <span class="cls">str</span>,
+    content: <span class="cls">str</span>
+) -> <span class="cls">str</span>:
+    <span class="str">"""写入文件内容"""</span>
+    path = <span class="fn">safe_path</span>(filename)
+    path.write_text(content)
+    <span class="kw">return</span> <span class="str">f"已写入 {filename}"</span>
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">list_files</span>(
+    directory: <span class="cls">str</span> = <span class="str">"."</span>
+) -> <span class="cls">list</span>[<span class="cls">str</span>]:
+    <span class="str">"""列出目录下的文件"""</span>
+    path = <span class="fn">safe_path</span>(directory)
+    <span class="kw">return</span> [p.name <span class="kw">for</span> p <span class="kw">in</span> path.iterdir()]</div>
+</div>
+<div>
+<div class="card card-accent">
+<div class="card-title">设计亮点</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong><code>safe_path()</code></strong> — 路径安全校验，防止 <code>../</code> 越权</li>
+<li>三个工具：<code>read_file</code> / <code>write_file</code> / <code>list_files</code></li>
+<li>类型注解：<code>list[str]</code> 自动生成 schema</li>
+<li><code>BASE_DIR</code> 限制在 workspace 目录下</li>
+</ul>
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">对比 Module 1</div>
+<div class="card-body">
+<table class="tbl" style="margin-top: 8px;">
+<tr><th>特性</th><th>@tool (LangChain)</th><th>@mcp.tool (FastMCP)</th></tr>
+<tr><td>框架绑定</td><td>LangChain 专用</td><td class="hl">跨框架通用</td></tr>
+<tr><td>运行方式</td><td>进程内调用</td><td class="hl2">独立进程</td></tr>
+<tr><td>复用性</td><td>同一项目内</td><td class="hl-green">任何 MCP Client</td></tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">08 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 9: AGENT CONNECTS MCP ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 9 / 20 · Agent 接入</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">10 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>MultiServerMCPClient 连接多个 Server</li><li>get_tools() 获取所有工具</li><li>create_react_agent 创建 Agent</li><li>展示一个 Agent 同时调用两个 Server</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">💻 代码演示</div><div class="notes-section-body">运行 Agent，让它同时读文件和查天气，展示 MCP 的<strong>多 Server 组合</strong>能力。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 2 · BUILD</div>
+<h2 class="section-title">Agent 接入 MCP Server</h2>
+<div class="grid-2">
+<div>
+<div class="code-block" style="font-size: 12px; max-height: 420px;"><span class="kw">from</span> langchain_mcp_adapters.client
+    <span class="kw">import</span> <span class="cls">MultiServerMCPClient</span>
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> <span class="cls">ChatOpenAI</span>
+<span class="kw">from</span> langgraph.prebuilt
+    <span class="kw">import</span> <span class="fn">create_react_agent</span>
+
+<span class="com"># 1. 配置多个 MCP Server</span>
+client = <span class="cls">MultiServerMCPClient</span>({
+    <span class="str">"weather"</span>: {
+        <span class="str">"command"</span>: <span class="str">"python"</span>,
+        <span class="str">"args"</span>: [<span class="str">"weather_server.py"</span>],
+        <span class="str">"transport"</span>: <span class="str">"stdio"</span>,
+    },
+    <span class="str">"filesystem"</span>: {
+        <span class="str">"command"</span>: <span class="str">"python"</span>,
+        <span class="str">"args"</span>: [<span class="str">"file_server.py"</span>],
+        <span class="str">"transport"</span>: <span class="str">"stdio"</span>,
+    }
+})
+
+<span class="com"># 2. 获取所有 Server 的工具</span>
+tools = <span class="kw">await</span> client.get_tools()
+<span class="com"># → [get_weather, get_forecast,</span>
+<span class="com">#    read_file, write_file, list_files]</span>
+
+<span class="com"># 3. 创建 Agent</span>
+llm = <span class="cls">ChatOpenAI</span>(model=<span class="str">"gpt-4o"</span>)
+agent = <span class="fn">create_react_agent</span>(
+    llm, tools,
+    prompt=<span class="str">"你是助手，可以查天气和读写文件"</span>
+)
+
+<span class="com"># 4. 运行</span>
+result = <span class="kw">await</span> agent.ainvoke({
+    <span class="str">"messages"</span>: [
+        {<span class="str">"role"</span>: <span class="str">"user"</span>,
+         <span class="str">"content"</span>: <span class="str">"查北京天气，"</span>
+          <span class="str">"然后写入 weather.txt"</span>}
+    ]
+})</div>
+</div>
+<div>
+<div class="concept-box">
+<div class="concept-box-title">接入流程</div>
+<div class="concept-box-body">
+<ul class="bullet-list">
+<li><strong>配置</strong> — 指定 Server 命令和传输方式</li>
+<li><strong>连接</strong> — <code>get_tools()</code> 自动发现所有工具</li>
+<li><strong>创建</strong> — 用 <code>create_react_agent</code> 绑定</li>
+<li><strong>运行</strong> — Agent 自主决定调用哪个工具</li>
+</ul>
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">多 Server 组合</div>
+<div class="card-body">
+一个 Agent 同时连接<strong>天气 Server</strong> 和<strong>文件 Server</strong>，用户说"查北京天气并保存"，Agent 自动：<br>
+<code>get_weather("北京")</code> → <code>write_file("weather.txt", ...)</code>
+</div>
+</div>
+<div class="callout-box callout-info">
+<div class="callout-icon">💡</div>
+<div class="callout-text">这是 MCP 的核心价值 — <strong>工具组合</strong>。不同 Server 的工具像乐高积木一样拼接。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">09 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 10: COMMUNICATION FLOW ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 10 / 20 · 通信流程</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>JSON-RPC 2.0 消息格式</li><li>三种传输方式对比</li><li>握手 → 能力协商 → 调用</li><li>stdio 用于本地，SSE 用于远程</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">📌 重点</div><div class="notes-section-body">学生不需要手写 JSON-RPC 消息，FastMCP SDK 全部封装了。但理解底层流程有助于调试。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 2 · BUILD</div>
+<h2 class="section-title">MCP 通信流程详解</h2>
+<div class="grid-2">
+<div>
+<div class="timeline-h" style="margin-bottom: 16px;">
+<div class="timeline-h-item"><div class="timeline-h-num">STEP 1</div><div class="timeline-h-title">握手</div><div class="timeline-h-desc">Client 连接 Server，交换协议版本</div></div>
+<div class="timeline-h-item"><div class="timeline-h-num">STEP 2</div><div class="timeline-h-title">能力协商</div><div class="timeline-h-desc">Server 声明支持的 Tools / Resources / Prompts</div></div>
+<div class="timeline-h-item"><div class="timeline-h-num">STEP 3</div><div class="timeline-h-title">调用</div><div class="timeline-h-desc">Client 发送 tool_call，Server 返回结果</div></div>
+</div>
+<div class="code-block" style="font-size: 12px;"><span class="com">// JSON-RPC 2.0 消息示例</span>
+{
+  <span class="str">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="str">"id"</span>: <span class="num">1</span>,
+  <span class="str">"method"</span>: <span class="str">"tools/call"</span>,
+  <span class="str">"params"</span>: {
+    <span class="str">"name"</span>: <span class="str">"get_weather"</span>,
+    <span class="str">"arguments"</span>: {
+      <span class="str">"city"</span>: <span class="str">"北京"</span>
+    }
+  }
+}
+<span class="com">// → 返回</span>
+{
+  <span class="str">"jsonrpc"</span>: <span class="str">"2.0"</span>,
+  <span class="str">"id"</span>: <span class="num">1</span>,
+  <span class="str">"result"</span>: {
+    <span class="str">"content"</span>: [{
+      <span class="str">"type"</span>: <span class="str">"text"</span>,
+      <span class="str">"text"</span>: <span class="str">"北京 25°C 晴"</span>
+    }]
+  }
+}</div>
+</div>
+<div>
+<div class="card card-accent">
+<div class="card-title">三种传输方式</div>
+<div class="card-body">
+<table class="tbl" style="margin-top: 8px;">
+<tr><th>传输</th><th>场景</th><th>特点</th></tr>
+<tr><td class="hl">stdio</td><td>本地开发</td><td>进程间通信，零配置</td></tr>
+<tr><td class="hl2">SSE</td><td>远程部署</td><td>HTTP 长连接，支持流式</td></tr>
+<tr><td class="hl-green">Streamable HTTP</td><td>2026 新标准</td><td>替代 SSE，更简洁</td></tr>
+</table>
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">协议版本协商</div>
+<div class="concept-box-body">
+Client 连接时发送 <code>"protocolVersion": "2024-11-05"</code><br>
+Server 返回自己支持的版本<br>
+双方取<strong>交集</strong>确定最终版本
+</div>
+</div>
+<div class="callout-box callout-success">
+<div class="callout-icon">✅</div>
+<div class="callout-text">FastMCP SDK 封装了所有底层细节，开发者只需关注<strong>工具逻辑</strong>。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">10 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 11: MCP VS TRADITIONAL ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 11 / 20 · MCP vs 传统</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>N+M vs N×M 是核心价值</li><li>MCP 不是替代 Function Call，而是标准化</li><li>生产环境优势更明显</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎯 对比讲解</div><div class="notes-section-body">用具体数字：5 框架 × 10 工具 = 50（传统）vs 5+10=15（MCP），减少 70% 集成点。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 3 · PRACTICE</div>
+<h2 class="section-title">MCP vs 传统工具绑定</h2>
+<div class="grid-2" style="margin-bottom: 16px;">
+<div class="cmp-card" style="border-color: var(--danger);">
+<div class="cmp-card-title" style="color: var(--danger);">传统方式（Function Call）</div>
+<div class="cmp-card-formula" style="color: var(--danger);">N × M</div>
+<div class="cmp-card-desc">
+5 个框架 × 10 个工具 = <strong style="color:var(--danger)">50 个适配器</strong><br>
+每新增框架或工具，适配器指数增长
+</div>
+</div>
+<div class="cmp-card" style="border-color: var(--success);">
+<div class="cmp-card-title" style="color: var(--success);">MCP 方式</div>
+<div class="cmp-card-formula" style="color: var(--success);">N + M</div>
+<div class="cmp-card-desc">
+5 个框架 + 10 个工具 = <strong style="color:var(--success)">15 个集成</strong><br>
+新增框架或工具只需 +1，线性增长
+</div>
+</div>
+</div>
+<table class="tbl">
+<tr><th>对比维度</th><th>传统 Function Call</th><th>MCP 协议</th></tr>
+<tr><td>集成复杂度</td><td class="hl-red">N × M（指数增长）</td><td class="hl-green">N + M（线性增长）</td></tr>
+<tr><td>框架绑定</td><td class="hl-red">绑定特定框架</td><td class="hl-green">框架无关，即插即用</td></tr>
+<tr><td>工具复用</td><td>同一项目内</td><td class="hl-green">跨项目、跨框架复用</td></tr>
+<tr><td>运行方式</td><td>进程内调用</td><td class="hl">独立进程，安全隔离</td></tr>
+<tr><td>调试工具</td><td>日志 + print</td><td class="hl">MCP Inspector 可视化</td></tr>
+<tr><td>生态支持</td><td>各框架自有生态</td><td class="hl-green">统一生态，社区共享</td></tr>
+<tr><td>学习成本</td><td class="hl-green">低（直接写函数）</td><td class="hl">中（需理解协议）</td></tr>
+</table>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">11 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 12: MCP INSPECTOR ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 12 / 20 · MCP Inspector</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>可视化调试工具</li><li>查看工具列表、测试调用</li><li>查看 JSON-RPC 消息</li><li>现场演示连接 Server</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">💻 现场演示</div><div class="notes-section-body">运行 <code>npx @modelcontextprotocol/inspector python weather_server.py</code>，在浏览器中展示工具列表和调用结果。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 3 · PRACTICE</div>
+<h2 class="section-title">MCP Inspector 调试工具</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">什么是 MCP Inspector？</div>
+<div class="concept-box-body">
+官方提供的<strong>可视化调试工具</strong>，无需写代码即可：
+<ul class="bullet-list" style="margin-top: 6px;">
+<li>查看 Server 暴露的所有工具</li>
+<li>手动调用工具，测试输入输出</li>
+<li>查看 JSON-RPC 原始消息</li>
+<li>检查 Resources 和 Prompts</li>
+</ul>
+</div>
+</div>
+<div class="code-block" style="font-size: 12px;"><span class="com"># 启动 Inspector</span>
+npx @modelcontextprotocol/inspector \
+  python weather_server.py
+
+<span class="com"># 自动打开浏览器</span>
+<span class="com"># → http://localhost:5173</span></div>
+<div class="card card-green">
+<div class="card-title">调试流程</div>
+<div class="card-body">
+<div class="flex-col" style="gap: 6px;">
+<div class="flow-step"><span class="tag tag-blue">1</span> 启动 Inspector + Server</div>
+<div class="flow-step"><span class="tag tag-blue">2</span> 浏览器中查看工具列表</div>
+<div class="flow-step"><span class="tag tag-blue">3</span> 点击工具，填写参数</div>
+<div class="flow-step"><span class="tag tag-blue">4</span> 查看返回结果</div>
+<div class="flow-step"><span class="tag tag-blue">5</span> 查看 JSON-RPC 消息</div>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="card card-accent" style="margin-bottom: 12px;">
+<div class="card-title">Inspector 界面功能</div>
+<div class="card-body">
+<table class="tbl" style="margin-top: 8px;">
+<tr><th>面板</th><th>功能</th></tr>
+<tr><td class="hl">Tools</td><td>列出所有工具，可手动调用</td></tr>
+<tr><td class="hl2">Resources</td><td>浏览暴露的数据资源</td></tr>
+<tr><td class="hl-green">Prompts</td><td>查看预定义模板</td></tr>
+<tr><td class="hl">Messages</td><td>JSON-RPC 原始消息日志</td></tr>
+<tr><td class="hl2">Connection</td><td>协议版本、传输方式</td></tr>
+</table>
+</div>
+</div>
+<div class="callout-box callout-info">
+<div class="callout-icon">💡</div>
+<div class="callout-text"><strong>开发流程建议</strong>：先用 Inspector 验证工具功能 → 再接入 Agent → 最后做端到端测试。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">12 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 13: MCP IN RAG ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 13 / 20 · MCP 在 RAG 中的角色</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>RAG 检索服务 → MCP Server</li><li>任何 Agent 都能标准化查询</li><li>与 Module 4 RAG 形成呼应</li><li>价值：标准化、解耦、复用、安全</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎯 互动</div><div class="notes-section-body">"如果没有 MCP，每个 Agent 框架都要自己写检索接口，会怎样？" 引导出标准化的重要性。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 3 · PRACTICE · 新增</div>
+<h2 class="section-title">MCP 在 RAG 系统中的角色</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">核心概念：检索能力工具化</div>
+<div class="concept-box-body">
+将 RAG 检索服务封装为 <strong>MCP Server</strong>，任何 Agent 都能标准化查询知识库。
+<br><br>
+<strong>传统方式</strong>：每个 Agent 框架自己写检索接口<br>
+<strong>MCP 方式</strong>：一个 RAG Server，所有 Agent 共用
+</div>
+</div>
+<div class="code-block" style="font-size: 12px;"><span class="kw">from</span> <span class="cls">FastMCP</span> <span class="kw">import</span> <span class="cls">FastMCP</span>
+
+mcp = <span class="cls">FastMCP</span>(<span class="str">"rag-server"</span>)
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">search_knowledge</span>(
+    query: <span class="cls">str</span>,
+    top_k: <span class="cls">int</span> = <span class="num">5</span>
+) -> <span class="cls">list</span>[<span class="cls">dict</span>]:
+    <span class="str">"""搜索知识库，返回相关文档"""</span>
+    results = vectorstore.similarity_search(
+        query, k=top_k
+    )
+    <span class="kw">return</span> [
+        {<span class="str">"content"</span>: r.page_content,
+         <span class="str">"source"</span>: r.metadata[<span class="str">"source"</span>]}
+        <span class="kw">for</span> r <span class="kw">in</span> results
+    ]
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">get_document</span>(
+    doc_id: <span class="cls">str</span>
+) -> <span class="cls">str</span>:
+    <span class="str">"""获取完整文档内容"""</span>
+    <span class="kw">return</span> doc_store.get(doc_id)</div>
+</div>
+<div>
+<div class="card card-accent">
+<div class="card-title">应用场景</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>企业知识库</strong> — 所有 Agent 共用一个检索服务</li>
+<li><strong>客服系统</strong> — 不同渠道的 Agent 共享 FAQ</li>
+<li><strong>研究助手</strong> — 查论文、查数据标准化</li>
+<li><strong>代码助手</strong> — 查 API 文档、代码示例</li>
+</ul>
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">价值</div>
+<div class="card-body">
+<div class="grid-2" style="gap: 8px;">
+<div><span class="tag tag-blue">标准化</span><br><span style="font-size:12px;color:var(--muted);">统一检索接口</span></div>
+<div><span class="tag tag-purple">解耦</span><br><span style="font-size:12px;color:var(--muted);">检索与生成分离</span></div>
+<div><span class="tag tag-green">复用</span><br><span style="font-size:12px;color:var(--muted);">多 Agent 共用</span></div>
+<div><span class="tag tag-orange">安全</span><br><span style="font-size:12px;color:var(--muted);">权限集中管控</span></div>
+</div>
+</div>
+</div>
+<div class="callout-box callout-info">
+<div class="callout-icon">🔗</div>
+<div class="callout-text"><strong>课程关联</strong>：Module 4 Agentic RAG 将展示如何用 LangGraph 构建<strong>带循环的检索工作流</strong>，而 MCP 是检索能力的标准化封装。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">13 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 14: ERROR HANDLING ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 14 / 20 · 错误处理</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">12 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>重试（指数退避）</li><li>超时控制</li><li>降级策略</li><li>与 Module 2 循环工作流关联</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">⚠️ 常见陷阱</div><div class="notes-section-body"><ul><li>无限重试（不加 max_retries）</li><li>错误吞噬（except: pass）</li><li>无超时（卡死等 forever）</li><li>无日志（出错无法排查）</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 3 · PRACTICE · 新增</div>
+<h2 class="section-title">工具调用的错误处理与重试</h2>
+<div class="grid-2">
+<div>
+<div class="code-block" style="font-size: 12px; max-height: 420px;"><span class="kw">import</span> asyncio, logging
+
+logger = logging.getLogger(__name__)
+
+<span class="kw">async def</span> <span class="fn">retrieve_with_retry</span>(
+    tool,
+    query: <span class="cls">str</span>,
+    max_retries: <span class="cls">int</span> = <span class="num">3</span>,
+    timeout: <span class="cls">float</span> = <span class="num">10.0</span>
+) -> <span class="cls">dict</span>:
+    <span class="str">"""带重试和超时的工具调用"""</span>
+    <span class="kw">for</span> attempt <span class="kw">in</span> <span class="fn">range</span>(max_retries):
+        <span class="kw">try</span>:
+            <span class="com"># 超时控制</span>
+            result = <span class="kw">await</span> asyncio.wait_for(
+                tool.ainvoke({<span class="str">"query"</span>: query}),
+                timeout=timeout
+            )
+            <span class="kw">return</span> {<span class="str">"success"</span>: <span class="kw">True</span>,
+                     <span class="str">"data"</span>: result}
+
+        <span class="kw">except</span> asyncio.TimeoutError:
+            logger.warning(
+                <span class="str">f"超时 attempt={attempt+1}"</span>
+            )
+            timeout *= <span class="num">1.5</span>  <span class="com"># 退避</span>
+
+        <span class="kw">except</span> <span class="cls">Exception</span> <span class="kw">as</span> e:
+            logger.error(<span class="str">f"错误: {e}"</span>)
+            <span class="kw">if</span> attempt == max_retries - <span class="num">1</span>:
+                <span class="kw">break</span>
+            <span class="com"># 指数退避</span>
+            <span class="kw">await</span> asyncio.sleep(
+                <span class="num">2</span> ** attempt
+            )
+
+    <span class="com"># 降级策略</span>
+    <span class="kw">return</span> {
+        <span class="str">"success"</span>: <span class="kw">False</span>,
+        <span class="str">"fallback"</span>: <span class="str">"服务暂不可用"</span>,
+        <span class="str">"query"</span>: query
+    }</div>
+</div>
+<div>
+<div class="card card-accent">
+<div class="card-title">四大策略</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>重试</strong> — 指数退避：<code>2^attempt</code> 秒</li>
+<li><strong>超时</strong> — <code>asyncio.wait_for()</code> 控制</li>
+<li><strong>降级</strong> — 返回 fallback 消息</li>
+<li><strong>日志</strong> — 记录每次失败原因</li>
+</ul>
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">与 Module 2 的关联</div>
+<div class="concept-box-body">
+Module 2 循环工作流中 <code>retrieval_attempts</code> 是退出条件。<br>
+本节的 <code>max_retries</code> 是同一概念的工具级实现。<br>
+<strong>正常退出</strong>：工具调用成功<br>
+<strong>异常退出</strong>：达到 max_retries → 降级
+</div>
+</div>
+<div class="callout-box callout-danger">
+<div class="callout-icon">❗</div>
+<div class="callout-text"><strong>常见陷阱</strong>：无限重试、错误吞噬（<code>except: pass</code>）、无超时、无日志。这些都是生产事故的根源。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">14 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 15: COMPLETE IMPLEMENTATION ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 15 / 20 · 完整实现</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">15 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>端到端：Server → Client → Agent</li><li>逐行走读代码</li><li>现场运行演示</li><li>展示 Agent 自主调用 MCP 工具</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">💻 代码讲解技巧</div><div class="notes-section-body">先说"整体做什么"，再说"每部分输入输出"，最后指出"关键设计点"。不要逐行念代码。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 3 · PRACTICE</div>
+<h2 class="section-title">MCP Agent 完整实现</h2>
+<div class="grid-2">
+<div>
+<div class="card card-accent" style="margin-bottom: 10px;">
+<div class="card-title">架构总览</div>
+<div class="card-body">
+<div class="flex-col" style="gap: 6px;">
+<div class="flow-step"><span class="tag tag-green">Server</span> MCP Server（文件 + 搜索）</div>
+<div class="flow-step"><span class="flow-arrow">↓</span> <span class="tag tag-purple">Client</span> MultiServerMCPClient</div>
+<div class="flow-step"><span class="flow-arrow">↓</span> <span class="tag tag-blue">Agent</span> create_react_agent</div>
+<div class="flow-step"><span class="flow-arrow">↓</span> <span class="tag tag-orange">User</span> 用户提问</div>
+</div>
+</div>
+</div>
+<div class="code-block" style="font-size: 11px; max-height: 280px;"><span class="com"># 1. Server: search_server.py</span>
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">search_web</span>(query: <span class="cls">str</span>) -> <span class="cls">str</span>:
+    <span class="str">"""搜索网页"""</span>
+    <span class="kw">return</span> tavily.search(query)
+
+<span class="com"># 2. Agent: main.py</span>
+<span class="kw">async def</span> <span class="fn">main</span>():
+    client = <span class="cls">MultiServerMCPClient</span>({
+        <span class="str">"search"</span>: {
+            <span class="str">"command"</span>: <span class="str">"python"</span>,
+            <span class="str">"args"</span>: [<span class="str">"search_server.py"</span>],
+            <span class="str">"transport"</span>: <span class="str">"stdio"</span>,
+        },
+        <span class="str">"files"</span>: {
+            <span class="str">"command"</span>: <span class="str">"python"</span>,
+            <span class="str">"args"</span>: [<span class="str">"file_server.py"</span>],
+            <span class="str">"transport"</span>: <span class="str">"stdio"</span>,
+        }
+    })
+
+    tools = <span class="kw">await</span> client.get_tools()
+    llm = <span class="cls">ChatOpenAI</span>(model=<span class="str">"gpt-4o"</span>)
+
+    agent = <span class="fn">create_react_agent</span>(
+        llm, tools,
+        prompt=<span class="str">"你是研究助手，"</span>
+              <span class="str">"可以搜索和读写文件"</span>
+    )
+
+    result = <span class="kw">await</span> agent.ainvoke({
+        <span class="str">"messages"</span>: [{
+            <span class="str">"role"</span>: <span class="str">"user"</span>,
+            <span class="str">"content"</span>: <span class="str">"搜索 LangGraph 最新文档，"</span>
+                          <span class="str">"保存摘要到 summary.txt"</span>
+        }]
+    })
+    <span class="fn">print</span>(result[<span class="str">"messages"</span>][-<span class="num">1</span>].content)</div>
+</div>
+<div>
+<div class="card card-purple">
+<div class="card-title">执行流程</div>
+<div class="card-body">
+<ol style="margin:0; padding-left:16px; line-height: 1.8;">
+<li>用户提问："搜索 LangGraph 最新文档，保存摘要"</li>
+<li>Agent 分析：需要先搜索，再写文件</li>
+<li>调用 <code>search_web("LangGraph")</code> → 获取结果</li>
+<li>Agent 整理摘要</li>
+<li>调用 <code>write_file("summary.txt", ...)</code> → 保存</li>
+<li>Agent 返回："已完成，摘要已保存"</li>
+</ol>
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">设计亮点</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>多 Server 组合</strong> — 搜索 + 文件</li>
+<li><strong>Agent 自主决策</strong> — 先搜后写</li>
+<li><strong>跨框架复用</strong> — Server 可被任何 MCP Client 调用</li>
+</ul>
+</div>
+</div>
+<div class="callout-box callout-success">
+<div class="callout-icon">🎯</div>
+<div class="callout-text"><strong>运行演示</strong>：现场执行 <code>python main.py</code>，展示 Agent 自动搜索并保存文件的全过程。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">15 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 16: SSE & REMOTE ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 16 / 20 · SSE 远程部署</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>stdio 用于本地，SSE 用于远程</li><li>Docker 化部署 MCP Server</li><li>2026 新趋势：Streamable HTTP</li><li>生产环境需要认证和 TLS</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 4 · ECOSYSTEM</div>
+<h2 class="section-title">SSE 传输与远程 MCP</h2>
+<div class="grid-2">
+<div>
+<div class="card card-accent">
+<div class="card-title">为什么需要远程部署？</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>多用户共享</strong> — 一个 Server 服务多个 Agent</li>
+<li><strong>资源隔离</strong> — Server 独立机器，不占本地资源</li>
+<li><strong>统一更新</strong> — 升级 Server 不影响 Client</li>
+<li><strong>安全管控</strong> — 集中认证、审计</li>
+</ul>
+</div>
+</div>
+<div class="code-block" style="font-size: 12px;"><span class="com"># SSE 模式启动 Server</span>
+mcp = <span class="cls">FastMCP</span>(<span class="str">"remote-server"</span>)
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">search</span>(query: <span class="cls">str</span>) -> <span class="cls">str</span>:
+    <span class="str">"""搜索"""</span>
+    <span class="kw">return</span> <span class="fn">do_search</span>(query)
+
+<span class="com"># 启动为 SSE 服务器</span>
+mcp.run(transport=<span class="str">"sse"</span>, port=<span class="num">8080</span>)
+
+<span class="com"># Client 连接远程 Server</span>
+client = <span class="cls">MultiServerMCPClient</span>({
+    <span class="str">"remote"</span>: {
+        <span class="str">"url"</span>: <span class="str">"http://localhost:8080"</span>,
+        <span class="str">"transport"</span>: <span class="str">"sse"</span>,
+    }
+})</div>
+</div>
+<div>
+<div class="card card-purple">
+<div class="card-title">Docker 化部署</div>
+<div class="card-body">
+<div class="code-block" style="font-size: 11px; margin: 4px 0;"><span class="com"># Dockerfile</span>
+<span class="kw">FROM</span> python:<span class="num">3.12</span>-slim
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> . .
+<span class="kw">RUN</span> pip install fastmcp
+<span class="kw">EXPOSE</span> <span class="num">8080</span>
+<span class="kw">CMD</span> [<span class="str">"python"</span>, <span class="str">"server.py"</span>]</div>
+<div class="code-block" style="font-size: 11px; margin: 4px 0;"><span class="com"># docker-compose.yml</span>
+services:
+  mcp-server:
+    build: .
+    ports:
+      - <span class="str">"8080:8080"</span>
+    environment:
+      - API_KEY=<span class="str">${API_KEY}</span></div>
+</div>
+</div>
+<div class="callout-box callout-warn">
+<div class="callout-icon">⚠️</div>
+<div class="callout-text"><strong>生产安全</strong>：远程 MCP Server 必须配置 <strong>TLS 加密</strong>、<strong>认证</strong>（API Key / OAuth 2.1）、<strong>速率限制</strong>。</div>
+</div>
+<div class="callout-box callout-info">
+<div class="callout-icon">📰</div>
+<div class="callout-text"><strong>2026 新趋势</strong>：<strong>Streamable HTTP</strong> 正在替代 SSE，更简洁、更易穿透防火墙。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">16 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 17: MCP ECOSYSTEM ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 17 / 20 · 生态社区</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>官方 Server 仓库</li><li>社区生态发展迅速</li><li>MCP Registry 服务发现</li><li>鼓励学生贡献社区</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 4 · ECOSYSTEM</div>
+<h2 class="section-title">MCP 生态与社区</h2>
+<div style="margin-bottom: 16px;">
+<div class="section-kicker" style="margin-bottom: 10px;">官方 Server</div>
+<div class="grid-3">
+<div class="server-card">
+<div class="server-card-icon">📁</div>
+<div class="server-card-title">Filesystem</div>
+<div class="server-card-desc">本地文件读写<br>目录浏览</div>
+</div>
+<div class="server-card">
+<div class="server-card-icon">🐙</div>
+<div class="server-card-title">GitHub</div>
+<div class="server-card-desc">仓库管理<br>PR / Issue 操作</div>
+</div>
+<div class="server-card">
+<div class="server-card-icon">🔍</div>
+<div class="server-card-title">Brave Search</div>
+<div class="server-card-desc">网页搜索<br>实时结果</div>
+</div>
+</div>
+<div class="grid-3" style="margin-top: 12px;">
+<div class="server-card">
+<div class="server-card-icon">🐘</div>
+<div class="server-card-title">PostgreSQL</div>
+<div class="server-card-desc">SQL 查询<br>Schema 浏览</div>
+</div>
+<div class="server-card">
+<div class="server-card-icon">📊</div>
+<div class="server-card-title">Google Drive</div>
+<div class="server-card-desc">文档搜索<br>内容读取</div>
+</div>
+<div class="server-card">
+<div class="server-card-icon">💬</div>
+<div class="server-card-title">Slack</div>
+<div class="server-card-desc">消息发送<br>频道搜索</div>
+</div>
+</div>
+</div>
+<div class="grid-2">
+<div class="card card-accent">
+<div class="card-title">支持 MCP 的客户端</div>
+<div class="card-body">
+<div class="flex-row" style="flex-wrap: wrap; gap: 8px;">
+<span class="tag tag-blue">Claude Desktop</span>
+<span class="tag tag-blue">ChatGPT</span>
+<span class="tag tag-blue">Gemini</span>
+<span class="tag tag-purple">Cursor</span>
+<span class="tag tag-purple">VS Code</span>
+<span class="tag tag-purple">Windsurf</span>
+<span class="tag tag-green">LangChain</span>
+<span class="tag tag-green">LangGraph</span>
+</div>
+</div>
+</div>
+<div class="card card-green">
+<div class="card-title">MCP Registry</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>Smithery</strong> — Server 目录 + 安装</li>
+<li><strong>TrueFoundry</strong> — 企业级服务发现</li>
+<li><strong>官方 Registry</strong> — 标准化注册</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">17 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 18: SECURITY ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 18 / 20 · 安全实践</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>权限控制：最小权限原则</li><li>输入验证：防注入</li><li>沙箱隔离：Docker 容器</li><li>审计追踪：记录所有调用</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">⚠️ 2026 安全形势</div><div class="notes-section-body">MCP 安全问题受广泛关注，企业部署已将 OAuth 2.1 + DPoP + 审计追踪视为必选项。</div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">PART 4 · ECOSYSTEM</div>
+<h2 class="section-title">MCP 安全最佳实践</h2>
+<div class="grid-3" style="margin-bottom: 16px;">
+<div class="card card-red">
+<div style="font-size: 28px; margin-bottom: 6px;">🔐</div>
+<div class="card-title">权限控制</div>
+<div class="card-body">
+<ul class="bullet-list" style="font-size: 12px;">
+<li><strong>最小权限</strong> — 只暴露必要的工具</li>
+<li><strong>白名单</strong> — 限制可访问的路径/资源</li>
+<li><strong>OAuth 2.1</strong> — 远程 Server 必须认证</li>
+</ul>
+</div>
+</div>
+<div class="card card-orange">
+<div style="font-size: 28px; margin-bottom: 6px;">🛡️</div>
+<div class="card-title">输入验证</div>
+<div class="card-body">
+<ul class="bullet-list" style="font-size: 12px;">
+<li><strong>参数校验</strong> — 类型 + 范围 + 格式</li>
+<li><strong>路径检查</strong> — 防 <code>../</code> 越权</li>
+<li><strong>SQL 注入</strong> — 参数化查询</li>
+</ul>
+</div>
+</div>
+<div class="card card-accent">
+<div style="font-size: 28px; margin-bottom: 6px;">📦</div>
+<div class="card-title">沙箱隔离</div>
+<div class="card-body">
+<ul class="bullet-list" style="font-size: 12px;">
+<li><strong>Docker</strong> — 容器内运行</li>
+<li><strong>资源限制</strong> — CPU / 内存 / 超时</li>
+<li><strong>网络隔离</strong> — 限制出站连接</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="grid-2">
+<div class="card card-purple">
+<div class="card-title">审计追踪</div>
+<div class="card-body">
+<div class="code-block" style="font-size: 11px; margin: 4px 0;"><span class="kw">import</span> logging
+
+logger = logging.getLogger(<span class="str">"mcp.audit"</span>)
+
+<span class="dec">@mcp.tool</span>()
+<span class="kw">def</span> <span class="fn">delete_file</span>(filename: <span class="cls">str</span>) -> <span class="cls">str</span>:
+    <span class="str">"""删除文件（高危操作）"""</span>
+    logger.info(
+        <span class="str">f"TOOL_CALL delete_file "</span>
+        <span class="str">f"filename={filename} "</span>
+        <span class="str">f"user={get_current_user()}"</span>
+    )
+    <span class="com"># 验证权限</span>
+    <span class="fn">check_permission</span>(<span class="str">"file:delete"</span>)
+    <span class="com"># 执行</span>
+    <span class="fn">safe_delete</span>(filename)
+    <span class="kw">return</span> <span class="str">f"已删除 {filename}"</span></div>
+</div>
+</div>
+<div>
+<div class="callout-box callout-danger">
+<div class="callout-icon">🚨</div>
+<div class="callout-text"><strong>高危操作清单</strong>：文件删除、数据库写入、邮件发送、代码执行 — 必须有<strong>二次确认</strong>（HITL）和<strong>审计日志</strong>。</div>
+</div>
+<div class="callout-box callout-warn">
+<div class="callout-icon">⚠️</div>
+<div class="callout-text"><strong>2026 安全趋势</strong>：OAuth 2.1 + DPoP（证明持有令牌）+ Workload Identity Federation 已成企业 MCP 部署标配。</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">18 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 19: RECAP ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 19 / 20 · 知识回顾</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>快速回顾所有知识点</li><li>强调 MCP 核心价值 = 标准化</li><li>预告 Module 4 RAG</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">RECAP</div>
+<h2 class="section-title">核心知识点回顾</h2>
+<div class="grid-2">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">基础概念</div>
+<div class="concept-box-body">
+MCP = <strong>Model Context Protocol</strong>，Anthropic 2024.11 开源<br>
+核心价值：N×M → <strong>N+M</strong>，工具调用标准化<br>
+架构：<strong>Host → Client → Server</strong> 三层<br>
+传输：stdio（本地）/ SSE（远程）/ Streamable HTTP（2026 新标准）
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">三大能力</div>
+<div class="concept-box-body">
+<strong>Tools</strong> — 模型主动调用的可执行函数<br>
+<strong>Resources</strong> — Server 暴露的数据内容<br>
+<strong>Prompts</strong> — 预定义的提示词模板
+</div>
+</div>
+</div>
+<div>
+<div class="concept-box">
+<div class="concept-box-title">核心构建</div>
+<div class="concept-box-body">
+<strong>FastMCP</strong> — <code>@mcp.tool()</code> 装饰器定义工具<br>
+<strong>MultiServerMCPClient</strong> — 连接多个 Server<br>
+<strong>Inspector</strong> — 可视化调试工具<br>
+Agent 接入：<code>get_tools()</code> → <code>create_react_agent</code>
+</div>
+</div>
+<div class="concept-box">
+<div class="concept-box-title">生产实践</div>
+<div class="concept-box-body">
+<strong>RAG 工具化</strong> — 检索能力封装为 MCP Server<br>
+<strong>错误处理</strong> — 重试 + 超时 + 降级 + 日志<br>
+<strong>安全</strong> — 权限控制 + 输入验证 + 沙箱 + 审计<br>
+<strong>部署</strong> — Docker 化 + SSE 远程 + OAuth 2.1
+</div>
+</div>
+</div>
+</div>
+<div class="callout-box callout-info" style="margin-top: 12px;">
+<div class="callout-icon">🔗</div>
+<div class="callout-text"><strong>模块关联</strong>：Module 1 的 <code>@tool</code> → Module 3 的 <code>@mcp.tool</code>（从框架绑定到跨框架标准化）→ Module 4 的 Agentic RAG 将用 MCP 封装检索能力。</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">19 / 20</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 20: 课后知识检测 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 20 / 22 · 课堂检测</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">8 min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>4 道选择题，每题请举手回答</li><li>重点考察 MCP 架构、三大能力、FastMCP 构建、与传统方案对比</li><li>Q4 的 N+M 模型是本模块核心价值，确保学生理解</li><li>错误率高的知识点需重新讲解</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 答案</div><div class="notes-section-body"><ul><li>Q1: B（Host → Client → Server 三层）</li><li>Q2: C（@mcp.tool() 装饰器）</li><li>Q3: B（Tools = 模型可调用的函数）</li><li>Q4: C（N×M → N+M）</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">QUIZ</div>
+<h2 class="section-title">课后知识检测</h2>
+<div style="display: flex; flex-direction: column; gap: 14px; margin-top: 8px;">
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; border-left: 3px solid var(--accent);">
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q1</div>
+<div style="font-size: 15px; color: var(--ink); line-height: 1.6;">MCP 的三层架构中，负责管理 MCP 连接并充当 LLM 与 Server 之间桥梁的是？</div>
+<div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. Host &nbsp;&nbsp; B. Client &nbsp;&nbsp; C. Server &nbsp;&nbsp; D. LLM</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; border-left: 3px solid var(--accent);">
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q2</div>
+<div style="font-size: 15px; color: var(--ink); line-height: 1.6;">使用 FastMCP 定义一个工具函数时，需要用哪个装饰器？</div>
+<div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. <code>@tool</code> &nbsp;&nbsp; B. <code>@function_tool</code> &nbsp;&nbsp; C. <code>@mcp.tool()</code> &nbsp;&nbsp; D. <code>@agent.tool</code></div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; border-left: 3px solid var(--accent2);">
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q3</div>
+<div style="font-size: 15px; color: var(--ink); line-height: 1.6;">MCP 三大能力中，"模型主动调用的可执行函数"对应哪个能力？</div>
+<div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. Resources &nbsp;&nbsp; B. Tools &nbsp;&nbsp; C. Prompts &nbsp;&nbsp; D. Handlers</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; border-left: 3px solid var(--accent2);">
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 6px; letter-spacing: 1px;">Q4</div>
+<div style="font-size: 15px; color: var(--ink); line-height: 1.6;">MCP 协议将 N 个 LLM × M 个工具的集成复杂度从 N×M 降低到了多少？</div>
+<div style="font-size: 13px; color: var(--muted); margin-top: 6px;">A. N &nbsp;&nbsp; B. M &nbsp;&nbsp; C. N+M &nbsp;&nbsp; D. N×M（不变）</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">20 / 22</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 21: 课后作业 ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 21 / 22 · 课后作业</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5 min（布置 + 说明）</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>三个难度梯度，基础题必做确保掌握 FastMCP 基本流程</li><li>进阶题训练错误处理和多 Server 连接能力</li><li>挑战题引入 SSE 远程部署，接近生产场景</li><li>提交方式：代码 + 运行截图 + Inspector 验证截图</li><li>截止时间：下节课前</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">📎 参考资料</div><div class="notes-section-body"><ul><li>FastMCP 文档：<code>gofastmcp.com</code></li><li>MCP 规范：<code>modelcontextprotocol.io</code></li><li>课程源码：<code>example/mcp_agent/</code></li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="slide-body">
+<div class="section-kicker">HOMEWORK</div>
+<h2 class="section-title">实战练习任务</h2>
+<div style="display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; border-left: 3px solid var(--success);">
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+<span style="font-size: 12px; background: rgba(63,185,80,0.15); color: var(--success); padding: 2px 10px; border-radius: 4px; font-weight: 600;">基础题 · 必做</span>
+<span style="font-size: 15px; color: var(--ink); font-weight: 600;">数据库查询 MCP Server</span>
+</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.7; padding-left: 12px; border-left: 2px solid var(--border);">
+使用 FastMCP 构建一个 SQLite 查询 Server，包含两个工具：<code>execute_sql</code>（执行 SQL 语句）和 <code>list_tables</code>（列出所有表）<br>
+<span style="color: var(--accent);">要求：</span>用 <code>@mcp.tool()</code> 定义工具，类型注解自动生成 Schema，使用 Inspector 验证工具功能正常
+</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; border-left: 3px solid var(--warning);">
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+<span style="font-size: 12px; background: rgba(210,153,34,0.15); color: var(--warning); padding: 2px 10px; border-radius: 4px; font-weight: 600;">进阶题 · 必做</span>
+<span style="font-size: 15px; color: var(--ink); font-weight: 600;">多 Server Agent + 错误处理</span>
+</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.7; padding-left: 12px; border-left: 2px solid var(--border);">
+用 <code>MultiServerMCPClient</code> 同时连接基础题的数据库 Server 和文件操作 Server，创建 ReAct Agent<br>
+<span style="color: var(--accent);">要求：</span>添加超时重试（指数退避）+ 降级消息 + 审计日志，确保 Server 异常时 Agent 不会崩溃
+</div>
+</div>
+<div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 20px; border-left: 3px solid var(--accent2);">
+<div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+<span style="font-size: 12px; background: rgba(188,140,255,0.15); color: var(--accent2); padding: 2px 10px; border-radius: 4px; font-weight: 600;">挑战题 · 选做</span>
+<span style="font-size: 15px; color: var(--ink); font-weight: 600;">SSE 远程部署 + 安全加固</span>
+</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.7; padding-left: 12px; border-left: 2px solid var(--border);">
+将基础题的数据库 Server 改为 SSE 传输模式，Docker 化部署，添加 OAuth 2.1 鉴权<br>
+<span style="color: var(--accent);">提示：</span>参考 Slide 16 的 SSE 远程部署代码和 Slide 18 的安全实践，验证远程 Agent 可正常调用
+</div>
+</div>
+<div style="display: flex; gap: 16px; margin-top: 4px;">
+<div style="font-size: 12px; color: var(--muted);">📋 提交方式：代码 + 运行截图 + Inspector 验证截图 → 课程仓库</div>
+<div style="font-size: 12px; color: var(--muted);">⏰ 截止时间：下节课前</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">21 / 22</div>
+</div>
+</section>
+
+<!-- ===== SLIDE 22: Q&A ===== -->
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide">
+<div class="notes-panel">
+<div class="notes-header">SLIDE 22 / 22 · Q&A</div>
+<div class="notes-section"><div class="notes-section-title">⏱ 时长</div><div class="notes-section-body">5+ min</div></div>
+<div class="notes-section"><div class="notes-section-title">📋 教学要点</div><div class="notes-section-body"><ul><li>开放问答</li><li>收集反馈</li><li>预告 Module 4</li></ul></div></div>
+<div class="notes-section"><div class="notes-section-title">🎤 常见问题预判</div><div class="notes-section-body"><ul><li>"MCP 会取代 Function Call 吗？" → 不会取代，而是标准化封装</li><li>"MCP 性能开销？" → stdio 几乎无开销，SSE 有网络延迟</li><li>"生产环境用 MCP 安全吗？" → 配合 OAuth + 沙箱 + 审计，可以安全使用</li></ul></div></div>
+</div>
+<div class="slide-inner">
+<div class="cover-bg"></div>
+<div class="cover-grid"></div>
+<div class="cover-content" style="padding-left: 0;">
+<div class="cover-kicker">MODULE 03 · COMPLETE</div>
+<h1 class="cover-title" style="font-size: 48px;">Q&A<br><span class="gradient-text">与课程总结</span></h1>
+<p class="cover-subtitle" style="margin-bottom: 28px;">恭喜完成第三模块学习！</p>
+<div class="grid-2" style="margin-bottom: 20px;">
+<div class="card card-accent">
+<div class="card-title">你掌握了什么</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>协议原理</strong> — Host/Client/Server 三层架构</li>
+<li><strong>FastMCP 构建</strong> — <code>@mcp.tool</code> 定义工具</li>
+<li><strong>Agent 接入</strong> — MultiServerMCPClient</li>
+<li><strong>错误处理</strong> — 重试 + 超时 + 降级</li>
+<li><strong>安全实践</strong> — 权限 + 验证 + 沙箱</li>
+</ul>
+</div>
+</div>
+<div class="card card-purple">
+<div class="card-title">课后资源</div>
+<div class="card-body">
+<ul class="bullet-list">
+<li><strong>MCP 官方文档</strong> — <code>modelcontextprotocol.io</code></li>
+<li><strong>FastMCP</strong> — <code>gofastmcp.com</code></li>
+<li><strong>Inspector</strong> — <code>npx @modelcontextprotocol/inspector</code></li>
+<li><strong>课程源码</strong> — <code>example/mcp_agent/</code></li>
+<li><strong>Linux Foundation</strong> — MCP 已捐赠，社区维护</li>
+</ul>
+</div>
+</div>
+</div>
+<div style="display: flex; gap: 24px; align-items: center;">
+<div>
+<div class="cover-meta-label">NEXT MODULE</div>
+<div class="cover-meta-value" style="font-size: 18px;">Module 4：RAG 与向量数据库</div>
+<div style="font-size: 13px; color: var(--muted); margin-top: 4px;">BM25 + Vector 混合搜索 → Agentic RAG</div>
+</div>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 3</div>
+<div class="page-num">22 / 22</div>
+</div>
+</section>
+
+</main>
+</div>
+</div>
+</body>
+</html>

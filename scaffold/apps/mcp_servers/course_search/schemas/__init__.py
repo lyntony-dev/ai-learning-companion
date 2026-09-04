@@ -1,0 +1,1 @@
+"""Course Search MCP schemas."""

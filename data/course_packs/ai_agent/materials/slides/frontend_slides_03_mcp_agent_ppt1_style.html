@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mira-preview-type" content="html-ppt" />
+  <meta name="mira-aspect-ratio" content="16:9" />
+  <title>Module 03 · MCP 模型上下文协议</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Archivo:wght@700;800;900&display=swap" rel="stylesheet" />
+  <style>
+
+    /* === THEME TOKENS: TERMINAL GREEN + SWISS GRID === */
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #111827;
+      --bg-panel: rgba(22, 27, 34, 0.92);
+      --bg-panel-2: rgba(13, 17, 23, 0.78);
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-dim: #64748b;
+      --accent: #39d353;
+      --accent-2: #58a6ff;
+      --accent-3: #d29922;
+      --danger: #ff7b72;
+      --border: rgba(139, 148, 158, 0.28);
+      --border-strong: rgba(57, 211, 83, 0.42);
+      --grid-line: rgba(139, 148, 158, 0.08);
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --font-display: "Archivo", sans-serif;
+      --font-body: "JetBrains Mono", monospace;
+      --font-mono: "JetBrains Mono", monospace;
+      --subtitle-size: clamp(0.78rem, 1.42vw, 1.16rem);
+      --label-size: clamp(0.58rem, 0.82vw, 0.78rem);
+      --code-size: clamp(0.50rem, 0.74vw, 0.78rem);
+      --radius: clamp(0.75rem, 1.5vw, 1.4rem);
+      --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+      --duration-normal: 0.65s;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ===========================================
+       VIEWPORT FITTING: MANDATORY BASE STYLES
+       Include this ENTIRE file in every presentation.
+       These styles ensure slides fit exactly in the viewport.
+       =========================================== */
+
+    html, body { height: 100%; overflow-x: hidden; }
+    html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+    .slide { width: 100vw; height: 100vh; height: 100dvh; overflow: hidden; scroll-snap-align: start; display: flex; flex-direction: column; position: relative; }
+    .slide-content { flex: 1; display: flex; flex-direction: column; justify-content: center; max-height: 100%; overflow: hidden; padding: var(--slide-padding); }
+    :root { --title-size: clamp(1.5rem, 5vw, 4rem); --h2-size: clamp(1.20rem, 3.10vw, 2.35rem); --h3-size: clamp(0.92rem, 1.85vw, 1.48rem); --body-size: clamp(0.68rem, 1.12vw, 0.98rem); --small-size: clamp(0.56rem, 0.82vw, 0.78rem); --slide-padding: clamp(1rem, 4vw, 4rem); --content-gap: clamp(0.5rem, 1.6vw, 1.55rem); --element-gap: clamp(0.25rem, 0.8vw, 0.85rem); }
+    .card, .container, .content-box { max-width: min(90vw, 1000px); max-height: min(80vh, 700px); }
+    .feature-list, .bullet-list { gap: clamp(0.38rem, 0.85vh, 0.82rem); }
+    .feature-list li, .bullet-list li { font-size: var(--body-size); line-height: 1.52; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: clamp(0.5rem, 1.5vw, 1rem); }
+    img, .image-container { max-width: 100%; max-height: min(50vh, 400px); object-fit: contain; }
+    @media (max-height: 700px) { :root { --slide-padding: clamp(0.75rem, 3vw, 2rem); --content-gap: clamp(0.35rem, 1.2vw, 0.9rem); --title-size: clamp(1.25rem, 4.5vw, 2.5rem); --h2-size: clamp(1rem, 2.6vw, 1.65rem); --body-size: clamp(0.62rem, 1vw, 0.86rem); --code-size: clamp(0.46rem, 0.66vw, 0.68rem); } }
+    @media (max-height: 600px) { :root { --slide-padding: clamp(0.5rem, 2.5vw, 1.5rem); --content-gap: clamp(0.28rem, 0.9vw, 0.7rem); --title-size: clamp(1.1rem, 4vw, 2rem); --body-size: clamp(0.58rem, 0.9vw, 0.78rem); } .nav-dots, .keyboard-hint, .decorative { display: none; } }
+    @media (max-height: 500px) { :root { --slide-padding: clamp(0.4rem, 2vw, 1rem); --title-size: clamp(1rem, 3.5vw, 1.5rem); --h2-size: clamp(0.9rem, 2.3vw, 1.2rem); --body-size: clamp(0.54rem, 0.82vw, 0.72rem); } }
+    @media (max-width: 600px) { :root { --title-size: clamp(1.25rem, 7vw, 2.5rem); } .grid { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; } html { scroll-behavior: auto; } }
+
+    /* === GLOBAL STRUCTURE: SAME TEMPLATE AS PPT1/PPT2 === */
+    body { font-family: var(--font-body); color: var(--text-primary); background: var(--bg-primary); overflow-y: auto; }
+    .slide { background: radial-gradient(circle at 15% 20%, rgba(57, 211, 83, 0.11), transparent 28%), radial-gradient(circle at 80% 10%, rgba(88, 166, 255, 0.10), transparent 30%), linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px), var(--bg-primary); background-size: auto, auto, clamp(2rem, 4vw, 4rem) clamp(2rem, 4vw, 4rem), clamp(2rem, 4vw, 4rem) clamp(2rem, 4vw, 4rem), auto; }
+    .slide::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.025) 0, rgba(255,255,255,0.025) 1px, transparent 1px, transparent 5px); mix-blend-mode: overlay; opacity: 0.35; }
+    .slide-content { width: min(1180px, 92vw); margin: 0 auto; position: relative; z-index: 1; gap: var(--content-gap); }
+    .progress-bar { position: fixed; top: 0; left: 0; height: clamp(0.18rem, 0.35vw, 0.32rem); width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); z-index: 100; box-shadow: 0 0 18px rgba(57,211,83,0.45); transition: width 0.35s var(--ease-out-expo); }
+    .nav-dots { position: fixed; right: clamp(0.7rem, 1.8vw, 1.3rem); top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: clamp(0.26rem, 0.65vh, 0.48rem); z-index: 50; }
+    .nav-dot { width: clamp(0.38rem, 0.65vw, 0.58rem); height: clamp(0.38rem, 0.65vw, 0.58rem); border-radius: 999px; border: 1px solid var(--border); background: transparent; cursor: pointer; transition: all 0.25s ease; }
+    .nav-dot.active { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 14px rgba(57,211,83,0.8); transform: scale(1.2); }
+
+    /* === TYPOGRAPHY === */
+    h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.038em; line-height: 1.02; }
+    h1 { font-size: clamp(2.35rem, 7.0vw, 6.4rem); }
+    h2 { font-size: var(--h2-size); max-width: min(100%, 26ch); }
+    h3 { font-size: var(--h3-size); }
+    p { font-size: var(--body-size); line-height: 1.65; color: var(--text-secondary); word-break: keep-all; overflow-wrap: anywhere; }
+    .eyebrow { display: inline-flex; align-items: center; gap: clamp(0.35rem, 0.8vw, 0.65rem); color: var(--accent); font-size: var(--label-size); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 700; line-height: 1.25; }
+    .eyebrow::before { content: "$"; color: var(--accent-2); }
+    .muted { color: var(--text-secondary); } .accent { color: var(--accent); } .blue { color: var(--accent-2); } .warn { color: var(--accent-3); } .danger { color: var(--danger); }
+
+    /* === PREVIEW-SAFE ANIMATION === */
+    .reveal, .reveal-left, .reveal-scale, .reveal-blur { opacity: 1; transform: translate(0,0) scale(1); filter: blur(0); transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo), filter var(--duration-normal) var(--ease-out-expo); }
+    .js-ready .reveal { opacity: 0; transform: translateY(clamp(1rem, 2vw, 1.7rem)); }
+    .js-ready .reveal-left { opacity: 0; transform: translateX(calc(-1 * clamp(1rem, 3vw, 2.6rem))); }
+    .js-ready .reveal-scale { opacity: 0; transform: scale(0.94); }
+    .js-ready .reveal-blur { opacity: 0; filter: blur(clamp(0.25rem, 0.8vw, 0.65rem)); }
+    .js-ready .slide.visible .reveal, .js-ready .slide.visible .reveal-left, .js-ready .slide.visible .reveal-scale, .js-ready .slide.visible .reveal-blur { opacity: 1; transform: translate(0,0) scale(1); filter: blur(0); }
+    .slide.visible .delay-1 { transition-delay: 0.08s; } .slide.visible .delay-2 { transition-delay: 0.16s; } .slide.visible .delay-3 { transition-delay: 0.24s; } .slide.visible .delay-4 { transition-delay: 0.32s; } .slide.visible .delay-5 { transition-delay: 0.40s; }
+
+    /* === REUSABLE COMPONENTS === */
+    .topline { position: absolute; top: clamp(1rem, 2vw, 2rem); left: clamp(1rem, 4vw, 4rem); right: clamp(2rem, 5vw, 5rem); display: flex; justify-content: space-between; align-items: center; z-index: 2; color: var(--text-dim); font-size: var(--label-size); letter-spacing: 0.08em; text-transform: uppercase; }
+    .terminal-panel { border: 1px solid var(--border); background: linear-gradient(180deg, rgba(22,27,34,0.98), rgba(13,17,23,0.92)); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .terminal-head { min-height: clamp(1.8rem, 3.4vh, 2.45rem); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(0.75rem, 1.5vw, 1.15rem); border-bottom: 1px solid var(--border); color: var(--text-dim); font-size: var(--label-size); background: rgba(33,38,45,0.62); }
+    .traffic { display: flex; gap: clamp(0.32rem, 0.7vw, 0.5rem); }
+    .traffic span { width: clamp(0.42rem, 0.8vw, 0.64rem); height: clamp(0.42rem, 0.8vw, 0.64rem); border-radius: 50%; display: block; }
+    .traffic span:nth-child(1) { background: #ff7b72; } .traffic span:nth-child(2) { background: #d29922; } .traffic span:nth-child(3) { background: #39d353; }
+    .terminal-body { padding: clamp(0.8rem, 1.55vw, 1.25rem); }
+    .hero-grid { display: grid; grid-template-columns: 1.08fr 0.92fr; gap: clamp(1rem, 3vw, 3rem); align-items: center; }
+    .hero-title { display: flex; flex-direction: column; gap: clamp(0.65rem, 1.6vh, 1.2rem); }
+    .subtitle { font-size: var(--subtitle-size); color: var(--text-secondary); max-width: 56ch; line-height: 1.68; }
+    .cursor::after { content: "_"; display: inline-block; margin-left: 0.08em; color: var(--accent); animation: blink 1s steps(2, start) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .metric-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(0.55rem, 1.1vw, 0.9rem); }
+    .metric { border: 1px solid var(--border); border-radius: calc(var(--radius) * 0.75); padding: clamp(0.72rem, 1.25vw, 1rem); background: rgba(13,17,23,0.74); }
+    .metric strong { display: block; font-family: var(--font-display); font-size: clamp(1.35rem, 2.8vw, 2.65rem); line-height: 0.95; color: var(--accent); }
+    .metric span { color: var(--text-secondary); font-size: var(--small-size); }
+    .section-title { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: clamp(0.8rem, 1.7vw, 1.6rem); align-items: end; margin-bottom: clamp(0.35rem, 1vh, 0.75rem); }
+    .badge { display: inline-flex; align-items: center; gap: 0.5em; border: 1px solid var(--border-strong); border-radius: 999px; padding: clamp(0.34rem, 0.7vw, 0.55rem) clamp(0.55rem, 1vw, 0.9rem); color: var(--accent); background: rgba(57,211,83,0.08); font-size: var(--label-size); font-weight: 700; white-space: nowrap; }
+    .cards-2, .cards-3, .cards-4 { display: grid; gap: clamp(0.62rem, 1.15vw, 1rem); }
+    .cards-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cards-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } .cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .card { position: relative; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-panel); padding: clamp(0.72rem, 1.25vw, 1.08rem); overflow: hidden; min-height: clamp(5.4rem, 14.5vh, 8.8rem); }
+    .card::after { content: ""; position: absolute; left: 0; top: 0; width: 3px; height: 100%; background: linear-gradient(var(--accent), transparent); opacity: 0.85; }
+    .card h3 { font-family: var(--font-body); font-size: clamp(0.78rem, 1.18vw, 1.05rem); letter-spacing: -0.03em; line-height: 1.28; margin-bottom: clamp(0.36rem, 0.7vh, 0.58rem); }
+    .card p, .card li { font-size: var(--small-size); line-height: 1.58; }
+    .num { font-family: var(--font-display); font-size: clamp(1.65rem, 3.6vw, 3.2rem); line-height: 0.9; color: rgba(57,211,83,0.16); position: absolute; right: clamp(0.5rem, 1vw, 0.85rem); bottom: clamp(0.35rem, 0.8vw, 0.65rem); }
+    .bullet-list { list-style: none; display: grid; max-width: min(100%, 880px); }
+    .bullet-list li { position: relative; padding-left: clamp(1.3rem, 2vw, 1.85rem); color: var(--text-secondary); word-break: keep-all; overflow-wrap: anywhere; }
+    .bullet-list li::before { content: "→"; position: absolute; left: 0; color: var(--accent); font-weight: 800; }
+    .split { display: grid; grid-template-columns: 0.92fr 1.08fr; gap: clamp(1rem, 2.2vw, 2.05rem); align-items: center; }
+    .split-even { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(1rem, 2.2vw, 2.05rem); align-items: center; }
+    .diagram { position: relative; min-height: clamp(14rem, 43vh, 23rem); border: 1px solid var(--border); border-radius: var(--radius); background: radial-gradient(circle at 50% 50%, rgba(57,211,83,0.08), transparent 62%), rgba(13,17,23,0.72); overflow: hidden; padding: clamp(1rem, 2vw, 2rem); }
+    .diagram-svg { position:absolute; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+    .node { position: absolute; display: grid; place-items: center; text-align: center; border: 1px solid var(--border-strong); background: rgba(22,27,34,0.94); color: var(--text-primary); border-radius: clamp(0.75rem, 1.4vw, 1.2rem); padding: clamp(0.42rem, 0.8vw, 0.68rem); font-size: clamp(0.54rem, 0.82vw, 0.74rem); box-shadow: 0 0 28px rgba(57,211,83,0.08); }
+    .node strong { font-size: clamp(0.64rem, 0.98vw, 0.9rem); display:block; margin-bottom: .15em; }
+    .node.big { width: clamp(7.2rem, 15vw, 12.2rem); height: clamp(3.6rem, 9vh, 5.6rem); }
+    .node.small { width: clamp(5.7rem, 11.6vw, 8.8rem); height: clamp(2.8rem, 6.8vh, 4.2rem); }
+    .node.compact { width: clamp(5.15rem, 10vw, 7.4rem); height: clamp(2.55rem, 6.1vh, 3.65rem); }
+    .diagram .node { z-index: 2; }
+    .diagram-label { position: absolute; z-index: 3; font-family: var(--font-mono); font-size: clamp(0.46rem, 0.68vw, 0.62rem); line-height: 1; letter-spacing: 0.04em; color: var(--text-secondary); background: rgba(13,17,23,0.82); border: 1px solid rgba(139,148,158,0.18); border-radius: 999px; padding: 0.28em 0.52em; pointer-events: none; }
+    .code-block { font-family: var(--font-mono); font-size: var(--code-size); line-height: 1.64; color: #c9d1d9; white-space: pre-wrap; word-break: break-word; max-height: min(58vh, 460px); overflow: hidden; }
+    .callout { border-left: 3px solid var(--accent); background: rgba(57,211,83,0.08); padding: clamp(0.72rem, 1.22vw, 1.02rem); border-radius: 0 var(--radius) var(--radius) 0; color: var(--text-secondary); font-size: var(--body-size); line-height: 1.6; }
+    .timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(0.56rem, 1vw, 0.88rem); align-items: stretch; }
+    .timeline.five { grid-template-columns: repeat(5, 1fr); }
+    .step { position: relative; border: 1px solid var(--border); background: rgba(22,27,34,0.86); border-radius: var(--radius); padding: clamp(0.68rem, 1.18vw, 0.95rem); min-height: clamp(6rem, 15vh, 8.5rem); }
+    .step strong { display: block; color: var(--accent); font-family: var(--font-display); font-size: clamp(1.1rem, 2.25vw, 2rem); line-height: 1; margin-bottom: clamp(0.3rem, 0.6vh, 0.48rem); }
+    .step h3 { font-family: var(--font-body); font-size: clamp(0.72rem, 1.1vw, 0.92rem); margin-bottom: 0.35rem; line-height: 1.25; }
+    .step p { font-size: var(--small-size); line-height: 1.55; }
+    .compare { display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(0.8rem, 1.6vw, 1.2rem); align-items: center; }
+    .vs { width: clamp(2.6rem, 5vw, 4.4rem); height: clamp(2.6rem, 5vw, 4.4rem); border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--border-strong); color: var(--accent); font-family: var(--font-display); background: rgba(57,211,83,0.08); }
+    .quiz-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(0.62rem, 1.15vw, 1rem); }
+    .quiz { border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: clamp(0.75rem, 1.35vw, 1.05rem); background: rgba(57,211,83,0.055); }
+    .quiz h3 { font-family: var(--font-body); font-size: clamp(0.78rem, 1.18vw, 0.98rem); color: var(--accent); margin-bottom: 0.38rem; }
+    .kbd { position: fixed; left: clamp(0.8rem, 1.6vw, 1.2rem); bottom: clamp(0.8rem, 1.6vw, 1.2rem); z-index: 40; color: var(--text-dim); font-size: var(--label-size); background: rgba(13,17,23,0.72); border: 1px solid var(--border); border-radius: 999px; padding: 0.5em 0.8em; }
+    .section-num { font-family: var(--font-display); font-size: clamp(4rem, 11vw, 9rem); line-height: 0.85; color: rgba(57,211,83,0.16); }
+    .matrix { display: grid; grid-template-columns: 0.75fr 1fr 1fr; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: rgba(13,17,23,0.72); }
+    .matrix.cols4 { grid-template-columns: .7fr 1fr 1fr 1fr; }
+    .matrix div { padding: clamp(0.42rem, 0.72vw, 0.65rem); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); color: var(--text-secondary); font-size: clamp(0.52rem, 0.78vw, 0.72rem); line-height: 1.48; }
+    .matrix .head { color: var(--text-primary); background: rgba(57,211,83,0.09); font-weight: 800; }
+    .closing-title { font-size: clamp(1.8rem, 4vw, 4.2rem); margin-top: clamp(.5rem, 1vw, 1rem); }
+    .closing-subtitle { margin-top: clamp(.7rem, 1.2vw, 1.1rem); }
+
+    /* === CENTERED STAGE LAYOUT PASS === */
+    .slide-content { min-height: 100%; justify-content: center; padding-top: clamp(3.1rem, 8vh, 5.5rem); padding-bottom: clamp(2.2rem, 6vh, 4.6rem); }
+    .title-slide .slide-content, .section-slide .slide-content { justify-content: center; }
+    .section-slide .hero-grid, .title-slide .hero-grid { min-height: clamp(24rem, 68vh, 37rem); align-items: center; }
+    .balanced-stage .slide-content { justify-content: center; }
+    .balanced-stage .split, .balanced-stage .split-even, .balanced-stage .compare, .balanced-stage .hero-grid { min-height: clamp(23rem, 62vh, 34rem); align-items: center; }
+    .balanced-stage .diagram { min-height: clamp(17rem, 52vh, 28rem); }
+    .balanced-stage .terminal-panel { align-self: center; width: 100%; }
+    .card-stage .cards-2, .card-stage .cards-3, .card-stage .cards-4, .card-stage .quiz-grid { align-items: stretch; min-height: clamp(16rem, 46vh, 25rem); }
+    .card-stage .card, .card-stage .quiz { display: flex; flex-direction: column; justify-content: center; }
+    .timeline-stage .timeline { min-height: clamp(15rem, 42vh, 23rem); align-items: stretch; }
+    .timeline-stage .step { display: flex; flex-direction: column; justify-content: center; }
+    .code-stage .split { min-height: clamp(22rem, 60vh, 33rem); }
+    .code-stage .terminal-panel { align-self: center; width: 100%; }
+    .code-stage .code-block { max-height: min(60vh, 480px); }
+    .matrix-stage .matrix { min-height: clamp(15rem, 44vh, 24rem); }
+    .matrix-stage .matrix div { display: flex; align-items: center; }
+    .sparse-stage .section-num { font-size: clamp(6rem, 15vw, 12rem); justify-self: center; }
+    .sparse-stage h2 { font-size: clamp(1.8rem, 4vw, 3.4rem); max-width: 18ch; }
+    .sparse-stage .subtitle { font-size: clamp(0.88rem, 1.55vw, 1.28rem); max-width: 48ch; }
+    @media (max-height: 700px) { .slide-content { padding-top: clamp(2.6rem, 7vh, 4rem); padding-bottom: clamp(1.5rem, 4vh, 2.8rem); } .balanced-stage .split, .balanced-stage .split-even, .balanced-stage .compare, .balanced-stage .hero-grid, .code-stage .split { min-height: clamp(18rem, 56vh, 28rem); } .balanced-stage .diagram { min-height: clamp(14rem, 47vh, 22rem); } }
+    @media (max-height: 600px) { .slide-content { padding-top: clamp(2.2rem, 6vh, 3.1rem); padding-bottom: clamp(1rem, 3vh, 2rem); } .section-title { margin-bottom: clamp(0.26rem, 0.7vh, 0.5rem); } .card-stage .cards-2, .card-stage .cards-3, .card-stage .cards-4, .card-stage .quiz-grid, .timeline-stage .timeline { min-height: auto; } }
+    @media (max-width: 900px) { .hero-grid, .split, .split-even, .compare { grid-template-columns: 1fr; } .cards-3, .cards-4, .timeline, .timeline.five, .metric-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } .section-title { grid-template-columns: 1fr; } }
+    @media (max-width: 620px) { .cards-2, .cards-3, .cards-4, .timeline, .timeline.five, .quiz-grid, .metric-row { grid-template-columns: 1fr; } .nav-dots { display: none; } }
+
+  </style>
+</head>
+<body>
+  <div class="progress-bar" aria-hidden="true"></div>
+  <nav class="nav-dots" aria-label="幻灯片导航"></nav>
+  <div class="kbd keyboard-hint">↑ ↓ / Space</div>
+
+<!-- === SLIDE 01 === -->
+  <section class="slide title-slide sparse-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>AI Agent 开发系列</span><span>01 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="hero-grid">
+        <div class="hero-title">
+          <span class="eyebrow reveal-left">boot mcp.course</span>
+          <h1 class="reveal-left delay-1">MCP<br><span class="accent cursor">Model Context Protocol</span></h1>
+          <p class="subtitle reveal-left delay-2">工具调用的通用标准：从协议原理到 FastMCP 实战，理解 Agent 如何稳定连接外部世界。</p>
+          <div class="metric-row reveal-left delay-3">
+            <div class="metric"><strong>3h</strong><span>建议课时</span></div>
+            <div class="metric"><strong>03</strong><span>课程模块</span></div>
+            <div class="metric"><strong>N+M</strong><span>核心价值</span></div>
+          </div>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>mcp_server.py</span></div>
+      <div class="terminal-body code-block"># 写一次 MCP Server
+# 多个 Host / Agent 复用
+
+✓ Tools
+✓ Resources
+✓ Prompts
+✓ stdio / remote transport</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 02 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Learning Outcomes</span><span>02 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">what you can build</span><h2 class="reveal-left delay-1">学完本节，你应该能做什么？</h2></div>
+        <span class="badge reveal-scale delay-2">承接 LangGraph，连接 RAG</span>
+      </div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>解释 MCP</h3><p>用 Host / Client / Server 三层架构解释 MCP 为什么能降低工具集成复杂度。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>构建 Server</h3><p>使用 FastMCP 暴露 Tools、Resources、Prompts，并理解 schema 与 docstring 的作用。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>接入 Agent</h3><p>通过 MultiServerMCPClient 将多个 MCP Server 组合到 ReAct Agent 中。</p><span class="num">03</span></div>
+        <div class="card reveal delay-4"><h3>走向生产</h3><p>加入调试、重试、超时、降级、安全边界与审计机制。</p><span class="num">04</span></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 03 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Problem Framing</span><span>03 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">why standard protocol</span><h2 class="reveal-left delay-1">工具集成的三大痛点</h2></div>
+        <span class="badge reveal-scale delay-2">从 N×M 到 N+M</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>N × M 集成地狱</h3><p>5 个 Agent 框架 × 10 个工具，就可能演变成 50 个适配器；新增任一侧都会继续放大维护成本。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>重复实现</h3><p>同一个“查天气 / 查文档 / 查数据库”能力，在不同框架里反复实现，业务逻辑相同但接口不同。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>版本碎片化</h3><p>工具依赖、框架版本、鉴权方式和调试链路各自演进，生产环境很难统一治理。</p><span class="num">03</span></div>
+      </div>
+      <div class="callout reveal delay-4">教学重点：MCP 的核心不是“又一种工具调用”，而是把工具能力抽象成跨 Host / 跨框架的标准协议。</div>
+    </div>
+  </section>
+<!-- === SLIDE 04 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Concept</span><span>04 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">definition</span>
+          <h2 class="reveal-left delay-1">什么是 MCP？</h2>
+          <p class="subtitle reveal-left delay-2">MCP（Model Context Protocol）定义了 LLM 应用与外部数据源、工具、提示模板之间的标准通信方式。</p>
+          <ul class="bullet-list reveal-left delay-3">
+            <li>协议层：规定“怎么通信”，不是某一个 API。</li>
+            <li>标准化：工具写一次，可被多个 Host / Agent 使用。</li>
+            <li>扩展点：Tools、Resources、Prompts 共同组成 Server 能力。</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>mental_model.txt</span></div>
+          <div class="terminal-body">
+            <h3>MCP = AI 工具世界的 USB-C</h3>
+            <p>过去：每个工具要为每个框架写适配器。</p>
+            <p>现在：工具通过标准协议暴露能力，Host 通过 Client 协商并调用。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 05 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Architecture</span><span>05 / 22</span></div>
+    <div class="slide-content">
+
+      <span class="eyebrow reveal-left">host / client / server</span>
+      <h2 class="reveal-left delay-1">MCP 三层架构</h2>
+      <div class="diagram reveal delay-2">
+        <svg class="diagram-svg" viewBox="0 0 1000 420" preserveAspectRatio="none" aria-hidden="true">
+          <defs><marker id="arrow05" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#39d353"/></marker></defs>
+          <path d="M250 210 C330 120, 410 120, 490 210" stroke="#39d353" stroke-width="2" fill="none" marker-end="url(#arrow05)" opacity=".75"/>
+          <path d="M510 210 C590 300, 670 300, 750 210" stroke="#58a6ff" stroke-width="2" fill="none" marker-end="url(#arrow05)" opacity=".75"/>
+          <path d="M250 245 C420 380, 580 380, 750 245" stroke="#8b949e" stroke-width="1.5" fill="none" stroke-dasharray="7 7" opacity=".45"/>
+        </svg>
+        <div class="node big" style="left:8%;top:37%"><strong>Host</strong>Claude Desktop<br>Cursor / VS Code</div>
+        <div class="node big" style="left:39%;top:20%"><strong>Client</strong>连接管理<br>协议协商</div>
+        <div class="node big" style="right:8%;top:37%"><strong>Server</strong>Tools<br>Resources<br>Prompts</div>
+        <div class="diagram-label" style="left:31%;top:23%">JSON-RPC</div>
+        <div class="diagram-label" style="right:30%;top:66%">stdio / SSE / HTTP</div>
+      </div>
+      <div class="callout reveal delay-3">关键心智模型：Host 是用户使用的应用；Client 是 Host 内部的协议适配层；Server 是真正暴露工具能力的独立进程或服务。</div>
+    </div>
+  </section>
+<!-- === SLIDE 06 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Server Capabilities</span><span>06 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">tools / resources / prompts</span><h2 class="reveal-left delay-1">MCP Server 三大能力</h2></div>
+        <span class="badge reveal-scale delay-2">Tools 最常用</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>Tools</h3><p>模型主动调用的可执行函数，例如 get_weather(city)、query_database(sql)、send_email(to)。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>Resources</h3><p>Server 暴露给 Client 读取的数据内容，例如 file://config.json、db://schema/users。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>Prompts</h3><p>可复用的提示词模板，例如 code_review(code)、summarize(document)、translate(text)。</p><span class="num">03</span></div>
+      </div>
+      <div class="callout reveal delay-4">对比 Function Call：MCP Tools 也像函数调用，但它的重点是跨应用、跨框架、跨运行时的标准化复用。</div>
+    </div>
+  </section>
+<!-- === SLIDE 07 === -->
+  <section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Build Server</span><span>07 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">fastmcp basics</span>
+          <h2 class="reveal-left delay-1">用 FastMCP 构建 Server</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li><strong>@mcp.tool()</strong> 注册可调用工具。</li>
+            <li>类型注解自动生成参数 schema。</li>
+            <li>docstring 自动成为工具描述，影响模型选工具。</li>
+            <li>stdio 模式适合本地开发和桌面 Host 集成。</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>weather_server.py</span></div>
+      <div class="terminal-body code-block">from fastmcp import FastMCP
+
+mcp = FastMCP("weather-server")
+
+@mcp.tool()
+def get_weather(city: str) -&gt; str:
+    """查询指定城市的天气。"""
+    return fetch_weather_api(city)
+
+@mcp.tool()
+def get_forecast(city: str, days: int = 3) -&gt; list[dict]:
+    """获取未来几天的天气预报。"""
+    return fetch_forecast(city, days)
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 08 === -->
+  <section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Filesystem Server</span><span>08 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">hands-on server</span>
+          <h2 class="reveal-left delay-1">实战：文件系统 MCP Server</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>把文件读写封装成标准 Tools。</li>
+            <li>用 BASE_DIR 限定访问边界。</li>
+            <li>重点讲清楚路径穿越与最小权限。</li>
+          </ul>
+          <div class="callout reveal-left delay-3">生产提示：文件系统、数据库写入、代码执行都属于高危能力，必须加白名单、审计与人工确认。</div>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>file_server.py</span></div>
+      <div class="terminal-body code-block">from fastmcp import FastMCP
+from pathlib import Path
+
+mcp = FastMCP("file-server")
+BASE_DIR = Path("./workspace").resolve()
+
+def safe_path(filename: str) -&gt; Path:
+    path = (BASE_DIR / filename).resolve()
+    if not path.is_relative_to(BASE_DIR):
+        raise ValueError("路径越权")
+    return path
+
+@mcp.tool()
+def read_file(filename: str) -&gt; str:
+    """读取文件内容。"""
+    return safe_path(filename).read_text()
+
+@mcp.tool()
+def list_files(directory: str = ".") -&gt; list[str]:
+    """列出目录下的文件。"""
+    return [p.name for p in safe_path(directory).iterdir()]</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 09 === -->
+  <section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Agent Integration</span><span>09 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">agent consumes tools</span>
+          <h2 class="reveal-left delay-1">Agent 接入 MCP Server</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>MultiServerMCPClient 同时连接多个 Server。</li>
+            <li>get_tools() 拉取所有工具定义。</li>
+            <li>create_react_agent 复用 LangGraph 的 ReAct Agent。</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>agent.py</span></div>
+      <div class="terminal-body code-block">from langchain_mcp_adapters.client import MultiServerMCPClient
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+
+client = MultiServerMCPClient({
+    "weather": {
+        "command": "python",
+        "args": ["weather_server.py"],
+        "transport": "stdio",
+    },
+    "filesystem": { ... },  # 同理配置
+})
+
+tools = await client.get_tools()
+agent = create_react_agent(ChatOpenAI(model="gpt-4o"), tools)
+
+result = await agent.ainvoke({
+    "messages": [{"role": "user",
+                  "content": "查天气并保存结果"}]
+})</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 10 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Protocol Flow</span><span>10 / 22</span></div>
+    <div class="slide-content">
+
+      <span class="eyebrow reveal-left">json-rpc lifecycle</span>
+      <h2 class="reveal-left delay-1">MCP 通信流程详解</h2>
+      <div class="diagram reveal delay-2">
+        <svg class="diagram-svg" viewBox="0 0 1000 420" preserveAspectRatio="none" aria-hidden="true">
+          <defs><marker id="arrow10" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#39d353"/></marker></defs>
+          <path d="M180 190 L380 190" stroke="#39d353" stroke-width="2" marker-end="url(#arrow10)"/>
+          <path d="M380 230 L180 230" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow10)"/>
+          <path d="M500 190 L700 190" stroke="#39d353" stroke-width="2" marker-end="url(#arrow10)"/>
+          <path d="M700 230 L500 230" stroke="#58a6ff" stroke-width="2" marker-end="url(#arrow10)"/>
+          <path d="M820 190 L820 280" stroke="#d29922" stroke-width="2" marker-end="url(#arrow10)"/>
+        </svg>
+        <div class="node compact" style="left:6%;top:38%"><strong>1 握手</strong>版本交换</div>
+        <div class="node compact" style="left:37%;top:38%"><strong>2 协商</strong>能力声明</div>
+        <div class="node compact" style="left:68%;top:38%"><strong>3 调用</strong>tools/call</div>
+        <div class="node compact" style="left:68%;top:70%"><strong>4 返回</strong>content/result</div>
+        <div class="diagram-label" style="left:22%;top:39%">initialize</div>
+        <div class="diagram-label" style="left:54%;top:39%">tools/list</div>
+        <div class="diagram-label" style="left:82%;top:61%">JSON-RPC 2.0</div>
+      </div>
+      <div class="callout reveal delay-3">讲解策略：学生不需要手写 JSON-RPC，但理解“握手 → 能力协商 → 调用 → 返回”能显著提升调试效率。</div>
+    </div>
+  </section>
+<!-- === SLIDE 11 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Compare</span><span>11 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="compare">
+        <div class="terminal-panel reveal-left"><div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>function_calling</span></div><div class="terminal-body"><h3>传统工具绑定</h3><ul class="bullet-list"><li>N × M 个适配器</li><li>框架绑定明显</li><li>工具难跨项目复用</li><li>调试依赖自定义日志</li></ul></div></div>
+        <div class="vs reveal-scale delay-2">VS</div>
+        <div class="terminal-panel reveal reveal delay-2"><div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>mcp_protocol</span></div><div class="terminal-body"><h3>MCP 协议</h3><ul class="bullet-list"><li>N + M 个集成</li><li>Host / Server 解耦</li><li>工具可跨框架复用</li><li>Inspector 可视化调试</li></ul></div></div>
+      </div>
+      <div class="callout reveal delay-3">核心判断：MCP 不替代 Function Call 的底层思想，而是把工具绑定升级为标准化、可发现、可治理的协议接口。</div>
+    </div>
+  </section>
+<!-- === SLIDE 12 === -->
+  <section class="slide timeline-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Inspector</span><span>12 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">debug before agent</span><h2 class="reveal-left delay-1">MCP Inspector 调试工具</h2></div>
+        <span class="badge reveal-scale delay-2">先验证 Server，再接 Agent</span>
+      </div>
+      <div class="timeline five reveal delay-2">
+        <div class="step"><strong>1</strong><h3>启动</h3><p>连接本地或远程 MCP Server。</p></div>
+        <div class="step"><strong>2</strong><h3>查看</h3><p>检查 Tools、Resources、Prompts 列表。</p></div>
+        <div class="step"><strong>3</strong><h3>调用</h3><p>手动填写参数并测试返回。</p></div>
+        <div class="step"><strong>4</strong><h3>观测</h3><p>查看 JSON-RPC 原始消息。</p></div>
+        <div class="step"><strong>5</strong><h3>接入</h3><p>确认稳定后再交给 Agent。</p></div>
+      </div>
+      <div class="callout reveal delay-3">课堂建议：不要直接调 Agent 排错；先用 Inspector 把 Server 的输入输出、schema 和错误边界验证清楚。</div>
+    </div>
+  </section>
+<!-- === SLIDE 13 === -->
+  <section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>MCP for RAG</span><span>13 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">retrieval as tool</span>
+          <h2 class="reveal-left delay-1">MCP 在 RAG 系统中的角色</h2>
+          <p class="subtitle reveal-left delay-2">把检索能力封装成 MCP Server，让任意 Agent 以标准接口查询知识库。</p>
+          <div class="cards-2 reveal-left delay-3">
+            <div class="card"><h3>解耦</h3><p>检索服务独立演进，Agent 不关心向量库细节。</p></div>
+            <div class="card"><h3>复用</h3><p>客服、研究、代码助手共用同一套检索能力。</p></div>
+          </div>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>rag_server.py</span></div>
+      <div class="terminal-body code-block">from fastmcp import FastMCP
+
+mcp = FastMCP("rag-server")
+
+@mcp.tool()
+def search_knowledge(query: str, top_k: int = 5) -&gt; list[dict]:
+    """搜索知识库，返回相关文档片段。"""
+    results = vectorstore.similarity_search(query, k=top_k)
+    return [
+        {"content": r.page_content, "source": r.metadata["source"]}
+        for r in results
+    ]
+
+@mcp.tool()
+def get_document(doc_id: str) -&gt; str:
+    """按 ID 获取完整文档。"""
+    return doc_store.get(doc_id)</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 14 === -->
+  <section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Reliability</span><span>14 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">production reliability</span>
+          <h2 class="reveal-left delay-1">工具调用的错误处理与重试</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>重试：指数退避，不要无限循环。</li>
+            <li>超时：避免工具卡死拖垮 Agent。</li>
+            <li>降级：返回可解释 fallback，而不是直接崩溃。</li>
+            <li>日志：记录工具、参数、耗时、失败原因。</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>retry.py</span></div>
+      <div class="terminal-body code-block">async def call_with_retry(tool, query, max_retries=3, timeout=10):
+    for attempt in range(max_retries):
+        try:
+            return await asyncio.wait_for(
+                tool.ainvoke({"query": query}),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            timeout *= 1.5
+        except Exception as exc:
+            logger.warning("tool failed", exc_info=exc)
+
+        await asyncio.sleep(2 ** attempt)
+
+    return {"success": False, "fallback": "服务暂不可用"}</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 15 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>End-to-End Agent</span><span>15 / 22</span></div>
+    <div class="slide-content">
+
+      <span class="eyebrow reveal-left">server to user</span>
+      <h2 class="reveal-left delay-1">MCP Agent 完整实现</h2>
+      <div class="diagram reveal delay-2">
+        <svg class="diagram-svg" viewBox="0 0 1000 420" preserveAspectRatio="none" aria-hidden="true">
+          <defs><marker id="arrow15" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#39d353"/></marker></defs>
+          <path d="M160 210 L350 210" stroke="#39d353" stroke-width="2" marker-end="url(#arrow15)"/>
+          <path d="M350 210 L540 210" stroke="#39d353" stroke-width="2" marker-end="url(#arrow15)"/>
+          <path d="M540 210 L730 210" stroke="#39d353" stroke-width="2" marker-end="url(#arrow15)"/>
+          <path d="M730 250 C600 340, 300 340, 160 250" stroke="#58a6ff" stroke-width="1.8" fill="none" marker-end="url(#arrow15)" opacity=".7"/>
+        </svg>
+        <div class="node compact" style="left:4%;top:40%"><strong>User</strong>任务输入</div>
+        <div class="node compact" style="left:28%;top:40%"><strong>Agent</strong>ReAct Loop</div>
+        <div class="node compact" style="left:52%;top:40%"><strong>Client</strong>get_tools()</div>
+        <div class="node compact" style="left:76%;top:40%"><strong>Server</strong>search / file</div>
+        <div class="diagram-label" style="left:18%;top:42%">messages</div>
+        <div class="diagram-label" style="left:42%;top:42%">tool schema</div>
+        <div class="diagram-label" style="left:66%;top:42%">tools/call</div>
+        <div class="diagram-label" style="left:43%;top:78%">observation → answer</div>
+      </div>
+      <div class="callout reveal delay-3">讲解技巧：先说明整体数据流，再拆 Server、Client、Agent 三段代码；不要逐行念代码。</div>
+    </div>
+  </section>
+<!-- === SLIDE 16 === -->
+  <section class="slide code-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Remote MCP</span><span>16 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="split">
+        <div>
+          <span class="eyebrow reveal-left">remote transport</span>
+          <h2 class="reveal-left delay-1">SSE 传输与远程 MCP</h2>
+          <ul class="bullet-list reveal-left delay-2">
+            <li>stdio：适合本地单用户、桌面应用集成。</li>
+            <li>SSE / HTTP：适合远程部署、多用户共享。</li>
+            <li>远程部署必须考虑 TLS、认证、限流和审计。</li>
+            <li>课程重点是理解部署形态，不要求现场搭生产环境。</li>
+          </ul>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+      <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>remote_config.py</span></div>
+      <div class="terminal-body code-block"># Server：远程传输模式（示意）
+mcp = FastMCP("remote-server")
+
+@mcp.tool()
+def search(query: str) -&gt; str:
+    return do_search(query)
+
+mcp.run(transport="sse", port=8080)
+
+# Client：连接远程 Server
+client = MultiServerMCPClient({
+    "remote": {
+        "url": "https://mcp.example.com",
+        "transport": "sse",
+    }
+})</div>
+    </div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 17 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Ecosystem</span><span>17 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">ecosystem map</span><h2 class="reveal-left delay-1">MCP 生态与社区</h2></div>
+        <span class="badge reveal-scale delay-2">Server / Client / Registry</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>常见 Server</h3><p>Filesystem、GitHub、Search、PostgreSQL、Drive、Slack 等，把外部能力标准化暴露。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>常见 Client / Host</h3><p>桌面助手、IDE、Agent 框架、企业内部应用都可以通过 Client 接入 MCP Server。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>Registry</h3><p>服务发现、安装指引、能力元数据、安全审查将成为企业落地的重要基础设施。</p><span class="num">03</span></div>
+      </div>
+      <div class="callout reveal delay-4">教学重点：生态越丰富，越需要治理；企业不是“装越多越好”，而是要做可信 Server 白名单。</div>
+    </div>
+  </section>
+<!-- === SLIDE 18 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Security</span><span>18 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">secure by design</span><h2 class="reveal-left delay-1">MCP 安全最佳实践</h2></div>
+        <span class="badge reveal-scale delay-2">默认最小权限</span>
+      </div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>权限控制</h3><p>只暴露必要工具；路径、库表、API 范围使用白名单控制。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>输入验证</h3><p>参数类型、范围、格式都要校验，重点防路径穿越、SQL 注入与命令注入。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>沙箱隔离</h3><p>高危 Server 放入容器或隔离环境，限制 CPU、内存、网络和超时。</p><span class="num">03</span></div>
+        <div class="card reveal delay-4"><h3>审计追踪</h3><p>记录工具名、调用人、参数摘要、结果状态、耗时与失败原因。</p><span class="num">04</span></div>
+      </div>
+      <div class="callout reveal delay-5">高危操作：文件删除、数据库写入、邮件发送、代码执行。生产环境必须加入 Human-in-the-Loop 二次确认。</div>
+    </div>
+  </section>
+<!-- === SLIDE 19 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Recap</span><span>19 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">recap</span><h2 class="reveal-left delay-1">核心知识点回顾</h2></div>
+        <span class="badge reveal-scale delay-2">MCP = 标准化连接层</span>
+      </div>
+      <div class="cards-4">
+        <div class="card reveal delay-1"><h3>基础概念</h3><p>Host / Client / Server 三层架构，目标是将工具集成复杂度从 N×M 降为 N+M。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>三大能力</h3><p>Tools 主动调用，Resources 提供数据，Prompts 复用模板。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>核心构建</h3><p>FastMCP、@mcp.tool、MultiServerMCPClient、Inspector 构成开发主线。</p><span class="num">03</span></div>
+        <div class="card reveal delay-4"><h3>生产实践</h3><p>RAG 工具化、错误处理、安全审计、远程部署，是从 Demo 到生产的关键。</p><span class="num">04</span></div>
+      </div>
+    </div>
+  </section>
+<!-- === SLIDE 20 === -->
+  <section class="slide balanced-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Quiz</span><span>20 / 22</span></div>
+    <div class="slide-content">
+
+      <span class="eyebrow reveal-left">knowledge check</span>
+      <h2 class="reveal-left delay-1">课后知识检测</h2>
+      <div class="quiz-grid reveal delay-2">
+        <div class="quiz"><h3>Q1</h3><p>MCP 三层架构中，负责管理 MCP 连接并充当桥梁的是？<br>A. Host&nbsp;&nbsp; B. Client&nbsp;&nbsp; C. Server&nbsp;&nbsp; D. LLM</p></div>
+        <div class="quiz"><h3>Q2</h3><p>使用 FastMCP 定义工具函数时，最典型的装饰器是？<br>A. @tool&nbsp;&nbsp; B. @function_tool&nbsp;&nbsp; C. @mcp.tool()&nbsp;&nbsp; D. @agent.tool</p></div>
+        <div class="quiz"><h3>Q3</h3><p>“模型主动调用的可执行函数”对应 MCP 的哪类能力？<br>A. Resources&nbsp;&nbsp; B. Tools&nbsp;&nbsp; C. Prompts&nbsp;&nbsp; D. Handlers</p></div>
+        <div class="quiz"><h3>Q4</h3><p>MCP 将 N 个框架 × M 个工具的集成复杂度优化为？<br>A. N&nbsp;&nbsp; B. M&nbsp;&nbsp; C. N+M&nbsp;&nbsp; D. N×M</p></div>
+      </div>
+      <div class="callout reveal delay-3">课堂处理：本页不直接展示答案，先让学员举手/投票，再现场解释。</div>
+    </div>
+  </section>
+<!-- === SLIDE 21 === -->
+  <section class="slide card-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Homework</span><span>21 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="section-title">
+        <div><span class="eyebrow reveal-left">hands-on assignment</span><h2 class="reveal-left delay-1">实战练习任务</h2></div>
+        <span class="badge reveal-scale delay-2">代码 + 截图 + Inspector 验证</span>
+      </div>
+      <div class="cards-3">
+        <div class="card reveal delay-1"><h3>基础题 · 必做</h3><p>构建 SQLite 查询 MCP Server，提供 execute_sql 与 list_tables，并用 Inspector 验证。</p><span class="num">01</span></div>
+        <div class="card reveal delay-2"><h3>进阶题 · 必做</h3><p>用 MultiServerMCPClient 连接数据库 Server 和文件 Server，加入超时、重试、降级与审计日志。</p><span class="num">02</span></div>
+        <div class="card reveal delay-3"><h3>挑战题 · 选做</h3><p>将数据库 Server 改为远程传输形态，容器化部署，并补充认证与权限边界设计。</p><span class="num">03</span></div>
+      </div>
+      <div class="callout reveal delay-4">提交物：代码仓库、运行截图、Inspector 调用截图、关键设计说明。重点看安全边界是否清晰。</div>
+    </div>
+  </section>
+<!-- === SLIDE 22 === -->
+  <section class="slide title-slide sparse-stage" data-mira-slide data-aspect-ratio="16:9">
+    <div class="topline"><span>Complete</span><span>22 / 22</span></div>
+    <div class="slide-content">
+
+      <div class="hero-grid">
+        <div class="hero-title">
+          <span class="eyebrow reveal-left">module 03 complete</span>
+          <h1 class="reveal-left delay-1">Q&A<br><span class="accent cursor">课程总结</span></h1>
+          <p class="subtitle reveal-left delay-2">你已经掌握了从 MCP 协议原理、FastMCP 构建、Agent 接入到生产安全治理的完整路径。</p>
+          <div class="metric-row reveal-left delay-3">
+            <div class="metric"><strong>Host</strong><span>应用侧入口</span></div>
+            <div class="metric"><strong>Server</strong><span>能力侧边界</span></div>
+            <div class="metric"><strong>RAG</strong><span>下一模块连接点</span></div>
+          </div>
+        </div>
+        <div class="terminal-panel reveal-scale delay-2">
+          <div class="terminal-head"><div class="traffic"><span></span><span></span><span></span></div><span>next_module.txt</span></div>
+          <div class="terminal-body">
+            <h3>NEXT MODULE</h3>
+            <p>RAG 与向量数据库</p>
+            <ul class="bullet-list"><li>BM25 + Vector 混合搜索</li><li>Agentic RAG 工作流</li><li>检索能力标准化封装</li></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+
+    class SlidePresentation {
+      constructor() {
+        this.slides = Array.from(document.querySelectorAll('.slide'));
+        this.currentIndex = 0;
+        this.progressBar = document.querySelector('.progress-bar');
+        this.navDots = document.querySelector('.nav-dots');
+        this.isScrolling = false;
+        this.touchStartY = 0;
+        this.touchEndY = 0;
+        document.body.classList.add('js-ready');
+        this.init();
+      }
+      init() {
+        this.createNavDots();
+        this.bindEvents();
+        this.observeSlides();
+        this.goToSlide(0, false);
+      }
+      createNavDots() {
+        this.navDots.innerHTML = '';
+        this.slides.forEach((_, index) => {
+          const dot = document.createElement('button');
+          dot.className = 'nav-dot';
+          dot.setAttribute('aria-label', `Go to slide ${index + 1}`);
+          dot.addEventListener('click', () => this.goToSlide(index));
+          this.navDots.appendChild(dot);
+        });
+      }
+      bindEvents() {
+        document.addEventListener('keydown', (e) => {
+          if (['ArrowDown', 'ArrowRight', ' ', 'PageDown'].includes(e.key)) {
+            e.preventDefault();
+            this.nextSlide();
+          } else if (['ArrowUp', 'ArrowLeft', 'PageUp'].includes(e.key)) {
+            e.preventDefault();
+            this.prevSlide();
+          } else if (e.key === 'Home') {
+            e.preventDefault();
+            this.goToSlide(0);
+          } else if (e.key === 'End') {
+            e.preventDefault();
+            this.goToSlide(this.slides.length - 1);
+          }
+        });
+        window.addEventListener('wheel', (e) => {
+          if (this.isScrolling) return;
+          if (Math.abs(e.deltaY) < 24) return;
+          this.isScrolling = true;
+          e.deltaY > 0 ? this.nextSlide() : this.prevSlide();
+          setTimeout(() => { this.isScrolling = false; }, 650);
+        }, { passive: true });
+        window.addEventListener('touchstart', (e) => { this.touchStartY = e.changedTouches[0].screenY; }, { passive: true });
+        window.addEventListener('touchend', (e) => {
+          this.touchEndY = e.changedTouches[0].screenY;
+          const diff = this.touchStartY - this.touchEndY;
+          if (Math.abs(diff) > 45) diff > 0 ? this.nextSlide() : this.prevSlide();
+        }, { passive: true });
+        window.addEventListener('scroll', () => {
+          if (!this.isScrolling) this.updateFromScroll();
+        }, { passive: true });
+      }
+      observeSlides() {
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) entry.target.classList.add('visible');
+          });
+        }, { threshold: 0.55 });
+        this.slides.forEach(slide => observer.observe(slide));
+      }
+      updateFromScroll() {
+        const index = Math.round(window.scrollY / window.innerHeight);
+        if (index !== this.currentIndex && index >= 0 && index < this.slides.length) {
+          this.currentIndex = index;
+          this.updateUI();
+        }
+      }
+      goToSlide(index, smooth = true) {
+        if (index < 0 || index >= this.slides.length) return;
+        this.currentIndex = index;
+        this.slides[index].scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+        this.slides[index].classList.add('visible');
+        this.updateUI();
+      }
+      nextSlide() { this.goToSlide(Math.min(this.currentIndex + 1, this.slides.length - 1)); }
+      prevSlide() { this.goToSlide(Math.max(this.currentIndex - 1, 0)); }
+      updateUI() {
+        const progress = ((this.currentIndex + 1) / this.slides.length) * 100;
+        this.progressBar.style.width = `${progress}%`;
+        Array.from(this.navDots.children).forEach((dot, index) => dot.classList.toggle('active', index === this.currentIndex));
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => new SlidePresentation());
+
+  </script>
+</body>
+</html>

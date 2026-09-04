@@ -1,0 +1,6 @@
+{
+  "course_id": "demo_course",
+  "course_name": "Demo Course：Agent 基础",
+  "version": "v1",
+  "tags": ["Agent", "RAG"]
+}

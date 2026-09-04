@@ -1,0 +1,31 @@
+services:
+  api:
+    image: python:3.11-slim
+    working_dir: /workspace/apps/api
+    command: python -m app.main
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env.example
+    profiles:
+      - manual
+
+  web:
+    image: node:20-slim
+    working_dir: /workspace/apps/web
+    command: pnpm dev --host 0.0.0.0
+    volumes:
+      - .:/workspace
+    profiles:
+      - manual
+
+  course-search-mcp:
+    image: python:3.11-slim
+    working_dir: /workspace/apps/mcp_servers/course_search
+    command: python server.py
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env.example
+    profiles:
+      - manual

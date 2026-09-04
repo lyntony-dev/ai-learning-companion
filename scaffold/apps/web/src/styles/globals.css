@@ -1,0 +1,108 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   AI 学习伙伴 · 设计 token(ADR-0007 视觉语言)
+   - 中性底:Zinc
+   - 单一 accent 全站锁定(indigo)
+   - 字体:Geist(系统回退)
+   - 单一圆角尺度锁定
+   - 深浅双主题(整页锁一个,不中途翻转)
+   ============================================================ */
+
+@theme {
+  --font-sans: 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* 单一圆角尺度锁定 */
+  --radius: 0.625rem;
+
+  /* 中性底 · Zinc */
+  --color-bg: #ffffff;
+  --color-surface: #fafafa;
+  --color-surface-2: #f4f4f5;
+  --color-border: #e4e4e7;
+  --color-fg: #18181b;
+  --color-fg-muted: #71717a;
+
+  /* 单一 accent 全站锁定 · Indigo */
+  --color-accent: #4f46e5;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #eef2ff;
+
+  /* 语义色(掌握度三态,复用于图表) */
+  --color-known: #16a34a;
+  --color-fuzzy: #d97706;
+  --color-unknown: #dc2626;
+}
+
+.dark {
+  --color-bg: #09090b;
+  --color-surface: #18181b;
+  --color-surface-2: #27272a;
+  --color-border: #27272a;
+  --color-fg: #fafafa;
+  --color-fg-muted: #a1a1aa;
+
+  --color-accent: #6366f1;
+  --color-accent-fg: #ffffff;
+  --color-accent-soft: #1e1b4b;
+
+  --color-known: #22c55e;
+  --color-fuzzy: #f59e0b;
+  --color-unknown: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--color-border);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* 引用来源跳转到课件标题时的短暂高亮(CoursewareDoc v1) */
+.cited-heading {
+  animation: cited-heading-flash 2s ease-out 1;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+@keyframes cited-heading-flash {
+  0%,
+  30% {
+    background: var(--color-accent-soft);
+    box-shadow: 0 0 0 4px var(--color-accent-soft);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+/* 尊重系统减弱动效偏好(MOTION_INTENSITY>3 的动效回退) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

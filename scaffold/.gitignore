@@ -1,0 +1,16 @@
+.env
+.venv
+node_modules
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.pyright
+.DS_Store
+dist
+build
+coverage
+*.pyc
+data/app.sqlite
+data/chroma/*
+!data/chroma/.gitkeep

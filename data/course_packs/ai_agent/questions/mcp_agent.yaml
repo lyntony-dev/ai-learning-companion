@@ -1,0 +1,63 @@
+# MCP Agent 课程预置题库
+# 覆盖 topic: mcp.protocol / mcp.tools / mcp.server_client
+# difficulty: easy | medium | hard
+
+status: candidate
+
+questions:
+  # --- MCP 协议基础 ---
+  - id: protocol_what
+    topic_id: mcp.protocol
+    difficulty: easy
+    prompt: MCP(Model Context Protocol)要解决的核心问题是什么?
+    reference_answer: MCP 提供一套标准协议,让大模型/Agent 以统一方式发现并调用外部工具、访问资源和提示,避免每个应用各写一套私有集成。
+
+  - id: protocol_primitives
+    topic_id: mcp.protocol
+    difficulty: medium
+    prompt: MCP 协议向客户端暴露的主要能力(原语)有哪几类?各自用途是什么?
+    reference_answer: 主要有 Tools(可被模型调用的函数)、Resources(可读取的上下文数据/文件)、Prompts(可复用的提示模板);分别用于执行动作、提供上下文、标准化交互。
+
+  - id: protocol_transport
+    topic_id: mcp.protocol
+    difficulty: hard
+    prompt: MCP 基于 JSON-RPC 通信,请说明一次工具调用从 Client 到 Server 的消息往返大致流程,以及为何要先做能力协商(initialize)。
+    reference_answer: Client 与 Server 先 initialize 交换协议版本与能力(有哪些 tools/resources),之后 Client 发 tools/call 的 JSON-RPC 请求带工具名与参数,Server 执行并返回 result 或 error;先协商是为确认双方版本兼容与可用能力集合,避免调用不存在的方法。
+
+  # --- MCP 工具定义与接入 ---
+  - id: tools_schema
+    topic_id: mcp.tools
+    difficulty: easy
+    prompt: 在 MCP 中定义一个工具时,为什么必须提供输入参数的 JSON Schema?
+    reference_answer: JSON Schema 描述工具入参的字段、类型与约束,供模型正确构造调用参数并让 Server 做校验,保证调用可被机器理解与验证。
+
+  - id: tools_expose
+    topic_id: mcp.tools
+    difficulty: medium
+    prompt: 你要把一个已有的「发送邮件」函数接入为 MCP 工具,需要补齐哪些元信息才能让模型正确使用它?
+    reference_answer: 需提供工具名、清晰的功能描述(何时使用)、入参 JSON Schema(收件人、主题、正文及必填项),以及返回结构说明;必要时标注副作用/权限,以便模型判断与用户确认。
+
+  - id: tools_safety
+    topic_id: mcp.tools
+    difficulty: hard
+    prompt: 对于有副作用的 MCP 工具(如删除文件、转账),在协议与产品层面你会如何设计以防误用?
+    reference_answer: 在工具描述中明确标注破坏性/需确认,Server 端做权限与参数严格校验并返回结构化错误;产品层加入调用前人工确认(human-in-the-loop)、限流与审计日志,必要时区分只读与写工具并对写操作二次授权。
+
+  # --- Server / Client 架构 ---
+  - id: server_client_roles
+    topic_id: mcp.server_client
+    difficulty: easy
+    prompt: 在 MCP 架构中,Server 与 Client 各自承担什么角色?
+    reference_answer: Server 暴露能力(tools/resources/prompts)并执行具体逻辑;Client(通常在宿主应用/Agent 侧)连接 Server、发现能力并代表模型发起调用,充当模型与 Server 之间的桥梁。
+
+  - id: server_client_multi
+    topic_id: mcp.server_client
+    difficulty: medium
+    prompt: 一个 Agent 同时连接多个 MCP Server 时,如何避免不同 Server 的工具名冲突并让模型选对工具?
+    reference_answer: 对来自不同 Server 的工具做命名空间/前缀区分或维护 Server->工具映射,聚合时保证工具名唯一;并给每个工具清晰描述,由模型按描述选择,Client 负责把调用路由回正确的 Server。
+
+  - id: server_client_lifecycle
+    topic_id: mcp.server_client
+    difficulty: hard
+    prompt: 设计一个健壮的 MCP Client,需要处理 Server 连接的哪些生命周期与异常情况?
+    reference_answer: 需处理连接建立与 initialize 协商、能力缓存与刷新、调用超时与重试、Server 崩溃/断连的重连与降级、以及关闭时的资源释放;对不可用 Server 要隔离其工具不暴露给模型,并记录错误便于排查。

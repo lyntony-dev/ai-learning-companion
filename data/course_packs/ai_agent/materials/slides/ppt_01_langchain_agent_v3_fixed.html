@@ -1,0 +1,2613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="mira-preview-type" content="html-ppt">
+<meta name="mira-aspect-ratio" content="16:9">
+<title>LangChain Agent 智能助手</title>
+<style>
+
+:root {
+  /* PLATFORM — DO NOT OVERRIDE */
+  --slide-width: 1440px;
+  --slide-height: 810px;
+  --deck-scale: 1;
+  --slide-index: 0;
+  --mira-bg-content: #f7f8f9;
+
+  /* STYLE TOKENS — tech-dark */
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #21262d;
+  --ink: #e6edf3;
+  --muted: #8b949e;
+  --accent: #58a6ff;
+  --accent2: #bc8cff;
+  --border: #30363d;
+  --success: #3fb950;
+  --warning: #d29922;
+  --danger: #f85149;
+  --chart-1: #58a6ff;
+  --chart-2: #bc8cff;
+  --chart-3: #39c5cf;
+  --chart-4: #d29922;
+  --chart-5: #3fb950;
+  --chart-6: #f85149;
+  --overlay: rgba(88, 166, 255, 0.06);
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  --radius: 12px;
+  --notes-w: 320px;
+  --font-display: 700 1em/1.2 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-body: 400 1em/1.6 "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", "Consolas", monospace;
+}
+* { box-sizing: border-box; }
+html, body {
+  width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+  background: #0d1117;
+}
+.deck-shell {
+  position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+  overflow: hidden; margin: 0; padding: 0; background: #0d1117;
+}
+.deck-viewport {
+  flex: 0 0 auto; position: relative;
+  width: var(--slide-width); height: var(--slide-height);
+  transform: scale(var(--deck-scale)); transform-origin: center center;
+  overflow: hidden; margin: 0; padding: 0; max-width: none; max-height: none; border: 0;
+}
+.deck {
+  display: flex; width: max-content; height: var(--slide-height);
+  transform: translate3d(calc(var(--slide-index, 0) * -1 * var(--slide-width)), 0, 0);
+}
+.slide, section[data-mira-slide] {
+  position: relative; flex: 0 0 var(--slide-width);
+  width: var(--slide-width); height: var(--slide-height); overflow: hidden;
+  background: var(--bg);
+}
+.slide-inner {
+  position: relative; width: 100%; height: 100%;
+  padding: 44px 48px 44px calc(var(--notes-w) + 32px);
+  display: flex; flex-direction: column; min-height: 0;
+}
+.slide-body { flex: 1; min-height: 0; overflow: hidden; }
+
+/* ---- Speaker Notes Panel ---- */
+.notes-panel {
+  position: absolute; top: 0; left: 0; width: var(--notes-w); height: 100%;
+  background: #010409; border-right: 1px solid var(--border);
+  padding: 20px 16px; overflow-y: auto; z-index: 10;
+  font-family: var(--font-body);
+}
+.notes-panel::-webkit-scrollbar { width: 4px; }
+.notes-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.notes-header {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 14px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.notes-section { margin-bottom: 14px; }
+.notes-section-title {
+  font-size: 12px; font-weight: 700; color: var(--accent2);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 4px;
+}
+.notes-section-body {
+  font-size: 12px; color: #b1bac4; line-height: 1.6;
+}
+.notes-section-body ul { margin: 0; padding-left: 14px; }
+.notes-section-body li { margin-bottom: 3px; }
+.notes-section-body code {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 1px 4px; border-radius: 3px;
+}
+.notes-section-body strong { color: var(--ink); }
+
+/* ---- Page number / Brand ---- */
+.page-num {
+  position: absolute; bottom: 18px; right: 28px;
+  font-size: 12px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 1px;
+}
+.brand-tag {
+  position: absolute; bottom: 18px; left: calc(var(--notes-w) + 28px);
+  font-size: 12px; color: var(--muted); font-family: var(--font-mono); letter-spacing: 1px;
+}
+
+/* ---- Common ---- */
+.section-kicker {
+  font-family: var(--font-mono); font-size: 13px; color: var(--accent);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;
+}
+.section-title {
+  font-family: var(--font-display); font-size: 34px; font-weight: 700;
+  color: var(--ink); line-height: 1.2; margin-bottom: 24px;
+}
+
+/* ---- Code blocks ---- */
+.code-block {
+  background: #010409; border: 1px solid var(--border); border-radius: 8px;
+  padding: 14px 18px; font-family: var(--font-mono); font-size: 13px;
+  line-height: 1.65; margin: 8px 0;
+  white-space: pre; overflow: auto;
+  tab-size: 4;
+  color: #e6edf3;
+}
+.code-block::-webkit-scrollbar { height: 6px; width: 6px; }
+.code-block::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+.code-block::-webkit-scrollbar-track { background: transparent; }
+.code-block .kw { color: #ff7b72; }
+.code-block .str { color: #a5d6ff; }
+.code-block .fn { color: #d2a8ff; }
+.code-block .com { color: #8b949e; font-style: italic; }
+.code-block .num { color: #79c0ff; }
+.code-block .cls { color: #ffa657; }
+.code-block .dec { color: #d2a8ff; }
+.code-block .var { color: #e6edf3; }
+.code-block .op { color: #ff7b72; }
+
+/* ---- Cover ---- */
+.cover-bg {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse 700px 400px at 65% 30%, rgba(88,166,255,0.12), transparent 70%),
+    radial-gradient(ellipse 500px 350px at 35% 70%, rgba(188,140,255,0.10), transparent 70%),
+    var(--bg);
+  z-index: 0;
+}
+.cover-grid {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    linear-gradient(rgba(88,166,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88,166,255,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+}
+.cover-content {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; justify-content: center;
+  height: 100%; padding: 0 60px 0 0;
+}
+.cover-kicker {
+  font-family: var(--font-mono); font-size: 15px; color: var(--accent);
+  letter-spacing: 3px; text-transform: uppercase; margin-bottom: 18px;
+}
+.cover-title {
+  font-family: var(--font-display); font-size: 56px; font-weight: 800;
+  color: var(--ink); line-height: 1.15; margin-bottom: 16px; letter-spacing: -1px;
+}
+.cover-title .gradient-text {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.cover-subtitle {
+  font-family: var(--font-body); font-size: 20px; color: var(--muted);
+  margin-bottom: 36px; line-height: 1.5;
+}
+.cover-meta { display: flex; gap: 32px; align-items: center; }
+.cover-meta-item { display: flex; flex-direction: column; gap: 4px; }
+.cover-meta-label {
+  font-size: 11px; color: var(--muted); font-family: var(--font-mono);
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+.cover-meta-value { font-size: 16px; color: var(--ink); font-weight: 600; }
+.cover-divider { width: 1px; height: 32px; background: var(--border); }
+.cover-badge {
+  position: absolute; top: 40px; right: 48px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border: 1px solid var(--border); border-radius: 100px;
+  background: rgba(22,27,34,0.8); backdrop-filter: blur(8px);
+}
+.cover-badge-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--success); box-shadow: 0 0 8px var(--success);
+}
+.cover-badge-text { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ---- Cards ---- */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px 20px;
+}
+.card-title { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 8px; }
+.card-body { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.card-body code {
+  font-family: var(--font-mono); font-size: 12px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 2px 5px; border-radius: 3px;
+}
+
+/* ---- Timeline ---- */
+.timeline { display: flex; gap: 0; margin-bottom: 24px; }
+.timeline-item {
+  flex: 1; position: relative; padding: 18px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-right: none;
+}
+.timeline-item:last-child { border-right: 1px solid var(--border); border-radius: 0 10px 10px 0; }
+.timeline-item:first-child { border-radius: 10px 0 0 10px; }
+.timeline-num { font-family: var(--font-mono); font-size: 12px; color: var(--accent); margin-bottom: 6px; }
+.timeline-title { font-size: 15px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.timeline-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ---- Table ---- */
+.tbl { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+.tbl th {
+  background: var(--surface2); padding: 10px 14px; font-size: 12px; font-weight: 600;
+  color: var(--muted); text-align: left; border-bottom: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.tbl td { padding: 12px 14px; font-size: 13px; color: var(--ink); border-bottom: 1px solid var(--border); background: var(--surface); }
+.tbl tr:last-child td { border-bottom: none; }
+.tbl .hl { color: var(--accent); font-weight: 600; }
+
+/* ---- Concept box ---- */
+.concept-box {
+  padding: 16px 20px; background: var(--surface); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; margin-bottom: 12px;
+}
+.concept-box-title { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 6px; }
+.concept-box-body { font-size: 13px; color: var(--ink); line-height: 1.6; }
+.concept-box-body strong { color: var(--accent2); }
+
+/* ---- Formula ---- */
+.formula-box {
+  padding: 20px; background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(188,140,255,0.06));
+  border: 1px solid rgba(88,166,255,0.2); border-radius: 10px; text-align: center; margin-bottom: 16px;
+}
+.formula-text { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--ink); letter-spacing: 2px; }
+.formula-plus { color: var(--accent); margin: 0 6px; }
+.formula-eq { color: var(--muted); margin: 0 10px; }
+.formula-result {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+
+
+/* ---- Quiz / Exercise ---- */
+.quiz-item {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px 20px; margin-bottom: 12px;
+}
+.quiz-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: #0d1117; font-size: 12px; font-weight: 700;
+  font-family: var(--font-mono); margin-right: 8px; flex-shrink: 0;
+}
+.quiz-question {
+  font-size: 14px; color: var(--ink); font-weight: 600; margin-bottom: 8px;
+  display: flex; align-items: flex-start; line-height: 1.5;
+}
+.quiz-options { display: flex; flex-direction: column; gap: 4px; padding-left: 32px; }
+.quiz-option {
+  font-size: 13px; color: var(--muted); line-height: 1.6;
+  font-family: var(--font-body);
+}
+.quiz-option .opt-label {
+  display: inline-block; width: 20px; color: var(--accent2); font-weight: 700;
+}
+.quiz-answer {
+  margin-top: 6px; padding-left: 32px;
+  font-size: 12px; color: var(--success); font-family: var(--font-mono);
+}
+.quiz-answer::before { content: "✓ "; }
+
+/* ---- Homework ---- */
+.hw-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 18px; margin-bottom: 10px;
+}
+.hw-icon {
+  width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; font-family: var(--font-mono);
+}
+.hw-icon-1 { background: rgba(88,166,255,0.15); color: var(--accent); }
+.hw-icon-2 { background: rgba(188,140,255,0.15); color: var(--accent2); }
+.hw-icon-3 { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-content { flex: 1; }
+.hw-title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; }
+.hw-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.hw-desc code {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  background: rgba(88,166,255,0.08); padding: 1px 4px; border-radius: 3px;
+}
+.hw-difficulty {
+  display: inline-block; padding: 1px 6px; border-radius: 3px;
+  font-size: 10px; font-family: var(--font-mono); margin-left: 6px;
+}
+.hw-easy { background: rgba(63,185,80,0.15); color: var(--success); }
+.hw-medium { background: rgba(210,153,34,0.15); color: var(--warning); }
+.hw-hard { background: rgba(248,81,73,0.15); color: var(--danger); }
+
+/* ---- Misc ---- */
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 4px;
+  font-size: 11px; font-family: var(--font-mono); letter-spacing: 0.5px;
+}
+.tag-blue { background: rgba(88,166,255,0.15); color: var(--accent); border: 1px solid rgba(88,166,255,0.3); }
+.tag-purple { background: rgba(188,140,255,0.15); color: var(--accent2); border: 1px solid rgba(188,140,255,0.3); }
+.tag-green { background: rgba(63,185,80,0.15); color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
+.tag-orange { background: rgba(210,153,34,0.15); color: var(--warning); border: 1px solid rgba(210,153,34,0.3); }
+
+.flow-step {
+  display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  font-size: 13px; color: var(--ink);
+}
+.flow-arrow { color: var(--accent); font-size: 16px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.flex-row { display: flex; gap: 12px; align-items: center; }
+.flex-col { display: flex; flex-direction: column; gap: 12px; }
+
+</style>
+</head>
+<body>
+
+<div class="deck-shell">
+  <div class="deck-viewport">
+    <div class="deck">
+
+      <section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第1页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>开场介绍：本课程是 AI Agent 开发系列的第一模块</li>
+      <li>强调本模块的定位：<strong>从零开始构建第一个 Agent</strong></li>
+      <li>说明4课时180分钟的节奏安排</li>
+      <li>明确前置要求：Python 基础即可，不需要 ML 背景</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">互动建议</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>提问：「大家之前用过 ChatGPT 或类似的产品吗？」</li>
+      <li>引出痛点：LLM 只能聊天，不能执行任务</li>
+      <li>预告：学完本模块，你就能构建一个能调用工具的智能助手</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">时间分配</div>
+  <div class="notes-section-body">
+    封面页讲解约 <strong>3 分钟</strong>，快速过完即可，重点是激发兴趣。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+        <div class="cover-bg"></div>
+        <div class="cover-grid"></div>
+        <div class="cover-badge">
+          <div class="cover-badge-dot"></div>
+          <span class="cover-badge-text">AI Agent 开发系列</span>
+        </div>
+        <div class="cover-content">
+          <div class="cover-kicker">MODULE 01 · 第一模块</div>
+          <h1 class="cover-title">
+            LangChain Agent<br>
+            <span class="gradient-text">智能助手</span>
+          </h1>
+          <p class="cover-subtitle">从 Prompt 模板到工具调用，构建你的第一个 AI Agent</p>
+          <div class="cover-meta">
+            <div class="cover-meta-item">
+              <span class="cover-meta-label">课时</span>
+              <span class="cover-meta-value">4 课时 · 180 分钟</span>
+            </div>
+            <div class="cover-divider"></div>
+            <div class="cover-meta-item">
+              <span class="cover-meta-label">配套源码</span>
+              <span class="cover-meta-value">example/langchain_agent/</span>
+            </div>
+            <div class="cover-divider"></div>
+            <div class="cover-meta-item">
+              <span class="cover-meta-label">前置要求</span>
+              <span class="cover-meta-value">Python 基础</span>
+            </div>
+          </div>
+        </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">01 / 18</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">COURSE OVERVIEW</div>
+<h2 class="section-title">课程总览</h2>
+<div class="slide-body">
+<div class="timeline">
+<div class="timeline-item">
+<div class="timeline-num">PART 0</div>
+<div class="timeline-title">Python 前置</div>
+<div class="timeline-desc">类型注解 · 装饰器 · dict · f-string 速查</div>
+</div>
+<div class="timeline-item">
+<div class="timeline-num">PART 1</div>
+<div class="timeline-title">Agent 基础</div>
+<div class="timeline-desc">Agent 概念 · Prompt · 工具定义 · bind_tools</div>
+</div>
+<div class="timeline-item">
+<div class="timeline-num">PART 2</div>
+<div class="timeline-title">Agent 构建</div>
+<div class="timeline-desc">工作循环 · 创建 Agent · 状态管理 · 记忆 · 流式输出</div>
+</div>
+<div class="timeline-item">
+<div class="timeline-num">PART 3</div>
+<div class="timeline-title">实战与生产</div>
+<div class="timeline-desc">完整实现 · Guardrail 安全 · 知识检测 · 练习</div>
+</div>
+<div class="timeline-item">
+<div class="timeline-num">PART 4</div>
+<div class="timeline-title">展望</div>
+<div class="timeline-desc">LangGraph 预告 · 学习资源 · Q&A</div>
+</div>
+</div>
+<div class="grid-2">
+<div class="card" style="border-left: 3px solid var(--accent);">
+<div class="card-title">学习目标</div>
+<div class="card-body">理解 Agent 工作原理，掌握 LangChain Agent 构建，了解生产级 Agent 的状态管理和安全防护</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--accent2);">
+<div class="card-title">前置知识</div>
+<div class="card-body">Python 基础（2 周入门即可）· 关键语法本课会用图示专门讲解</div>
+</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">课程定位</div>
+<div class="notes-section-body">
+<ul>
+<li>本次课程针对"仅有 2 周 Python 基础"的学生做了大量铺垫</li>
+<li>Part 0 新增前置速查页，遇到陌生语法可随时翻回</li>
+<li>每个代码 slide 前都有"概念解释"过渡页</li>
+<li>装饰器、类型注解、TypedDict、异步 — 都有独立比喻讲解</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">02 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">PREREQUISITE · 课前必读</div>
+<h2 class="section-title">Python 前置知识速查（30 秒扫读）</h2>
+<div class="slide-body">
+<div class="grid-2" style="margin-bottom: 12px;">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">① 类型注解</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<code>def foo(city: str) -&gt; str:</code><br>
+→ 参数 <code>city</code> 是<strong>字符串</strong>，函数<strong>返回字符串</strong><br>
+<span style="color: var(--muted);">💡 只是"标签"，不影响运行，帮别人看懂你的代码</span>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--accent2); margin-top: 10px;">
+<div class="concept-box-title" style="color: var(--accent2);">② 装饰器 @xxx</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<code>@tool<br>def get_weather(city): ...</code><br>
+→ <code>@tool</code> 就是给函数<strong>贴标签</strong><br>
+<span style="color: var(--muted);">💡 贴上标签后，LangChain 就能识别这是工具</span>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--success); margin-top: 10px;">
+<div class="concept-box-title" style="color: var(--success);">③ f-string</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<code>f"{city}今天晴"</code> → 城市变量会被替换<br>
+<span style="color: var(--muted);">💡 双引号前加 <code>f</code>，大括号里放变量</span>
+</div>
+</div>
+</div>
+<div>
+<div class="concept-box" style="border-left-color: var(--warning);">
+<div class="concept-box-title" style="color: var(--warning);">④ 字典 dict</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<code>{"role": "user", "content": "你好"}</code><br>
+→ 用<strong>键值对</strong>保存数据，像"标签→内容"<br>
+<span style="color: var(--muted);">💡 本课全部消息都用 dict 表示</span>
+</div>
+</div>
+<div class="concept-box" style="margin-top: 10px;">
+<div class="concept-box-title">⑤ import 导入</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<code>from langchain import tool</code><br>
+→ 从 langchain <strong>包</strong>里拿 <code>tool</code> 来用<br>
+<span style="color: var(--muted);">💡 就像"从工具箱里拿螺丝刀"</span>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--danger); margin-top: 10px;">
+<div class="concept-box-title" style="color: var(--danger);">⑥ 类 class（本课少量涉及）</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<code>class MyTool(BaseTool): ...</code><br>
+→ 定义一种<strong>新数据类型</strong>，继承已有类<br>
+<span style="color: var(--muted);">💡 本课只需看懂，无需自己写</span>
+</div>
+</div>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--accent);">
+<div class="concept-box-title">🎯 学习建议</div>
+<div class="concept-box-body">遇到看不懂的语法先<strong>不要慌</strong>——本课重点是"Agent 的思路"，不是 Python 语法。每次遇到新写法时，PPT 都会先给一页概念解释。跟着老师的比喻理解意图，比死磕语法更重要。</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">教学要点</div>
+<div class="notes-section-body">
+<ul>
+<li>这一页是给"Python 只学两周"的学生的救生圈</li>
+<li>不要求学生现在就掌握，只要"眼熟"即可</li>
+<li>后续每个代码 slide 前都有独立的概念页深入讲解</li>
+<li>类型注解和装饰器是本课最常见的"陌生语法"</li>
+<li>类 class 只在 BaseTool、BaseModel 里少量出现，读懂即可</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">教学建议</div>
+<div class="notes-section-body">
+花 3-5 分钟带学生扫读这一页。让学生知道"遇到陌生语法时可以随时翻回来看这一页"。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">03 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第3页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>核心公式：<strong>LLM + 工具 + 决策循环 = Agent</strong></li>
+      <li>ReAct 模式：Reason + Act 交替循环，先推理再行动</li>
+      <li>对比 ChatBot vs Agent：被动回答 vs 主动调用工具</li>
+      <li>类比：LLM 是大脑，工具是双手，Agent 是完整的人</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    本页无代码，重点讲概念。可以在白板上画 ReAct 循环图：<br>
+    <code>思考 → 行动 → 观察 → 思考 → ...</code>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">互动建议</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>提问：「Siri 是 ChatBot 还是 Agent？」（引导讨论边界）</li>
+      <li>举例：「帮我查下明天北京的天气」— Agent 能调用天气 API</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">常见问题</div>
+  <div class="notes-section-body">
+    学员可能问：Agent 和 Workflow 有什么区别？<br>
+    回答：Workflow 是固定流程，Agent 是 LLM 自主决策下一步做什么。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">CORE CONCEPT</div>
+            <h2 class="section-title">什么是 Agent？</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="formula-box">
+                  <div class="formula-text">
+                    <span>LLM</span><span class="formula-plus">+</span>
+                    <span>工具</span><span class="formula-plus">+</span>
+                    <span>决策循环</span><span class="formula-eq">=</span>
+                    <span class="formula-result">Agent</span>
+                  </div>
+                </div>
+                <div class="concept-box">
+                  <div class="concept-box-title">ReAct 模式</div>
+                  <div class="concept-box-body">
+                    Agent 采用 <strong>Reason + Act</strong> 交替循环：先推理下一步该做什么，再调用工具执行，观察结果后继续推理。
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">ChatBot vs Agent</div>
+                  <div class="concept-box-body">
+                    ChatBot 只能<strong>被动回答</strong>已有知识；Agent 能<strong>主动调用工具</strong>获取实时数据、执行操作。
+                  </div>
+                </div>
+              </div>
+              <div class="flex-col">
+                <table class="tbl">
+                  <thead><tr><th style="width:30%">特性</th><th style="width:35%">ChatBot</th><th style="width:35%">Agent</th></tr></thead>
+                  <tbody>
+                    <tr><td>回答来源</td><td>训练数据</td><td class="hl">实时 + 工具</td></tr>
+                    <tr><td>外部能力</td><td>无</td><td class="hl">API / 函数调用</td></tr>
+                    <tr><td>决策方式</td><td>单轮生成</td><td class="hl">多轮推理循环</td></tr>
+                    <tr><td>适用场景</td><td>问答闲聊</td><td class="hl">任务执行</td></tr>
+                  </tbody>
+                </table>
+                <div class="card" style="background: rgba(188,140,255,0.06); border-color: rgba(188,140,255,0.15);">
+                  <div class="card-body" style="font-size: 14px; color: var(--ink);">
+                    <strong style="color: var(--accent2);">类比：</strong>LLM 是<strong>大脑</strong>，工具是<strong>双手</strong>，Agent 是能思考、能行动的<strong>完整的人</strong>。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">04 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第4页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>PromptTemplate 是 LangChain 最基础的模板类</li>
+      <li>使用 <code>{变量名}</code> 占位符，通过 <code>format()</code> 填充</li>
+      <li>对比硬编码字符串拼接的优势：可复用、易维护</li>
+      <li>ChatPromptTemplate 专为聊天模型设计，支持角色消息</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>第1-4行：导入并创建模板，<code>input_variables</code> 声明变量</li>
+      <li>第6-8行：<code>format()</code> 传入参数生成最终字符串</li>
+      <li>第10-14行：ChatPromptTemplate 用 <code>from_messages()</code> 创建</li>
+      <li>注意 <code>SystemMessage</code> 设定角色，<code>HumanMessage</code> 是用户输入</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    在终端运行：<br>
+    <code>python examples/01_prompt.py</code><br>
+    让学员看到 format 前后的字符串对比。
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">常见问题</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Q: 变量名有特殊字符怎么办？ A: 用双花括号 <code>{{}}</code> 转义</li>
+      <li>Q: 可以嵌套模板吗？ A: 可以，用 <code>PartialPromptTemplate</code></li>
+    </ul>
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 01 · PROMPT</div>
+            <h2 class="section-title">Prompt 模板</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="concept-box">
+                  <div class="concept-box-title">PromptTemplate</div>
+                  <div class="concept-box-body">使用 <code>{变量名}</code> 占位符，通过 <code>format()</code> 填充参数，生成最终提示词。</div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">ChatPromptTemplate</div>
+                  <div class="concept-box-body">专为聊天模型设计，支持 <code>System</code> / <code>Human</code> / <code>AI</code> 角色消息。</div>
+                </div>
+                <div class="card">
+                  <div class="card-title">核心优势</div>
+                  <div class="card-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li>变量化模板，复用性强</li>
+                      <li>结构化消息，角色清晰</li>
+                      <li>易于维护和迭代</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="code-block" style="font-size: 12px;">
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> PromptTemplate
+
+<span class="com"># 1. 创建模板</span>
+prompt = PromptTemplate.from_template(
+    <span class="str">"你是一个{role}，请回答：{question}"</span>
+)
+
+<span class="com"># 2. 填充变量</span>
+result = prompt.format(
+    role=<span class="str">"天气助手"</span>,
+    question=<span class="str">"北京今天热吗？"</span>
+)
+<span class="com"># → "你是一个天气助手，请回答：北京今天热吗？"</span>
+
+<span class="kw">from</span> langchain_core.prompts <span class="kw">import</span> ChatPromptTemplate
+
+<span class="com"># 3. 聊天模板</span>
+chat_prompt = ChatPromptTemplate.from_messages([
+    (<span class="str">"system"</span>, <span class="str">"你是{role}"</span>),
+    (<span class="str">"human"</span>, <span class="str">"{question}"</span>),
+])
+msgs = chat_prompt.format_messages(
+    role=<span class="str">"天气助手"</span>, question=<span class="str">"下雨吗？"</span>
+)
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">05 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">CONCEPT · 概念解释</div>
+<h2 class="section-title">先理解：装饰器 @tool 到底是什么？</h2>
+<div class="slide-body">
+<div class="grid-2" style="margin-bottom: 12px;">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">🏷️ 比喻：贴标签</div>
+<div class="concept-box-body">
+把 <code>@tool</code> 想象成一张<strong>标签贴纸</strong>：<br>
+把它贴在函数头上，Python 就知道"这个函数是给 Agent 用的工具"。<br>
+函数<strong>本身没变</strong>，只是多了一个身份。
+</div>
+</div>
+<div class="card" style="margin-top: 10px;">
+<div class="card-title" style="color: var(--accent);">对比：普通函数 vs 工具函数</div>
+<div class="code-block" style="font-size: 12px; line-height: 1.6; margin: 6px 0;"><span class="com"># 普通函数：任何 Python 代码都能调用</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city):
+    <span class="kw">return</span> <span class="str">f"</span>{city}<span class="str">今天晴"</span>
+
+<span class="com"># 加上 @tool：LangChain 能识别它</span>
+<span class="dec">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="cls">str</span>) -&gt; <span class="cls">str</span>:
+    <span class="str">"""获取城市天气"""</span>
+    <span class="kw">return</span> <span class="kw">f"</span>{city}<span class="str">今天晴"</span></div>
+</div>
+</div>
+<div>
+<div class="card" style="border-left: 3px solid var(--accent2);">
+<div class="card-title" style="color: var(--accent2);">💡 @tool 帮你做了什么？</div>
+<div class="card-body" style="font-size: 13px;">
+<strong style="color: var(--ink);">1. 提取函数名</strong> → 变成工具名<br>
+<strong style="color: var(--ink);">2. 读取参数类型</strong> → 告诉 LLM 该传什么<br>
+<strong style="color: var(--ink);">3. 读取 docstring</strong> → 告诉 LLM 工具做什么<br>
+<strong style="color: var(--ink);">4. 注册到工具列表</strong> → Agent 能找到它<br>
+<br>
+<span style="color: var(--muted);">如果没有 @tool，你要手写几十行代码做这些事</span>
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--success); margin-top: 10px;">
+<div class="card-title" style="color: var(--success);">📖 类型注解也很关键</div>
+<div class="card-body" style="font-size: 13px;">
+<code>city: str</code> 告诉 LLM：<strong>要传字符串</strong><br>
+<code>-&gt; str</code> 告诉 LLM：<strong>会返回字符串</strong><br>
+<br>
+<strong style="color: var(--danger);">⚠️ 不写类型注解</strong>：LLM 无法正确调用工具！<br>
+<strong style="color: var(--success);">✓ 写了类型注解</strong>：LLM 精确知道参数格式
+</div>
+</div>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--warning);">
+<div class="concept-box-title" style="color: var(--warning);">✋ 你只需要记住</div>
+<div class="concept-box-body">写 Agent 工具时，<strong>始终按这三步</strong>：① 写 <code>@tool</code>、② 加类型注解 <code>(x: str) -&gt; str</code>、③ 写清楚 docstring 说明工具用途。剩下的 LangChain 帮你搞定。</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">核心要点</div>
+<div class="notes-section-body">
+<ul>
+<li>装饰器是 Python 中级语法，学两周不可能懂，必须用比喻</li>
+<li>"贴标签"比喻最容易接受——不需要解释函数是一等对象</li>
+<li>类型注解和 docstring 是 Agent 工具能被 LLM 识别的关键</li>
+<li>下一页看实际代码，学生已经有了心理准备</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">教学建议</div>
+<div class="notes-section-body">
+可以在白板画：函数 = 快递盒，@tool = 贴运单，LangChain = 快递系统。让学生理解装饰器不改变函数本身，只是让系统"能找到它"。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">06 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第5页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>两种工具定义方式：<code>@tool</code> 装饰器（简单）和 <code>BaseTool</code> 类（灵活）</li>
+      <li><code>@tool</code> 自动从 docstring 提取描述和参数说明</li>
+      <li>BaseTool 适合复杂逻辑、需要内部状态的工具</li>
+      <li>工具的 <strong>name</strong> 和 <strong>description</strong> 非常重要，LLM 依据它们决定是否调用</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>@tool</code>：函数名即工具名，docstring 即描述</li>
+      <li>参数类型注解 <code>city: str</code> 会自动转为工具的参数 schema</li>
+      <li>BaseTool：继承并实现 <code>_run()</code> 方法</li>
+      <li><code>args_schema</code> 用 Pydantic 定义参数校验</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">互动建议</div>
+  <div class="notes-section-body">
+    让学员思考：如果你要做一个「外卖点餐 Agent」，需要哪些工具？<br>
+    引导：搜索餐厅、查看菜单、下单、查询订单状态...
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    <code>python examples/02_tool.py</code><br>
+    打印 <code>tool.name</code> 和 <code>tool.description</code> 展示 LLM 看到的信息。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 02 · TOOLS</div>
+            <h2 class="section-title">工具定义</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="concept-box">
+                  <div class="concept-box-title">@tool 装饰器（推荐）</div>
+                  <div class="concept-box-body">
+                    最简单的工具定义方式。函数名即工具名，<strong>docstring</strong> 即工具描述，类型注解即参数 schema。
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">BaseTool 类</div>
+                  <div class="concept-box-body">
+                    适合复杂逻辑。继承 <code>BaseTool</code>，实现 <code>_run()</code> 方法，可定义内部状态。
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">关键点</div>
+                  <div class="card-body">
+                    工具的 <code>name</code> 和 <code>description</code> 是 LLM 决定是否调用的依据，必须<strong>清晰准确</strong>。
+                  </div>
+                </div>
+              </div>
+              <div class="code-block" style="font-size: 12px;">
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="com"># 方式一：@tool 装饰器</span>
+<span class="dec">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="cls">str</span>) -&gt; <span class="cls">str</span>:
+    <span class="str">"""获取指定城市的天气信息。
+
+    Args:
+        city: 城市名称，如"北京"、"上海"
+    """</span>
+    <span class="com"># 实际调用天气 API</span>
+    <span class="kw">return</span> <span class="str">f"{city}今天晴，25°C"</span>
+
+<span class="com"># 方式二：BaseTool 类</span>
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> BaseTool
+
+<span class="kw">class</span> <span class="cls">CalculatorTool</span>(BaseTool):
+    name: <span class="cls">str</span> = <span class="str">"calculator"</span>
+    description: <span class="cls">str</span> = <span class="str">"数学计算器"</span>
+
+    <span class="kw">def</span> <span class="fn">_run</span>(self, expression: <span class="cls">str</span>) -&gt; <span class="cls">str</span>:
+        <span class="kw">return</span> <span class="cls">str</span>(<span class="fn">eval</span>(expression))
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">07 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第6页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>环境准备：<code>DASHSCOPE_API_KEY</code> 和 <code>ChatOpenAI</code> 兼容接口</li>
+      <li>注意 <code>openai_api_base</code> 指向 DashScope 的兼容端点</li>
+      <li>模型选择：<code>qwen-plus</code> 性价比高，适合教学</li>
+      <li>温度参数 <code>temperature=0.7</code>：创造性 vs 确定性</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>os.getenv()</code> 从环境变量读取 API Key</li>
+      <li><code>ChatOpenAI(...)</code> 创建 LLM 实例</li>
+      <li><code>model="qwen-plus"</code> 指定模型</li>
+      <li><code>temperature=0</code> 适合工具调用场景（更稳定）</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>先设置环境变量：<code>export DASHSCOPE_API_KEY=sk-xxx</code></li>
+      <li>运行 <code>python examples/03_llm.py</code></li>
+      <li>让学员看到 LLM 的基本调用返回</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">常见问题</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Q: 报错 AuthenticationError？A: 检查 API Key 是否正确设置</li>
+      <li>Q: 可以用 OpenAI 的模型吗？A: 可以，换 api_key 和 model 即可</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 03 · LLM</div>
+            <h2 class="section-title">LLM 环境配置</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="concept-box">
+                  <div class="concept-box-title">DashScope API</div>
+                  <div class="concept-box-body">
+                    通义千问 Qwen 通过 <strong>DashScope</strong> 提供 OpenAI 兼容接口，可直接用 <code>ChatOpenAI</code> 调用。
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">模型选择</div>
+                  <div class="concept-box-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li><code>qwen-plus</code>：性价比高，推荐教学使用</li>
+                      <li><code>qwen-max</code>：能力最强，成本较高</li>
+                      <li><code>qwen-turbo</code>：速度最快，适合简单任务</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">注意事项</div>
+                  <div class="card-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li>API Key 通过环境变量管理</li>
+                      <li>工具调用场景建议 <code>temperature=0</code></li>
+                      <li>确保网络可访问 DashScope 端点</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="code-block" style="font-size: 12px;">
+<span class="kw">import</span> os
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+
+<span class="com"># 1. 设置 API Key</span>
+os.environ[<span class="str">"DASHSCOPE_API_KEY"</span>] = <span class="str">"sk-xxx"</span>
+
+<span class="com"># 2. 创建 LLM 实例</span>
+llm = ChatOpenAI(
+    model=<span class="str">"qwen-plus"</span>,
+    api_key=os.environ[<span class="str">"DASHSCOPE_API_KEY"</span>],
+    openai_api_base=<span class="str">"https://dashscope.aliyuncs.com"</span>
+                   <span class="str">"/compatible-mode/v1"</span>,
+    temperature=<span class="num">0.7</span>,
+)
+
+<span class="com"># 3. 基本调用</span>
+response = llm.<span class="fn">invoke</span>(<span class="str">"你好"</span>)
+<span class="fn">print</span>(response.content)
+<span class="com"># → "你好！有什么可以帮助你的吗？"</span>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">08 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第7页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>bind_tools()</code> 将工具的 name、description、参数 schema 转成 JSON Schema，注入到 System Prompt</li>
+      <li>LLM 通过<strong>语义匹配</strong>判断：用户意图 vs 工具描述</li>
+      <li>工具的 description 写得好不好，直接决定 LLM 能否选对工具</li>
+      <li>LLM 不是直接执行工具，而是返回<strong>工具调用请求</strong>（tool_calls）</li>
+      <li>需要自己处理：解析请求 → 执行工具 → 返回结果</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">工具选择机制详解</div>
+  <div class="notes-section-body">
+    <strong>bind_tools 底层做了什么？</strong><br>
+    1. 提取每个工具的 name、description、args_schema<br>
+    2. 转成 JSON Schema 格式（OpenAI function calling 规范）<br>
+    3. 作为 system message 的一部分注入到 LLM 请求<br><br>
+    <strong>LLM 如何决策？</strong><br>
+    - LLM 看到用户问题 + 可用工具列表<br>
+    - 根据语义理解判断是否需要调用工具<br>
+    - 如果需要，选择最匹配的工具并提取参数<br>
+    - 返回 tool_calls: [{"name": "get_weather", "args": {"city": "北京"}}]<br><br>
+    <strong>关键点</strong>：工具描述越清晰，LLM 选择越准确
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>llm.bind_tools([weather_tool])</code> 返回绑定了工具的 LLM</li>
+      <li>调用后检查 <code>response.tool_calls</code></li>
+      <li>如果有 tool_calls，需要手动执行对应工具</li>
+      <li>工具执行后将结果作为 <code>ToolMessage</code> 返回给 LLM</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">互动建议</div>
+  <div class="notes-section-body">
+    强调：<strong>LLM 本身不能执行代码</strong>，它只是「说」要调用什么工具。<br>
+    真正执行工具的是你的 Python 代码。
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    <code>python examples/04_bind_tools.py</code><br>
+    展示 LLM 返回的 <code>tool_calls</code> 结构。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 04 · BIND TOOLS</div>
+            <h2 class="section-title">绑定工具 bind_tools()</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="concept-box">
+                  <div class="concept-box-title">LLM 如何知道该调用哪个工具？</div>
+                  <div class="concept-box-body">
+                    <code>bind_tools()</code> 将每个工具的 <strong>name</strong> + <strong>description</strong> + <strong>参数 schema</strong> 转成 JSON Schema，注入到 LLM 的 System Prompt 中。LLM 根据用户意图<strong>语义匹配</strong>最合适的工具。
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">工具选择三要素</div>
+                  <div class="concept-box-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li><strong>name</strong>：工具名，如 <code>get_weather</code></li>
+                      <li><strong>description</strong>：docstring 描述，LLM 据此判断是否匹配</li>
+                      <li><strong>args_schema</strong>：参数类型 + 说明，LLM 据此提取参数</li>
+                    </ul>
+                    <div style="margin-top:8px; padding:8px 10px; background:rgba(88,166,255,0.06); border-radius:6px; font-size:12px; color:var(--accent);">
+                      用户问"北京天气" → LLM 匹配 get_weather → 返回 tool_calls
+                    </div>
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--chart-3);">
+                  <div class="concept-box-title" style="color: var(--chart-3);">LLM 的角色</div>
+                  <div class="concept-box-body">
+                    LLM <strong>不执行工具</strong>，只返回 <code>tool_calls</code>（工具名 + 参数 JSON）。你的代码负责执行工具并将结果回传给 LLM。
+                  </div>
+                </div>
+                <div class="flex-row" style="flex-wrap: wrap;">
+                  <span class="tag tag-blue">JSON Schema</span>
+                  <span class="tag tag-purple">语义匹配</span>
+                  <span class="tag tag-green">tool_calls</span>
+                </div>
+              </div>
+              <div class="code-block" style="font-size: 12px;">
+<span class="com"># 1. 定义工具</span>
+<span class="dec">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="cls">str</span>) -&gt; <span class="cls">str</span>:
+    <span class="str">"""获取城市天气"""</span>
+    <span class="kw">return</span> <span class="str">f"{city}今天晴，25°C"</span>
+
+<span class="com"># 2. 绑定工具到 LLM</span>
+llm_with_tools = llm.<span class="fn">bind_tools</span>([get_weather])
+
+<span class="com"># 3. 调用 — LLM 决定是否使用工具</span>
+response = llm_with_tools.<span class="fn">invoke</span>(
+    <span class="str">"北京天气怎么样？"</span>
+)
+
+<span class="com"># 4. 检查工具调用请求</span>
+<span class="kw">if</span> response.tool_calls:
+    <span class="kw">for</span> tc <span class="kw">in</span> response.tool_calls:
+        <span class="fn">print</span>(tc[<span class="str">"name"</span>])     <span class="com"># "get_weather"</span>
+        <span class="fn">print</span>(tc[<span class="str">"args"</span>])     <span class="com"># {"city": "北京"}</span>
+<span class="kw">else</span>:
+    <span class="fn">print</span>(response.content)  <span class="com"># 直接回答</span>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">09 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第8页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Agent 的核心工作循环（ReAct 循环）</li>
+      <li>步骤：接收输入 → LLM 推理 → 决定是否调用工具 → 执行工具 → 观察结果 → 继续推理</li>
+      <li><strong>终止条件</strong>：LLM 认为已有足够信息回答，不再请求工具调用</li>
+      <li>每一步的决策都由 LLM 自主完成</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    伪代码展示循环逻辑：<br>
+    <ul>
+      <li><code>while not done:</code> 持续循环</li>
+      <li><code>response = llm.invoke(messages)</code> 调用 LLM</li>
+      <li>检查 <code>response.tool_calls</code> 是否为空</li>
+      <li>有则执行工具，将 <code>ToolMessage</code> 加入对话</li>
+      <li>无则结束循环，返回最终回答</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">互动建议</div>
+  <div class="notes-section-body">
+    让学员在纸上画出 Agent 的决策流程图。<br>
+    讨论：如果 LLM 一直循环调用工具怎么办？（引出 max_iterations 限制）
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 05 · AGENT LOOP</div>
+            <h2 class="section-title">Agent 工作循环</h2>
+          </div>
+          <div class="slide-body">
+            <div class="flex-col" style="height: 100%;">
+              <div class="flex-row" style="justify-content: center; gap: 8px; margin-bottom: 16px;">
+                <div class="flow-step"><span class="tag tag-blue">1</span> 用户输入</div>
+                <span class="flow-arrow">▶</span>
+                <div class="flow-step"><span class="tag tag-blue">2</span> LLM 推理</div>
+                <span class="flow-arrow">▶</span>
+                <div class="flow-step"><span class="tag tag-purple">3</span> 调用工具？</div>
+                <span class="flow-arrow">▶</span>
+                <div class="flow-step"><span class="tag tag-green">4</span> 执行工具</div>
+                <span class="flow-arrow">▶</span>
+                <div class="flow-step"><span class="tag tag-orange">5</span> 观察结果</div>
+                <span class="flow-arrow">↻</span>
+              </div>
+              <div class="grid-2" style="flex: 1;">
+                <div class="code-block" style="font-size: 12px;">
+<span class="com"># Agent 工作循环（伪代码）</span>
+
+messages = [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: question}]
+
+<span class="kw">while</span> <span class="kw">True</span>:
+    <span class="com"># 1. LLM 推理</span>
+    response = llm_with_tools.<span class="fn">invoke</span>(messages)
+    messages.<span class="fn">append</span>(response)
+
+    <span class="com"># 2. 检查是否需要调用工具</span>
+    <span class="kw">if</span> <span class="kw">not</span> response.tool_calls:
+        <span class="kw">break</span>  <span class="com"># 不需要，结束循环</span>
+
+    <span class="com"># 3. 执行工具</span>
+    <span class="kw">for</span> tc <span class="kw">in</span> response.tool_calls:
+        result = <span class="fn">execute_tool</span>(tc)
+        messages.<span class="fn">append</span>(
+            ToolMessage(content=result, tool_call_id=tc[<span class="str">"id"</span>])
+        )
+    <span class="com"># 4. 回到步骤 1，继续推理</span>
+
+<span class="fn">print</span>(response.content)  <span class="com"># 最终回答</span>
+                </div>
+                <div class="flex-col">
+                  <div class="concept-box">
+                    <div class="concept-box-title">循环终止条件</div>
+                    <div class="concept-box-body">LLM 认为已有足够信息回答用户问题，不再请求工具调用，输出最终回答。</div>
+                  </div>
+                  <div class="concept-box" style="border-left-color: var(--accent2);">
+                    <div class="concept-box-title" style="color: var(--accent2);">关键理解</div>
+                    <div class="concept-box-body">
+                      <ul style="margin:0; padding-left:14px;">
+                        <li>每一步都由 LLM 自主决策</li>
+                        <li>工具调用结果作为新的消息加入对话</li>
+                        <li>可设置 <code>max_iterations</code> 防止死循环</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="card" style="background: rgba(210,153,34,0.06); border-color: rgba(210,153,34,0.15);">
+                    <div class="card-title" style="color: var(--warning);">注意</div>
+                    <div class="card-body">手写循环用于理解原理，实际开发用 <code>create_agent()</code> 自动处理。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">10 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">CONCEPT · 概念解释</div>
+<h2 class="section-title">先理解：什么是 TypedDict / 类？</h2>
+<div class="slide-body">
+<div class="grid-2" style="margin-bottom: 12px;">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">📋 比喻：填表格</div>
+<div class="concept-box-body">
+<code>TypedDict</code> 就像<strong>规定好格式的表格</strong>：<br>
+预先声明"这张表有哪些字段、每个字段是什么类型"，然后填数据时按格式来。<br>
+好处：<strong>字段少了会报错、类型不对会报错</strong>。
+</div>
+</div>
+<div class="card" style="margin-top: 10px;">
+<div class="card-title" style="color: var(--accent);">对比：普通 dict vs TypedDict</div>
+<div class="code-block" style="font-size: 12px; line-height: 1.6; margin: 6px 0;"><span class="com"># 普通 dict：可以塞任何东西</span>
+state = {<span class="str">"messages"</span>: [], <span class="str">"count"</span>: <span class="num">0</span>}
+<span class="com"># 拼错字段名不会报错 → 埋雷</span>
+state[<span class="str">"conut"</span>] = <span class="num">1</span>  <span class="com"># typo</span>
+
+<span class="com"># TypedDict：预先声明格式</span>
+<span class="kw">class</span> <span class="cls">AgentState</span>(<span class="cls">TypedDict</span>):
+    messages: <span class="cls">list</span>
+    count: <span class="cls">int</span>
+<span class="com"># 拼错字段名 → 编辑器立即提示错误</span></div>
+</div>
+</div>
+<div>
+<div class="card" style="border-left: 3px solid var(--accent2);">
+<div class="card-title" style="color: var(--accent2);">🧱 类 class 是什么？</div>
+<div class="card-body" style="font-size: 12px;">
+类 = <strong>自定义的数据类型</strong>。<br>
+就像 Python 内置了 <code>str</code>、<code>int</code>、<code>list</code>，你也可以用 <code>class</code> 定义自己的类型。<br>
+<br>
+<code>TypedDict</code>、<code>BaseModel</code> 都是<strong>特殊的类</strong>，负责"规定数据格式"。<br>
+<br>
+<strong style="color: var(--success);">✓ 本课要求</strong>：能<strong>读懂</strong>类定义，理解每个字段的作用即可，不需要自己从零写类。
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--success); margin-top: 10px;">
+<div class="card-title" style="color: var(--success);">🎯 为什么 Agent 需要 TypedDict？</div>
+<div class="card-body" style="font-size: 12px;">
+Agent 有很多<strong>状态字段</strong>（消息、重试次数、路由决策...）。<br>
+用 TypedDict 把它们"锁死"：<br>
+<strong style="color: var(--ink);">1</strong> 编辑器自动补全字段名<br>
+<strong style="color: var(--ink);">2</strong> 拼错会立即报错<br>
+<strong style="color: var(--ink);">3</strong> 团队协作时字段清晰<br>
+<strong style="color: var(--ink);">4</strong> LangGraph 强制要求这种格式
+</div>
+</div>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--warning);">
+<div class="concept-box-title" style="color: var(--warning);">✋ 学两周 Python 的你只需要</div>
+<div class="concept-box-body"><strong>看到 <code>class AgentState(TypedDict)</code></strong> → 就想"这是一张规定格式的表格"；<strong>看到冒号后面的类型</strong> → 就想"这是这个字段该填什么类型"。<strong>不需要</strong>掌握类继承、方法定义等 OOP 概念。</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">核心要点</div>
+<div class="notes-section-body">
+<ul>
+<li>初学者最怕的两个词：class 和 TypedDict</li>
+<li>用"规定格式的表格"比喻，避开继承、方法等 OOP 概念</li>
+<li>强调学生只需"读懂"，不需"从零写"</li>
+<li>让学生知道 LangGraph 强制要求这种格式，是绕不开的</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">教学建议</div>
+<div class="notes-section-body">
+可以拿"报销单表格"举例：报销单有"日期""金额""事由"三个字段，每个字段都有格式要求。TypedDict 就是给 Python 定义一张这样的表格。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">11 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">PART 2 · Agent 进阶</div>
+<h2 class="section-title">Agent 状态管理：不只是对话历史</h2>
+<div class="slide-body">
+<div class="grid-2" style="margin-bottom: 14px;">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">基础状态：对话历史</div>
+<div class="concept-box-body">
+初学者：<code>messages</code> 列表保存对话。<br>
+→ 但生产 Agent 需要更多状态：<br>
+<strong>重试计数器</strong>、<strong>路由决策</strong>、<br>
+<strong>检索来源</strong>、<strong>评分结果</strong>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--accent2);">
+<div class="concept-box-title" style="color: var(--accent2);">生产级 AgentState</div>
+<div class="concept-box-body" style="font-size: 12px;">
+<pre style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.5;color:var(--ink);">
+class AgentState(TypedDict):
+    messages: Annotated[list, add_messages]
+    original_query: str
+    rewritten_query: str
+    retrieval_attempts: int
+    guardrail_result: dict
+    routing_decision: str
+    sources: list
+    relevant_sources: list
+    grading_results: list
+    metadata: dict</pre>
+</div>
+</div>
+</div>
+<div>
+<div class="card" style="margin-bottom: 10px;">
+<div class="card-title">关键字段说明</div>
+<div class="card-body" style="font-size: 12px;">
+<strong style="color: var(--accent);">messages</strong>：带 reducer 的消息列表<br>
+<strong style="color: var(--accent);">retrieval_attempts</strong>：重试计数器<br>
+<strong style="color: var(--accent);">guardrail_result</strong>：安全检查结果<br>
+<strong style="color: var(--accent);">routing_decision</strong>：路由决策记录<br>
+<strong style="color: var(--accent);">sources</strong>：检索到的文档列表<br>
+<strong style="color: var(--accent);">grading_results</strong>：文档评分记录<br>
+<strong style="color: var(--accent);">metadata</strong>：追踪 ID、延迟等元数据
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--success);">
+<div class="card-title" style="color: var(--success);">add_messages reducer</div>
+<div class="card-body" style="font-size: 12px;">
+LangGraph 的 <code>Annotated[list, add_messages]</code>：新消息自动追加而非覆盖。这让多个节点可以独立向消息列表添加内容。
+</div>
+</div>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--warning);">
+<div class="concept-box-title" style="color: var(--warning);">为什么状态管理很重要？</div>
+<div class="concept-box-body">状态是 Agent 的"记忆"。好的状态设计让 Agent 可追踪、可调试、可重试。生产 Agent 的 bug 80% 来自状态管理不当——计数器没更新、消息丢失、路由信息丢失。</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">核心要点</div>
+<div class="notes-section-body">
+<ul>
+<li>Agent 不只是"对话"，而是"有状态的工作流"</li>
+<li>retrieval_attempts 是循环工作流的关键退出条件</li>
+<li>metadata 字段用于存储 Langfuse trace ID 等追踪信息</li>
+<li>add_messages reducer 是 LangGraph 特有的状态合并机制</li>
+<li>这个概念在 Module 2 LangGraph 和 Module 4 Agentic RAG 中会深化</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">教学建议</div>
+<div class="notes-section-body">
+告诉学生：现在只需要理解"Agent 有状态"。具体的 TypedDict 和 reducer 实现会在 Module 2 的 LangGraph 中详细讲解。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">12 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第9页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>create_agent()</code> 是 LangChain 提供的高层 API，自动处理 ReAct 循环</li>
+      <li>一行代码创建 Agent，无需手写循环逻辑</li>
+      <li>参数：LLM 实例 + 工具列表</li>
+      <li>返回的是一个可调用的 Agent 对象</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>from langchain.agents import create_agent</code></li>
+      <li><code>agent = create_agent(llm, tools=[...])</code></li>
+      <li><code>result = agent.invoke({"messages": [...]})</code></li>
+      <li>对比第8页的手写循环，体会 create_agent 的便利性</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    <code>python examples/05_create_agent.py</code><br>
+    输入「北京今天天气怎么样？」观察 Agent 自动调用天气工具并返回结果。
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">常见问题</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Q: create_agent 和 create_react_agent 的区别？A: 前者是新版 API，推荐使用</li>
+      <li>Q: 能自定义 prompt 吗？A: 可以，通过 <code>prompt</code> 参数传入</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 06 · CREATE AGENT</div>
+            <h2 class="section-title">创建 Agent</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="concept-box">
+                  <div class="concept-box-title">create_agent() 高层 API</div>
+                  <div class="concept-box-body">
+                    LangChain 提供的高层 API，<strong>一行代码</strong>创建 Agent，自动处理 ReAct 循环。
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">参数说明</div>
+                  <div class="concept-box-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li><code>model</code>：LLM 实例</li>
+                      <li><code>tools</code>：工具列表</li>
+                      <li><code>checkpointer</code>：记忆存储（可选）</li>
+                      <li><code>prompt</code>：自定义系统提示（可选）</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">对比手写循环</div>
+                  <div class="card-body">第8页手写循环约 15 行代码，<code>create_agent</code> 一行搞定，且更健壮。</div>
+                </div>
+              </div>
+              <div class="code-block" style="font-size: 12px;">
+<span class="kw">from</span> langchain.agents <span class="kw">import</span> create_agent
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+
+<span class="com"># 1. 定义工具</span>
+<span class="dec">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="cls">str</span>) -&gt; <span class="cls">str</span>:
+    <span class="str">"""获取城市天气"""</span>
+    <span class="kw">return</span> <span class="str">f"{city}今天晴，25°C"</span>
+
+<span class="com"># 2. 创建 LLM</span>
+llm = ChatOpenAI(model=<span class="str">"qwen-plus"</span>, ...)
+
+<span class="com"># 3. 一行创建 Agent</span>
+agent = <span class="fn">create_agent</span>(
+    llm,
+    tools=[get_weather],
+)
+
+<span class="com"># 4. 调用 Agent</span>
+result = agent.<span class="fn">invoke</span>({
+    <span class="str">"messages"</span>: [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"北京天气？"</span>}]
+})
+<span class="fn">print</span>(result[<span class="str">"messages"</span>][-<span class="num">1</span>].content)
+<span class="com"># → "北京今天晴，25°C"</span>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">13 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第10页</div>
+<div class="notes-section">
+  <div class="notes-section-title">记忆存储机制详解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><strong>Checkpoint 机制</strong>：MemorySaver 的核心是 Checkpoint（检查点）。每次 Agent 执行后，会将当前状态（messages 列表 + 中间变量）序列化为一个 checkpoint 对象，存储在内存字典中</li>
+      <li><strong>存储结构</strong>：内部维护 <code>self.storage: dict[thread_id, list[checkpoint]]</code>，每个 thread_id 对应一个 checkpoint 列表，按执行顺序追加</li>
+      <li><strong>thread_id 隔离</strong>：不同 thread_id 的数据完全隔离，互不可见。切换 thread_id 等于切换对话频道</li>
+      <li><strong>读取流程</strong>：每次 <code>invoke()</code> 时，Agent 先从 storage 中读取该 thread_id 的最新 checkpoint，恢复 messages 历史，再将新的用户消息追加到历史中，送入 LLM</li>
+      <li><strong>写入流程</strong>：LLM 响应后，Agent 将新的 AI 消息 + tool 调用结果追加到 messages，生成新 checkpoint，写回 storage</li>
+      <li><strong>内存 vs 持久化</strong>：MemorySaver 存在进程内存，重启即丢失。生产环境使用 <code>SqliteSaver</code>（SQLite 文件）或 <code>PostgresSaver</code>（数据库），接口完全一致，只需替换 checkpointer 参数</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>from langchain.checkpoint import MemorySaver</code></li>
+      <li><code>memory = MemorySaver()</code> — 初始化空存储</li>
+      <li><code>agent = create_agent(llm, tools, checkpointer=memory)</code></li>
+      <li>调用时传入 <code>config={"configurable": {"thread_id": "session-1"}}</code></li>
+      <li>同一 thread_id 的调用会自动读取历史 checkpoint 并共享上下文</li>
+      <li>不同 thread_id 之间完全隔离，互不干扰</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    <code>python examples/06_memory.py</code><br>
+    先说「我叫张三」，再问「我叫什么名字？」，Agent 能正确回答。<br>
+    演示切换 thread_id：用 session-2 再问，Agent 不知道答案。
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">常见问题</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Q: 重启程序后记忆还在吗？A: MemorySaver 是内存存储，重启丢失</li>
+      <li>Q: 如何持久化？A: 使用 <code>SqliteSaver</code> 或 <code>PostgresSaver</code>，代码只需替换 checkpointer</li>
+      <li>Q: 记忆会无限增长吗？A: 是的，messages 会累积。可通过 <code>trim_messages</code> 或自定义 reducer 裁剪</li>
+      <li>Q: 多个用户同时对话？A: 每个用户用不同 thread_id，互不影响</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 07 · MEMORY</div>
+            <h2 class="section-title">会话记忆 MemorySaver</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="concept-box">
+                  <div class="concept-box-title">记忆如何存储？</div>
+                  <div class="concept-box-body">
+                    <strong>Checkpoint 机制</strong>：每次 <code>invoke()</code> 后，Agent 将完整状态（messages 列表 + 中间变量）序列化为 <strong>checkpoint</strong>，存入内存字典。<br>
+                    内部结构：<code>storage[thread_id] = [checkpoint_1, checkpoint_2, ...]</code>
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">读写流程</div>
+                  <div class="concept-box-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li><strong>读取</strong>：invoke 时先查 storage[thread_id] 最新 checkpoint，恢复历史 messages</li>
+                      <li><strong>追加</strong>：新用户消息追加到历史 messages 尾部</li>
+                      <li><strong>执行</strong>：LLM 处理完整 messages，可能调用工具</li>
+                      <li><strong>写入</strong>：AI 回复 + 工具结果追加为新 checkpoint</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--success);">
+                  <div class="concept-box-title" style="color: var(--success);">thread_id 会话隔离</div>
+                  <div class="concept-box-body">
+                    不同 <code>thread_id</code> = 不同对话频道，数据完全隔离。<br>
+                    切换 thread_id 等于开始新对话，旧上下文不可见。<br>
+                    <strong>多用户</strong>：每用户分配不同 thread_id 即可并发对话。
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">内存 vs 持久化</div>
+                  <div class="card-body" style="font-size: 12px;">
+                    <code>MemorySaver</code> → 进程内存，重启丢失<br>
+                    <code>SqliteSaver</code> → SQLite 文件，重启不丢<br>
+                    <code>PostgresSaver</code> → 数据库，多进程共享<br>
+                    <span style="color: var(--muted);">接口一致，只需替换 checkpointer 参数</span>
+                  </div>
+                </div>
+              </div>
+              <div class="code-block" style="font-size: 12px;">
+<span class="kw">from</span> langchain.agents <span class="kw">import</span> create_agent
+<span class="kw">from</span> langchain.checkpoint <span class="kw">import</span> MemorySaver
+
+<span class="com"># 1. 创建记忆存储</span>
+memory = MemorySaver()
+
+<span class="com"># 2. 创建带记忆的 Agent</span>
+agent = <span class="fn">create_agent</span>(
+    llm,
+    tools=[get_weather],
+    checkpointer=memory,  <span class="com"># 传入记忆</span>
+)
+
+<span class="com"># 3. 多轮对话（同一 thread_id）</span>
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"session-1"</span>}}
+
+<span class="com"># 第一轮</span>
+agent.<span class="fn">invoke</span>({
+    <span class="str">"messages"</span>: [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"我叫张三"</span>}]
+}, config=config)
+
+<span class="com"># 第二轮 — Agent 记住了</span>
+result = agent.<span class="fn">invoke</span>({
+    <span class="str">"messages"</span>: [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"我叫什么？"</span>}]
+}, config=config)
+<span class="com"># → "你叫张三"</span>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">14 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">CONCEPT · 概念解释</div>
+<h2 class="section-title">先理解:同步 vs 异步(async/await)</h2>
+<div class="slide-body">
+<div class="grid-2" style="margin-bottom: 12px;">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">☕ 比喻：等外卖</div>
+<div class="concept-box-body">
+<strong style="color: var(--danger);">同步</strong>：点外卖后<strong>站在门口</strong>等，30 分钟啥也干不了。<br>
+<strong style="color: var(--success);">异步</strong>：点外卖后<strong>去做别的事</strong>（写代码、刷手机），外卖到了再吃。<br>
+<br>
+<span style="color: var(--muted);">→ 异步 = 边等边干别的</span>
+</div>
+</div>
+<div class="card" style="margin-top: 10px;">
+<div class="card-title" style="color: var(--accent);">代码对比</div>
+<div class="code-block" style="font-size: 12px; line-height: 1.6; margin: 6px 0;"><span class="com"># 同步：等 LLM 全部回完再显示</span>
+response = llm.<span class="fn">invoke</span>(<span class="str">"你好"</span>)
+<span class="fn">print</span>(response)   <span class="com"># 等 5 秒后一次性显示</span>
+
+<span class="com"># 异步：LLM 边生成边显示（打字机效果）</span>
+<span class="kw">async def</span> <span class="fn">chat</span>():
+    <span class="kw">async for</span> chunk <span class="kw">in</span> llm.<span class="fn">astream</span>(<span class="str">"你好"</span>):
+        <span class="fn">print</span>(chunk, end=<span class="str">""</span>)  <span class="com"># 一个字一个字显示</span></div>
+</div>
+</div>
+<div>
+<div class="card" style="border-left: 3px solid var(--accent2);">
+<div class="card-title" style="color: var(--accent2);">🔑 三个关键字</div>
+<div class="card-body" style="font-size: 13px;">
+<strong style="color: var(--ink);"><code>async def</code></strong><br>
+→ "这个函数是异步的"（可以边等边干）<br>
+<br>
+<strong style="color: var(--ink);"><code>await</code></strong><br>
+→ "等一下这里，等好了继续"<br>
+<br>
+<strong style="color: var(--ink);"><code>async for</code></strong><br>
+→ "循环处理陆续到达的结果"（如 stream）
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--success); margin-top: 10px;">
+<div class="card-title" style="color: var(--success);">🎯 Agent 为什么需要异步？</div>
+<div class="card-body" style="font-size: 12px;">
+<strong style="color: var(--ink);">1. 流式输出</strong>：LLM 边生成边展示（打字机）<br>
+<strong style="color: var(--ink);">2. 并发调用</strong>：一次调多个工具，节省时间<br>
+<strong style="color: var(--ink);">3. 用户体验</strong>：不阻塞，界面不卡<br>
+<strong style="color: var(--ink);">4. 生产标配</strong>：几乎所有 Agent 框架都用异步
+</div>
+</div>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--warning);">
+<div class="concept-box-title" style="color: var(--warning);">✋ 你只需要记住</div>
+<div class="concept-box-body">看到 <strong><code>async def</code></strong> → 前面加 <strong><code>async</code></strong>；看到 <strong><code>await</code></strong> → 记得整个函数必须是 <code>async def</code>；看到 <strong><code>async for</code></strong> → 用来接收流式结果。<strong>不需要</strong>掌握 event loop、协程调度等底层细节。</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">核心要点</div>
+<div class="notes-section-body">
+<ul>
+<li>异步是 Python 高级语法，学两周绝对没接触过</li>
+<li>"等外卖"比喻最直观——学生生活中都体验过</li>
+<li>强调"三个关键字"，不讲 event loop</li>
+<li>让学生知道下一页的 astream 代码是异步的，不要慌</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">教学建议</div>
+<div class="notes-section-body">
+可以现场演示：先跑同步版本让学生等 5 秒，再跑异步流式版本看打字机效果。对比冲击力最强。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">15 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第11页</div>
+<div class="notes-section">
+  <div class="notes-section-title">流式输出实现原理</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><strong>底层机制</strong>：LLM API（如 DashScope/OpenAI）原生支持 SSE（Server-Sent Events）流式协议。请求时设置 <code>stream=True</code>，服务端逐 token 返回，每个 token 作为一个 SSE event</li>
+      <li><strong>LangChain 封装</strong>：<code>astream()</code> 底层调用 LLM 的流式接口，将 SSE event 转换为 Python <code>AsyncIterator</code>，每个 chunk 包含一个或多个 token</li>
+      <li><strong>Agent 层面</strong>：<code>create_agent</code> 基于 LangGraph 构建。LangGraph 的 <code>astream()</code> 会流式输出图执行过程中每个节点的中间结果</li>
+      <li><strong>stream_mode 区别</strong>：<code>"messages"</code> 流式输出 LLM 的每个 token（最细粒度）；<code>"values"</code> 每个节点执行完后输出完整状态；<code>"updates"</code> 仅输出状态的增量变更</li>
+      <li><strong>chunk 结构</strong>：<code>stream_mode="messages"</code> 时，chunk 是一个元组 <code>(message_chunk, metadata)</code>，<code>message_chunk.content</code> 是文本片段，<code>metadata["langgraph_node"]</code> 标识来源节点</li>
+      <li><strong>工具调用流式</strong>：当 Agent 决定调用工具时，工具调用参数也是流式返回的（<code>tool_call_chunks</code>），但实际工具执行结果是一次性返回的</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li><code>async for chunk in agent.astream(...)</code> — 异步迭代每个流式块</li>
+      <li><code>stream_mode="messages"</code> — 获取 token 级别的细粒度流</li>
+      <li><code>chunk[0].content</code> — 当前 token 的文本片段</li>
+      <li><code>chunk[1]["langgraph_node"]</code> — 元数据，判断是 agent 节点还是 tools 节点</li>
+      <li><code>print(..., end="", flush=True)</code> — 无换行立即刷新输出，实现逐字效果</li>
+      <li>也可用 <code>stream_mode="updates"</code> 按步骤获取，适合日志场景</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    <code>python examples/07_streaming.py</code><br>
+    对比非流式（等3秒出完整结果）和流式（逐字输出）的体验差异。<br>
+    演示：修改 stream_mode 参数，观察不同模式的输出粒度。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">STEP 08 · STREAMING</div>
+            <h2 class="section-title">流式输出 astream()</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%;">
+              <div class="flex-col">
+                <div class="concept-box">
+                  <div class="concept-box-title">流式如何实现？</div>
+                  <div class="concept-box-body">
+                    <strong>底层</strong>：LLM API 原生支持 SSE 协议，请求设 <code>stream=True</code>，服务端逐 token 返回。<br>
+                    <strong>LangChain</strong>：将 SSE event 转为 <code>AsyncIterator</code>，每个 chunk = 1 个 token 片段。<br>
+                    <strong>Agent</strong>：LangGraph 的 <code>astream()</code> 流式输出图中每个节点的中间结果。
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--accent2);">
+                  <div class="concept-box-title" style="color: var(--accent2);">stream_mode 三种模式</div>
+                  <div class="concept-box-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li><code>"messages"</code> — token 级细粒度，逐字输出</li>
+                      <li><code>"values"</code> — 每节点完成后输出完整状态</li>
+                      <li><code>"updates"</code> — 仅输出状态增量变更</li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="concept-box" style="border-left-color: var(--success);">
+                  <div class="concept-box-title" style="color: var(--success);">chunk 结构</div>
+                  <div class="concept-box-body" style="font-size: 12px;">
+                    <code>stream_mode="messages"</code> 时：<br>
+                    chunk = <code>(message_chunk, metadata)</code><br>
+                    <code>chunk[0].content</code> → 文本片段<br>
+                    <code>chunk[1]["langgraph_node"]</code> → 来源节点<br>
+                    <span style="color: var(--muted);">工具调用参数也流式返回，但执行结果一次性返回</span>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-title">体验对比</div>
+                  <div class="card-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li>非流式：⏳ 3秒后显示完整回答</li>
+                      <li>流式：⚡ 首字 &lt; 500ms，逐字显示</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="code-block" style="font-size: 12px;">
+<span class="kw">import</span> asyncio
+
+<span class="com"># 流式输出</span>
+<span class="kw">async def</span> <span class="fn">chat</span>(question: <span class="cls">str</span>):
+    <span class="kw">async for</span> chunk <span class="kw">in</span> agent.<span class="fn">astream</span>(
+        {<span class="str">"messages"</span>: [
+            {<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: question}
+        ]},
+        config=config,
+        stream_mode=<span class="str">"messages"</span>,
+    ):
+        <span class="com"># chunk 是逐块的消息</span>
+        <span class="kw">if</span> chunk[<span class="num">1</span>][<span class="str">"langgraph_node"</span>] == <span class="str">"agent"</span>:
+            <span class="kw">if</span> chunk[<span class="num">0</span>].content:
+                <span class="fn">print</span>(chunk[<span class="num">0</span>].content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+
+<span class="com"># 运行</span>
+asyncio.<span class="fn">run</span>(<span class="fn">chat</span>(<span class="str">"介绍一下北京"</span>))
+<span class="com"># → 北...京...是...中...国...的...首...都...</span>
+<span class="com">#   （逐字输出，实时显示）</span>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">16 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第12页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>完整实战：天气查询助手 — 综合运用前面所有知识点</li>
+      <li>包含：PromptTemplate + @tool + create_agent + MemorySaver + astream</li>
+      <li>天气工具使用模拟数据（教学演示，不调用真实 API）</li>
+      <li>展示从零到可运行的完整流程</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">代码讲解</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>第1步：定义 <code>@tool get_weather(city: str)</code></li>
+      <li>第2步：创建 <code>ChatOpenAI</code> LLM 实例</li>
+      <li>第3步：<code>create_agent(llm, [get_weather], checkpointer=MemorySaver())</code></li>
+      <li>第4步：<code>async for chunk in agent.astream(...)</code> 流式输出</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课堂演示</div>
+  <div class="notes-section-body">
+    <code>python examples/weather_agent.py</code><br>
+    依次输入：<br>
+    1.「北京天气怎么样？」<br>
+    2.「那上海呢？」（测试记忆 + 工具调用）<br>
+    3.「刚才我问了哪些城市？」（测试多轮记忆）
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">互动建议</div>
+  <div class="notes-section-body">
+    让学员修改代码，添加一个新工具（如时间查询），观察 Agent 如何自动选择。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">PRACTICE · 完整实战</div>
+            <h2 class="section-title">天气查询助手 · 完整实现</h2>
+          </div>
+          <div class="slide-body">
+            <div class="code-block" style="font-size: 11px; height: 100%;">
+<span class="kw">import</span> os, asyncio
+<span class="kw">from</span> langchain_openai <span class="kw">import</span> ChatOpenAI
+<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool
+<span class="kw">from</span> langchain.agents <span class="kw">import</span> create_agent
+<span class="kw">from</span> langchain.checkpoint <span class="kw">import</span> MemorySaver
+
+<span class="com"># ── 1. 定义工具 ──</span>
+<span class="dec">@tool</span>
+<span class="kw">def</span> <span class="fn">get_weather</span>(city: <span class="cls">str</span>) -&gt; <span class="cls">str</span>:
+    <span class="str">"""获取指定城市的天气信息。args: city — 城市名称"""</span>
+    weather_map = {<span class="str">"北京"</span>: <span class="str">"晴 25°C"</span>, <span class="str">"上海"</span>: <span class="str">"多云 28°C"</span>, <span class="str">"广州"</span>: <span class="str">"雷阵雨 30°C"</span>}
+    <span class="kw">return</span> weather_map.<span class="fn">get</span>(city, <span class="str">f"暂无{city}的天气数据"</span>)
+
+<span class="com"># ── 2. 创建 LLM ──</span>
+llm = ChatOpenAI(
+    model=<span class="str">"qwen-plus"</span>,
+    api_key=os.environ[<span class="str">"DASHSCOPE_API_KEY"</span>],
+    openai_api_base=<span class="str">"https://dashscope.aliyuncs.com/compatible-mode/v1"</span>,
+    temperature=<span class="num">0</span>,
+)
+
+<span class="com"># ── 3. 创建 Agent（带记忆）──</span>
+agent = <span class="fn">create_agent</span>(llm, tools=[get_weather], checkpointer=MemorySaver())
+config = {<span class="str">"configurable"</span>: {<span class="str">"thread_id"</span>: <span class="str">"demo"</span>}}
+
+<span class="com"># ── 4. 流式交互 ──</span>
+<span class="kw">async def</span> <span class="fn">main</span>():
+    <span class="kw">async for</span> chunk <span class="kw">in</span> agent.<span class="fn">astream</span>(
+        {<span class="str">"messages"</span>: [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"北京和上海天气如何？"</span>}]},
+        config=config, stream_mode=<span class="str">"messages"</span>,
+    ):
+        <span class="kw">if</span> chunk[<span class="num">1</span>][<span class="str">"langgraph_node"</span>] == <span class="str">"agent"</span> <span class="kw">and</span> chunk[<span class="num">0</span>].content:
+            <span class="fn">print</span>(chunk[<span class="num">0</span>].content, end=<span class="str">""</span>, flush=<span class="kw">True</span>)
+
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())
+<span class="com"># → Agent 自动调用 get_weather("北京") 和 get_weather("上海")，流式输出综合回答</span>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">17 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第14页</div>
+<div class="notes-section">
+  <div class="notes-section-title">讲解要点</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>预告下一模块：LangGraph 多智能体编排</li>
+      <li>单 Agent 的局限：复杂任务需要多个 Agent 协作</li>
+      <li>LangGraph：基于图的多 Agent 编排框架</li>
+      <li>引出概念：节点（Agent）、边（消息流）、条件路由</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">对比预告</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>LangChain Agent：单 Agent + 工具 → 简单任务</li>
+      <li>LangGraph Multi-Agent：多 Agent 协作 → 复杂工作流</li>
+      <li>示例场景：研究 Agent + 写作 Agent + 审校 Agent 协作写报告</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课后任务</div>
+  <div class="notes-section-body">
+    布置课后练习：为本课的天气 Agent 添加一个新工具（如汇率查询），并测试多轮对话。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">WHAT'S NEXT · 下节预告</div>
+            <h2 class="section-title">LangGraph 多智能体编排</h2>
+          </div>
+          <div class="slide-body">
+            <div class="flex-col" style="height: 100%;">
+              <div class="grid-2" style="flex: 1;">
+                <div class="flex-col">
+                  <div class="concept-box">
+                    <div class="concept-box-title">单 Agent 的局限</div>
+                    <div class="concept-box-body">
+                      <ul style="margin:0; padding-left:14px;">
+                        <li>单个 Agent 处理复杂任务能力有限</li>
+                        <li>工具过多时 LLM 容易选错</li>
+                        <li>无法并行处理独立子任务</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <div class="concept-box" style="border-left-color: var(--accent2);">
+                    <div class="concept-box-title" style="color: var(--accent2);">LangGraph 解决方案</div>
+                    <div class="concept-box-body">
+                      <ul style="margin:0; padding-left:14px;">
+                        <li>基于<strong>图</strong>的多 Agent 编排框架</li>
+                        <li>节点 = Agent / 工具函数</li>
+                        <li>边 = 消息流向</li>
+                        <li>条件路由 = 智能决策</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex-col">
+                  <div class="card" style="background: rgba(88,166,255,0.06); border-color: rgba(88,166,255,0.2);">
+                    <div class="card-title" style="color: var(--accent);">多 Agent 协作示例</div>
+                    <div class="card-body">
+                      <strong>研究 Agent</strong>：收集资料<br>
+                      <strong>写作 Agent</strong>：撰写初稿<br>
+                      <strong>审校 Agent</strong>：检查修正<br><br>
+                      三个 Agent 协作完成一篇高质量报告。
+                    </div>
+                  </div>
+                  <div class="card" style="background: rgba(188,140,255,0.06); border-color: rgba(188,140,255,0.15);">
+                    <div class="card-title" style="color: var(--accent2);">你将学到</div>
+                    <div class="card-body">
+                      <ul style="margin:0; padding-left:14px;">
+                        <li>StateGraph 状态图</li>
+                        <li>多 Agent 通信机制</li>
+                        <li>条件路由与循环</li>
+                        <li>Human-in-the-loop</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-row" style="justify-content: center; gap: 8px; margin-top: 12px;">
+                <span class="tag tag-blue">StateGraph</span>
+                <span class="tag tag-purple">Multi-Agent</span>
+                <span class="tag tag-green">Conditional Routing</span>
+                <span class="tag tag-orange">Human-in-the-loop</span>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">18 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第15页</div>
+<div class="notes-section">
+  <div class="notes-section-title">教学目标</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>通过 4 道选择题检验学生对核心概念的理解</li>
+      <li>重点考察：Prompt 模板、工具定义、Agent 循环、Memory 机制</li>
+      <li>每题请学生举手回答，错误率高的知识点需重新讲解</li>
+      <li>答题时间约 5 分钟，讲解时间约 5 分钟</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">答案与解析</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>Q1 答案 B：PromptTemplate.from_template() 使用 {var} 占位</li>
+      <li>Q2 答案 C：@tool 装饰器从 docstring 自动提取描述</li>
+      <li>Q3 答案 A：ReAct = Reason + Act 循环</li>
+      <li>Q4 答案 B：thread_id 是 MemorySaver 区分不同会话的键</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">QUIZ · 课堂测验</div>
+            <h2 class="section-title">课堂知识检测</h2>
+          </div>
+          <div class="slide-body" style="overflow-y: auto;">
+            <div class="quiz-item">
+              <div class="quiz-question"><span class="quiz-num">1</span>PromptTemplate 中变量占位符的语法是？</div>
+              <div class="quiz-options">
+                <div class="quiz-option"><span class="opt-label">A.</span>$variable</div>
+                <div class="quiz-option"><span class="opt-label">B.</span>{variable}</div>
+                <div class="quiz-option"><span class="opt-label">C.</span>{{variable}}</div>
+                <div class="quiz-option"><span class="opt-label">D.</span>%(variable)s</div>
+              </div>
+              <div class="quiz-answer">B — PromptTemplate.from_template() 使用 {var} 语法</div>
+            </div>
+            <div class="quiz-item">
+              <div class="quiz-question"><span class="quiz-num">2</span>使用 @tool 装饰器定义工具时，工具的 description 从哪里来？</div>
+              <div class="quiz-options">
+                <div class="quiz-option"><span class="opt-label">A.</span>手动传入 description 参数</div>
+                <div class="quiz-option"><span class="opt-label">B.</span>从函数名自动生成</div>
+                <div class="quiz-option"><span class="opt-label">C.</span>从函数 docstring 自动提取</div>
+                <div class="quiz-option"><span class="opt-label">D.</span>从 args_schema 中提取</div>
+              </div>
+              <div class="quiz-answer">C — @tool 自动从 docstring 提取工具描述和参数说明</div>
+            </div>
+            <div class="quiz-item">
+              <div class="quiz-question"><span class="quiz-num">3</span>LangChain Agent 的核心决策循环模式是？</div>
+              <div class="quiz-options">
+                <div class="quiz-option"><span class="opt-label">A.</span>ReAct (Reason + Act)</div>
+                <div class="quiz-option"><span class="opt-label">B.</span>MapReduce</div>
+                <div class="quiz-option"><span class="opt-label">C.</span>Pipeline</div>
+                <div class="quiz-option"><span class="opt-label">D.</span>Chain of Thought</div>
+              </div>
+              <div class="quiz-answer">A — ReAct 模式：LLM 先推理(Reason)再行动(Act)，循环执行</div>
+            </div>
+            <div class="quiz-item">
+              <div class="quiz-question"><span class="quiz-num">4</span>MemorySaver 通过什么键来区分不同用户的会话记忆？</div>
+              <div class="quiz-options">
+                <div class="quiz-option"><span class="opt-label">A.</span>user_id</div>
+                <div class="quiz-option"><span class="opt-label">B.</span>thread_id</div>
+                <div class="quiz-option"><span class="opt-label">C.</span>session_id</div>
+                <div class="quiz-option"><span class="opt-label">D.</span>conversation_id</div>
+              </div>
+              <div class="quiz-answer">B — config 中 configurable.thread_id 用于隔离不同会话</div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">19 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">PART 3 · 生产实践</div>
+<h2 class="section-title">Guardrail：Agent 的第一道防线</h2>
+<div class="slide-body">
+<div class="grid-2" style="margin-bottom: 14px;">
+<div>
+<div class="concept-box">
+<div class="concept-box-title">什么是 Guardrail？</div>
+<div class="concept-box-body">
+Agent 执行任务前的<strong>输入校验节点</strong>。判断查询是否在 Agent 的<strong>领域范围</strong>内，过滤无关请求，节省资源。
+</div>
+</div>
+<div class="card" style="margin-bottom: 10px;">
+<div class="card-title">Guardrail 工作流</div>
+<div class="card-body" style="font-size: 12px;">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="background: var(--accent); color: #0d1117; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">1</span>
+<span>用户输入到达 Agent</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="background: var(--accent); color: #0d1117; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">2</span>
+<span>LLM 对查询打分 (0-100)</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="background: var(--accent); color: #0d1117; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">3</span>
+<span>score ≥ threshold → 继续执行</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="background: var(--danger); color: #0d1117; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">4</span>
+<span>score < threshold → 路由到 out_of_scope</span>
+</div>
+<div style="display: flex; align-items: center; gap: 8px;">
+<span style="background: var(--accent2); color: #0d1117; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;">5</span>
+<span>礼貌拒绝 + 引导用户回到领域</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div>
+<div class="card" style="margin-bottom: 10px;">
+<div class="card-title">Guardrail 评分示例</div>
+<div class="code-block" style="font-size: 11px; line-height: 1.5; margin: 6px 0;">
+<span class="kw">class</span> <span class="cls">GuardrailScoring</span>(<span class="cls">BaseModel</span>):
+    score: <span class="cls">int</span>  <span class="com"># 0-100</span>
+    reasoning: <span class="cls">str</span>
+
+<span class="com"># 示例查询评分</span>
+<span class="str">"帮我查今天的天气"</span>     → score: <span class="num">95</span> ✓
+<span class="str">"今天股票怎么样"</span>       → score: <span class="num">30</span> ✗
+<span class="str">"写一首诗"</span>             → score: <span class="num">10</span> ✗
+<span class="str">"arXiv上有哪些新论文"</span>  → score: <span class="num">88</span> ✓
+</div>
+</div>
+<div class="card" style="border-left: 3px solid var(--success);">
+<div class="card-title" style="color: var(--success);">生产价值</div>
+<div class="card-body" style="font-size: 12px;">
+<strong style="color: var(--ink);">节省成本</strong>：过滤无关查询，不浪费 LLM 调用<br>
+<strong style="color: var(--ink);">提升体验</strong>：快速拒绝比错误回答更好<br>
+<strong style="color: var(--ink);">安全合规</strong>：防止越狱和恶意输入<br>
+<strong style="color: var(--ink);">可追踪</strong>：记录拒绝原因用于优化
+</div>
+</div>
+</div>
+</div>
+<div class="concept-box" style="border-left-color: var(--accent2);">
+<div class="concept-box-title" style="color: var(--accent2);">与 Module 2/4 的关联</div>
+<div class="concept-box-body">Guardrail 是 Module 2 LangGraph 条件路由的经典案例，也是 Module 4 Agentic RAG 的第一个节点。这里先建立概念，后面会看到完整实现。</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">核心要点</div>
+<div class="notes-section-body">
+<ul>
+<li>Guardrail 是生产 Agent 的标配——没有它，Agent 会处理各种无关查询</li>
+<li>评分使用 LLM 完成，temperature=0 确保一致性</li>
+<li>threshold 通常设为 50-70，根据业务调整</li>
+<li>out_of_scope 节点要"礼貌拒绝"而非"报错"</li>
+<li>这是 Agent 安全的第一课，后面还有输出过滤等</li>
+</ul>
+</div>
+</div>
+<div class="notes-section">
+<div class="notes-section-title">教学建议</div>
+<div class="notes-section-body">
+让学生思考：天气查询 Agent 收到"帮我炒股"该怎么处理？如果直接调用工具会报错，如果让 LLM 自由回答可能给出危险建议。Guardrail 是正确答案。
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">20 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第16页</div>
+<div class="notes-section">
+  <div class="notes-section-title">作业说明</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>作业分为基础、进阶、挑战三个难度</li>
+      <li>基础题：必做，巩固本课核心知识</li>
+      <li>进阶题：必做，综合运用多个组件</li>
+      <li>挑战题：选做，面向有余力的同学</li>
+      <li>提交方式：将代码及运行截图提交到课程仓库</li>
+      <li>截止时间：下节课前</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">评估标准</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>代码能正确运行（40%）</li>
+      <li>工具描述清晰准确（20%）</li>
+      <li>多轮对话记忆正常（20%）</li>
+      <li>流式输出实现（20%）</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">HOMEWORK · 课后作业</div>
+            <h2 class="section-title">实战练习任务</h2>
+          </div>
+          <div class="slide-body" style="overflow-y: auto;">
+            <div class="hw-item">
+              <div class="hw-icon hw-icon-1">1</div>
+              <div class="hw-content">
+                <div class="hw-title">基础：汇率查询工具<span class="hw-difficulty hw-easy">EASY</span></div>
+                <div class="hw-desc">
+                  为课堂上的天气 Agent 添加一个<strong>汇率查询工具</strong>。<br>
+                  要求：使用 <code>@tool</code> 定义，输入参数 <code>currency: str</code>（如 "USD"），返回模拟汇率。<br>
+                  测试：让 Agent 回答"北京天气如何？美元汇率多少？"，验证 Agent 能<strong>同时调用两个工具</strong>。
+                </div>
+              </div>
+            </div>
+            <div class="hw-item">
+              <div class="hw-icon hw-icon-2">2</div>
+              <div class="hw-content">
+                <div class="hw-title">进阶：多轮对话翻译助手<span class="hw-difficulty hw-medium">MEDIUM</span></div>
+                <div class="hw-desc">
+                  使用 <code>create_agent</code> + <code>MemorySaver</code> 构建一个<strong>多轮对话翻译助手</strong>。<br>
+                  要求：<br>
+                  - 定义 <code>translate(text, target_lang)</code> 工具，返回模拟翻译结果<br>
+                  - 使用 <code>MemorySaver</code> 实现记忆，Agent 能记住上文语言偏好<br>
+                  - 使用 <code>astream()</code> 流式输出翻译结果<br>
+                  测试：先说"帮我翻译成英语"，再说"你好世界"，Agent 应记住偏好。
+                </div>
+              </div>
+            </div>
+            <div class="hw-item">
+              <div class="hw-icon hw-icon-3">3</div>
+              <div class="hw-content">
+                <div class="hw-title">挑战：智能客服 Agent<span class="hw-difficulty hw-hard">HARD</span></div>
+                <div class="hw-desc">
+                  构建一个<strong>智能客服 Agent</strong>，包含至少 3 个工具：<br>
+                  - <code>check_order(order_id)</code>：查询订单状态（模拟数据）<br>
+                  - <code>check_refund(policy_type)</code>：查询退款政策<br>
+                  - <code>escalate_human(reason)</code>：转人工客服<br>
+                  要求：Agent 能根据用户问题<strong>自主选择工具</strong>，支持多轮对话，转人工时给出提示。<br>
+                  <strong>加分项</strong>：添加第 4 个工具，实现 <code>BaseTool</code> 类方式。
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">21 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+<div class="slide-inner">
+<div class="section-kicker">SUMMARY</div>
+<h2 class="section-title">核心知识点回顾</h2>
+<div class="slide-body">
+<div class="grid-2">
+<div>
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">基础构建</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+Agent = LLM + 工具 + 循环<br>
+Prompt 模板定义 Agent 人格<br>
+@tool 装饰器定义工具接口<br>
+bind_tools() 绑定工具到 LLM
+</div>
+<div style="font-size: 14px; color: var(--accent); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">运行机制</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+Agent 循环：思考→调用→观察→思考<br>
+create_agent() 一行创建 Agent<br>
+<strong style="color: var(--ink);">状态管理</strong>：不只是 messages<br>
+MemorySaver 持久化对话
+</div>
+</div>
+<div>
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">生产实践</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; margin-bottom: 16px; padding-left: 12px; border-left: 2px solid var(--border);">
+完整天气查询助手实现<br>
+<strong style="color: var(--ink);">Guardrail</strong>：输入领域校验<br>
+astream() 流式输出提升体验<br>
+状态设计影响可调试性
+</div>
+<div style="font-size: 14px; color: var(--accent2); font-family: var(--font-mono); margin-bottom: 8px; letter-spacing: 1px;">下一步</div>
+<div style="font-size: 13px; color: var(--muted); line-height: 1.8; padding-left: 12px; border-left: 2px solid var(--border);">
+Module 2: LangGraph 多智能体编排<br>
+Module 3: MCP 模型上下文协议<br>
+Module 4: RAG 与向量数据库
+</div>
+</div>
+</div>
+</div>
+<div class="notes-panel">
+<div class="notes-header">Speaker Notes</div>
+<div class="notes-section">
+<div class="notes-section-title">总结要点</div>
+<div class="notes-section-body">
+<ul>
+<li>Agent 的本质是"LLM + 工具 + 循环"</li>
+<li>状态管理和 Guardrail 是生产 Agent 的必备能力</li>
+<li>Module 2-4 会在此基础上构建更复杂的系统</li>
+<li>鼓励学生先完成实战练习，再进入 Module 2</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="brand-tag">AI Agent Course · Module 01</div>
+<div class="page-num">22 / 24</div>
+</section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第17页</div>
+<div class="notes-section">
+  <div class="notes-section-title">资源说明</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>源码仓库包含基础模板和参考答案</li>
+      <li>LangChain 官方文档是最权威的参考资料</li>
+      <li>DashScope 文档用于获取 API Key 和模型列表</li>
+      <li>鼓励学生阅读 LangChain 源码，理解 Agent 内部机制</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">提交要求</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>提交路径：<code>homework/module_01/&lt;姓名&gt;/</code></li>
+      <li>包含文件：Python 源码 + 运行截图 + README.md</li>
+      <li>README 需说明：运行方式、工具列表、测试结果</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">下节预告</div>
+  <div class="notes-section-body">
+    下一模块：<strong>LangGraph 多智能体编排</strong><br>
+    将学习如何让多个 Agent 协作完成复杂任务。
+  </div>
+</div>
+</div>
+
+        <div class="slide-inner">
+          <div>
+            <div class="section-kicker">RESOURCES · 拓展资源</div>
+            <h2 class="section-title">学习资源 & 作业提交</h2>
+          </div>
+          <div class="slide-body">
+            <div class="grid-2" style="height: 100%; gap: 16px;">
+              <div class="flex-col">
+                <div class="card" style="border-left: 3px solid var(--accent);">
+                  <div class="card-title" style="color: var(--accent);">📁 源码仓库</div>
+                  <div class="card-body">
+                    <code>example/langchain_agent/</code><br>
+                    包含：基础模板、完整示例、参考答案
+                  </div>
+                </div>
+                <div class="card" style="border-left: 3px solid var(--accent2);">
+                  <div class="card-title" style="color: var(--accent2);">📖 官方文档</div>
+                  <div class="card-body">
+                    LangChain：<code>python.langchain.com</code><br>
+                    DashScope：<code>help.aliyun.com/zh/dashscope</code><br>
+                    LangChain Agent 源码：<code>github.com/langchain-ai/langchain</code>
+                  </div>
+                </div>
+                <div class="card" style="border-left: 3px solid var(--chart-3);">
+                  <div class="card-title" style="color: var(--chart-3);">🎥 推荐阅读</div>
+                  <div class="card-body">
+                    <ul style="margin:0; padding-left:14px;">
+                      <li>ReAct 论文：<code>ReAct: Synergizing Reasoning and Acting</code></li>
+                      <li>LangChain Agent 文档：Agent 架构设计</li>
+                      <li>Tool Calling 最佳实践</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="flex-col">
+                <div class="card" style="background: linear-gradient(135deg, rgba(88,166,255,0.08), rgba(188,140,255,0.06)); border-color: rgba(88,166,255,0.2);">
+                  <div class="card-title">📝 作业提交说明</div>
+                  <div class="card-body">
+                    <strong>提交路径：</strong><br>
+                    <code>homework/module_01/&lt;姓名&gt;/</code><br><br>
+                    <strong>包含文件：</strong><br>
+                    <ul style="margin:0; padding-left:14px;">
+                      <li>Python 源码（<code>.py</code>）</li>
+                      <li>运行截图（<code>.png</code>）</li>
+                      <li><code>README.md</code>（运行方式 + 工具说明）</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">23 / 24</div>
+        </div>
+      </section>
+
+<section data-mira-slide data-aspect-ratio="16:9">
+        <div class="notes-panel">
+<div class="notes-header">📑 教案备注 · 第18页</div>
+<div class="notes-section">
+  <div class="notes-section-title">课程总结</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>恭喜完成第一模块学习！</li>
+      <li>你已掌握：Prompt 模板、工具定义、Agent 创建、记忆、流式输出</li>
+      <li>你已构建：一个完整的天气查询智能助手</li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">课后资源</div>
+  <div class="notes-section-body">
+    <ul>
+      <li>源码：<code>example/langchain_agent/</code></li>
+      <li>LangChain 文档：<code>python.langchain.com</code></li>
+      <li>DashScope 文档：<code>help.aliyun.com/zh/dashscope</code></li>
+    </ul>
+  </div>
+</div>
+<div class="notes-section">
+  <div class="notes-section-title">下节预告</div>
+  <div class="notes-section-body">
+    下一模块：<strong>LangGraph 多智能体编排</strong><br>
+    将学习如何让多个 Agent 协作完成复杂任务。
+  </div>
+</div>
+</div>
+
+        <div class="cover-bg"></div>
+        <div class="cover-grid"></div>
+        <div class="cover-content" style="align-items: center; text-align: center;">
+          <div class="cover-kicker">MODULE 01 · COMPLETE</div>
+          <h1 class="cover-title" style="font-size: 64px;">
+            <span class="gradient-text">Q & A</span>
+          </h1>
+          <p class="cover-subtitle" style="margin-bottom: 32px;">
+            恭喜完成第一模块学习！你已掌握 LangChain Agent 开发的全部核心知识
+          </p>
+          <div class="cover-meta" style="margin-bottom: 32px;">
+            <div class="cover-meta-item">
+              <span class="cover-meta-label">已掌握</span>
+              <span class="cover-meta-value">5 大核心组件</span>
+            </div>
+            <div class="cover-divider"></div>
+            <div class="cover-meta-item">
+              <span class="cover-meta-label">已构建</span>
+              <span class="cover-meta-value">天气查询 Agent</span>
+            </div>
+            <div class="cover-divider"></div>
+            <div class="cover-meta-item">
+              <span class="cover-meta-label">下一站</span>
+              <span class="cover-meta-value">LangGraph 多智能体</span>
+            </div>
+          </div>
+          <div class="flex-row" style="justify-content: center; gap: 10px;">
+            <div class="card" style="padding: 12px 20px;">
+              <div class="card-body" style="font-size: 13px;">
+                📁 源码：<code>example/langchain_agent/</code>
+              </div>
+            </div>
+            <div class="card" style="padding: 12px 20px;">
+              <div class="card-body" style="font-size: 13px;">
+                📖 文档：<code>python.langchain.com</code>
+              </div>
+            </div>
+          </div>
+        </div>
+          <div class="brand-tag">LangChain Agent</div>
+          <div class="page-num">24 / 24</div>
+        </div>
+      </section>
+
+</main>
+<script>
+(() => {
+  const slides = Array.from(document.querySelectorAll('[data-mira-slide]'));
+  if (!slides.length) return;
+
+  let index = 0;
+  const root = document.documentElement;
+  const width = 1440;
+  const height = 810;
+
+  const fit = () => {
+    const scale = Math.min(window.innerWidth / width, window.innerHeight / height);
+    root.style.setProperty('--deck-scale', String(Math.max(0.1, scale)));
+  };
+
+  const render = () => {
+    root.style.setProperty('--slide-index', String(index));
+    fit();
+  };
+
+  const go = (nextIndex) => {
+    index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+    render();
+  };
+
+  window.addEventListener('resize', fit);
+  window.addEventListener('keydown', (event) => {
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(event.key)) { event.preventDefault(); go(index + 1); }
+    if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(event.key)) { event.preventDefault(); go(index - 1); }
+    if (event.key === 'Home') { event.preventDefault(); go(0); }
+    if (event.key === 'End') { event.preventDefault(); go(slides.length - 1); }
+  });
+
+  // Click navigation: left half = prev, right half = next
+  document.addEventListener('click', (e) => {
+    // Don't interfere with links or interactive elements
+    if (e.target.closest('a, button, input, textarea, code, pre')) return;
+    const x = e.clientX;
+    const mid = window.innerWidth / 2;
+    if (x < mid) go(index - 1);
+    else go(index + 1);
+  });
+
+  // Touch swipe support
+  let touchStartX = 0;
+  document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+  document.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX;
+    if (Math.abs(dx) > 50) { go(dx > 0 ? index - 1 : index + 1); }
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

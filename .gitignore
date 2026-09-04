@@ -1,0 +1,40 @@
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+!deploy/.env.deploy.example
+deploy/.env.deploy
+*.key
+*.pem
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Node / web ---
+node_modules/
+dist/
+.vite/
+
+# --- Data / indexes (large, regenerable) ---
+# 用 **/ 前缀:生成数据同时存在于仓库根 data/ 与 scaffold/apps/api/data/,
+# 带斜杠的裸模式只锚定根目录,会漏掉后者。
+**/data/chroma/
+**/data/*.sqlite
+**/data/*.sqlite3
+**/data/*.sqlite-journal
+
+# 原始素材备份：内容已迁入 data/course_packs/，且含未清洗的第三方示例代码
+data/raw/
+
+# --- OS ---
+.DS_Store
+
+# --- Login artifacts ---
+lark-login-qr.png

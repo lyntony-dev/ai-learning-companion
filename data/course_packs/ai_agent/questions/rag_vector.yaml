@@ -1,0 +1,82 @@
+# RAG / 向量检索课程预置题库
+# 覆盖 topic: rag.chunking / rag.embedding / rag.retrieval / rag.rerank_eval
+# difficulty: easy | medium | hard
+
+status: candidate
+
+questions:
+  # --- 分块 Chunking ---
+  - id: chunking_why
+    topic_id: rag.chunking
+    difficulty: easy
+    prompt: 在 RAG 中为什么要把文档切分成 chunk,而不是把整篇文档直接送去向量化?
+    reference_answer: 因为向量化与检索需要粒度适中的片段:整篇文档语义过杂、超出模型/窗口限制且检索不精准;切成 chunk 能让每段语义聚焦,提高召回相关性并适配上下文长度。
+
+  - id: chunking_overlap
+    topic_id: rag.chunking
+    difficulty: medium
+    prompt: 分块时设置 chunk overlap(重叠)有什么作用?过大或过小分别会带来什么问题?
+    reference_answer: 重叠让跨边界的语义/句子不被切断,提升召回连贯性;重叠过小可能在边界丢失关键上下文导致漏检,过大则产生大量冗余片段增加存储与检索噪声及成本。
+
+  - id: chunking_strategy
+    topic_id: rag.chunking
+    difficulty: hard
+    prompt: 面对结构化很强的技术文档(带标题、代码块、表格),你会如何设计分块策略以兼顾语义完整与检索效果?
+    reference_answer: 优先按文档结构(标题层级/段落/代码块)做语义切分而非纯定长切分,保持代码块与表格完整不被截断,附带标题等元数据作为上下文,并对超长节点再按大小二次切分,配合适度重叠。
+
+  # --- Embedding 向量化 ---
+  - id: embedding_what
+    topic_id: rag.embedding
+    difficulty: easy
+    prompt: 什么是 embedding(向量化)?它在 RAG 检索中起什么作用?
+    reference_answer: embedding 把文本映射为高维向量,使语义相近的文本向量距离更近;RAG 用它把 query 与 chunk 都向量化,通过向量相似度做语义检索而非仅关键词匹配。
+
+  - id: embedding_consistency
+    topic_id: rag.embedding
+    difficulty: medium
+    prompt: 为什么建库(索引)和查询时必须使用同一个 embedding 模型?换模型后需要怎么处理?
+    reference_answer: 不同模型产生的向量空间不可比,query 与库向量必须来自同一模型相似度才有意义;更换 embedding 模型需用新模型对全部文档重新向量化并重建索引。
+
+  - id: embedding_limit
+    topic_id: rag.embedding
+    difficulty: hard
+    prompt: 纯向量(语义)检索在哪些情况下会失效?你会如何弥补?
+    reference_answer: 对精确关键词、专有名词、代码符号、数字/ID 等,纯语义检索可能召回偏差;可结合关键词/BM25 做混合检索(hybrid),对术语加权,并辅以元数据过滤与 rerank 提升精确匹配。
+
+  # --- 检索与召回 ---
+  - id: retrieval_topk
+    topic_id: rag.retrieval
+    difficulty: easy
+    prompt: 检索中的 top_k 参数是什么含义?调大调小分别有什么影响?
+    reference_answer: top_k 指每次检索返回最相似的 k 个片段;调大提升召回但引入更多噪声与更长上下文/更高成本,调小更精简但可能漏掉相关信息。
+
+  - id: retrieval_hybrid
+    topic_id: rag.retrieval
+    difficulty: medium
+    prompt: 什么是混合检索(hybrid retrieval)?相比单一向量检索有什么优势?
+    reference_answer: 混合检索同时使用向量语义检索与关键词/稀疏检索(如 BM25)并融合结果;优势是兼顾语义相关与精确术语匹配,对专有名词、代码、数字等召回更稳,减少纯语义的漏检。
+
+  - id: retrieval_filter
+    topic_id: rag.retrieval
+    difficulty: hard
+    prompt: 一个面向多课程的知识库,如何保证检索只返回当前课程范围内且高相关的片段?
+    reference_answer: 在向量库为每个 chunk 存 course_id 等元数据,检索时按课程做元数据过滤缩小候选,再做向量/混合相似度排序;必要时加相似度阈值与 rerank,过滤掉低相关片段,避免跨课程串味。
+
+  # --- Rerank 与评估 ---
+  - id: rerank_what
+    topic_id: rag.rerank_eval
+    difficulty: easy
+    prompt: RAG 中的 rerank(重排)是做什么的?为什么初次检索后还要 rerank?
+    reference_answer: rerank 用更强的(通常是 cross-encoder)模型对初检得到的候选片段与 query 重新精细打分排序;因为初检为效率用近似向量相似度,rerank 能更准地把最相关片段排到前面,提升最终上下文质量。
+
+  - id: rerank_eval_metrics
+    topic_id: rag.rerank_eval
+    difficulty: medium
+    prompt: 如何评估一个 RAG 系统检索环节的好坏?列举常用指标并说明含义。
+    reference_answer: 常用召回相关指标如 Recall@k(前 k 是否包含相关文档)、Precision@k、MRR(相关结果排名的倒数均值)、以及 nDCG(考虑相关度与排序位置);评估答案端还看忠实度/引用正确率与答案相关性。
+
+  - id: rerank_eval_pipeline
+    topic_id: rag.rerank_eval
+    difficulty: hard
+    prompt: 你要为一个已上线的 RAG 系统搭建离线评估流程,需要准备什么数据、评估哪几个环节、如何驱动迭代?
+    reference_answer: 准备带标准答案/相关片段标注的问题集(golden set);分环节评估检索(Recall@k/MRR/nDCG)与生成(忠实度、引用正确、答案相关性,可用 LLM-as-judge);把指标纳入回归,改动分块/embedding/top_k/rerank 后对比指标驱动迭代并防退化。

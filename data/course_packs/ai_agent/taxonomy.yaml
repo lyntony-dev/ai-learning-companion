@@ -1,0 +1,57 @@
+# AI Agent 课程包知识点体系 (taxonomy)
+# 候选(candidate)——由 AI 提取占位,待讲师审核修正沉淀(ADR-0006)。
+# topic_id 是掌握度/薄弱点/个性化/出题的最小单位(CONTEXT: Taxonomy)。
+# status: candidate | approved
+
+status: candidate
+
+topics:
+  # --- LangChain ---
+  - id: langchain.agent_basics
+    name: Agent 基本概念
+    course_id: langchain_agent
+  - id: langchain.tools
+    name: 工具与 Tool 调用
+    course_id: langchain_agent
+  - id: langchain.memory
+    name: 记忆与上下文
+    course_id: langchain_agent
+
+  # --- LangGraph ---
+  - id: langgraph.state
+    name: State 与共享状态
+    course_id: langgraph_multiagent
+  - id: langgraph.nodes_edges
+    name: 节点与边
+    course_id: langgraph_multiagent
+  - id: langgraph.conditional_edges
+    name: 条件边与分支
+    course_id: langgraph_multiagent
+  - id: langgraph.loops_exit
+    name: 循环与退出条件
+    course_id: langgraph_multiagent
+
+  # --- MCP ---
+  - id: mcp.protocol
+    name: MCP 协议基础
+    course_id: mcp_agent
+  - id: mcp.tools
+    name: MCP 工具定义与接入
+    course_id: mcp_agent
+  - id: mcp.server_client
+    name: Server / Client 架构
+    course_id: mcp_agent
+
+  # --- RAG ---
+  - id: rag.chunking
+    name: 分块 Chunking
+    course_id: rag_vector
+  - id: rag.embedding
+    name: Embedding 向量化
+    course_id: rag_vector
+  - id: rag.retrieval
+    name: 检索与召回
+    course_id: rag_vector
+  - id: rag.rerank_eval
+    name: Rerank 与评估
+    course_id: rag_vector
