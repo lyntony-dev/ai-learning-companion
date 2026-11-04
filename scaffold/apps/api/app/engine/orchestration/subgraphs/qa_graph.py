@@ -28,8 +28,15 @@ from app.engine.orchestration.state import TutorState, append_trace, new_trace_e
 from app.engine.retrieval import Retriever
 from app.llm import LLMClient, get_llm_client
 
-STRONG_EVIDENCE_THRESHOLD = 0.75
-WEAK_EVIDENCE_THRESHOLD = 0.35
+# 证据阈值随 embedding 模型校准:不同模型的相似度分数分布不同,阈值不能照搬。
+# 当前 EMBEDDING_PROVIDER=local(bge-small-zh-v1.5),2026-11 在 ai_agent 课程包
+# 用原问题检索(不含薄弱点扩展)实测最高分:课程内问题 0.58~0.72(12 题,中位约 0.64),
+# 课程无关问题 0.32~0.54(8 题)。
+#   WEAK 取两组之间的 0.56:无关问题判 insufficient → 改写重检 → 仍不足则拒答。
+#   STRONG 取课程题中位附近的 0.65:分数更高的直接作答,之间的作答但先说明证据有限。
+# 换 embedding 模型(例如回到 Ark doubao)后要按新的分数分布重新校准。
+STRONG_EVIDENCE_THRESHOLD = 0.65
+WEAK_EVIDENCE_THRESHOLD = 0.56
 
 _ANSWER_SYSTEM = (
     "你是课程学习助手。只依据提供的课程材料片段回答,"
@@ -119,20 +126,36 @@ def _build_citations(chunks: list[dict]) -> list[dict]:
 def make_qa_nodes(retriever: Retriever, llm: LLMClient) -> dict[str, Callable]:
     def retrieve(state: TutorState) -> dict:
         query = state.get("rewritten_query") or state.get("query", "")
-        # C 画像:按薄弱前置知识点扩展检索(把薄弱点并入检索语义 + 适度扩 top_k)
-        weak = state.get("weak_topics") or []
+        pack_id = state.get("course_pack_id", "")
+        course_ids = state.get("course_ids") or None
         top_k = state.get("top_k", 5)
+        # 证据分只按问题本身检索:薄弱点扩展会把课程术语拼进检索语句,
+        # 连课程无关的问题相似度也被抬高,拒答阈值随之失效,而且同一个问题
+        # 对不同学员的证据判断会不一样。所以先用原问题检索定证据分。
+        chunks = retriever.retrieve(
+            course_pack_id=pack_id,
+            query=query,
+            course_ids=course_ids,
+            top_k=top_k,
+        )
+        # C 画像:再按薄弱前置知识点扩展检索,只补充材料,不参与证据打分
+        weak = state.get("weak_topics") or []
         retrieval_query = query
         if weak:
             weak_terms = " ".join(t.replace(".", " ") for t in weak)
             retrieval_query = f"{query} {weak_terms}"
-            top_k = min(top_k + len(weak), 20)
-        chunks = retriever.retrieve(
-            course_pack_id=state.get("course_pack_id", ""),
-            query=retrieval_query,
-            course_ids=state.get("course_ids") or None,
-            top_k=top_k,
-        )
+            seen = {c.get("chunk_id") for c in chunks}
+            extra = retriever.retrieve(
+                course_pack_id=pack_id,
+                query=retrieval_query,
+                course_ids=course_ids,
+                top_k=min(top_k + len(weak), 20),
+            )
+            chunks = chunks + [
+                {**c, "from_weak_expansion": True}
+                for c in extra
+                if c.get("chunk_id") not in seen
+            ]
         return {
             "retrieved_chunks": chunks,
             "retry_count": state.get("retry_count", 0),
@@ -150,7 +173,14 @@ def make_qa_nodes(retriever: Retriever, llm: LLMClient) -> dict[str, Callable]:
 
     def evidence_check(state: TutorState) -> dict:
         chunks = state.get("retrieved_chunks", [])
-        top = max((c.get("score", 0.0) for c in chunks), default=0.0)
+        top = max(
+            (
+                c.get("score", 0.0)
+                for c in chunks
+                if not c.get("from_weak_expansion")
+            ),
+            default=0.0,
+        )
         if top >= STRONG_EVIDENCE_THRESHOLD:
             level = "strong"
         elif top >= WEAK_EVIDENCE_THRESHOLD:

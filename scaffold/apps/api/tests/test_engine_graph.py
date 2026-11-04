@@ -250,3 +250,46 @@ def test_personalization_injects_weak_topics() -> None:
     out = g.invoke(initial_state("问题", "ai_agent"))
     assert out["weak_topics"] == ["langgraph.state"]
     assert "langgraph.state" in out["session_opener"]
+
+
+# --- 证据阈值:按当前 embedding 模型(local bge-small-zh-v1.5)的实测分数分布校准 ---
+
+
+def test_evidence_levels_follow_calibrated_thresholds() -> None:
+    """原问题检索实测:课程内问题 0.58~0.72,课程无关问题 0.32~0.54;0.56 卡在两组之间。"""
+    expected = {0.72: "strong", 0.58: "weak", 0.54: "insufficient", 0.32: "insufficient"}
+    for score, level in expected.items():
+        g = build_qa_graph(FakeRetriever([_chunk(score)]), llm=FakeLLM("回答 [1]"))
+        out = g.invoke(initial_state("问题", "ai_agent", max_retry=0))
+        assert out["evidence_level"] == level, score
+        if level == "insufficient":
+            assert out["refused"] is True
+            assert out["citations"] == []
+        else:
+            assert out["refused"] is False
+
+
+def test_weak_topic_expansion_does_not_inflate_evidence() -> None:
+    """薄弱点扩展只补充材料:证据分只看原问题的检索结果,扩展出的高分片段不算数。"""
+
+    class ExpandingRetriever:
+        def __init__(self) -> None:
+            self.queries: list[str] = []
+
+        def retrieve(self, course_pack_id, query, course_ids=None, top_k=5):
+            self.queries.append(query)
+            if len(self.queries) == 1:
+                return [_chunk(0.4, "plain")]
+            return [_chunk(0.95, "expanded")]
+
+    retriever = ExpandingRetriever()
+    g = build_qa_graph(retriever, llm=FakeLLM("回答 [1]"))
+    state = initial_state("跟课程无关的问题", "ai_agent", max_retry=0)
+    state["weak_topics"] = ["langgraph.state"]
+    out = g.invoke(state)
+
+    assert retriever.queries[0] == "跟课程无关的问题"
+    assert "langgraph state" in retriever.queries[1]
+    assert out["evidence_score"] == 0.4
+    assert out["evidence_level"] == "insufficient"
+    assert out["refused"] is True

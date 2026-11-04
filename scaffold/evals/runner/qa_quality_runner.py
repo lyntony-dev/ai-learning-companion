@@ -23,8 +23,8 @@ DATASET = (
     Path(__file__).resolve().parents[1] / "datasets" / "qa_quality.json"
 )
 
-# 证据档位 → 检索打分(对齐 qa_graph 阈值:STRONG>=0.75,insufficient<0.35)
-_EVIDENCE_SCORE = {"strong": 0.9, "weak": 0.5, "insufficient": 0.05}
+# 证据档位 → 检索打分(对齐 qa_graph 阈值:STRONG>=0.65,insufficient<0.56)
+_EVIDENCE_SCORE = {"strong": 0.9, "weak": 0.6, "insufficient": 0.05}
 
 
 class _EvalRetriever:
