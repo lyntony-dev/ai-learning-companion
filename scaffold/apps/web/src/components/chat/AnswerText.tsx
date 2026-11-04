@@ -1,5 +1,6 @@
 import { Fragment } from 'react';
 import type { Citation } from '@/api/types';
+import { splitBold } from '@/lib/inlineMarkdown';
 
 interface AnswerTextProps {
   content: string;
@@ -12,6 +13,7 @@ const MARKER = /\[(\d+)\]/g;
 /**
  * 把回答正文里的引用角标 [n] 渲染成可点击按钮,点击联动右侧来源卡。
  * 仅当 n 存在于 citations 中才可点;否则原样保留文本。
+ * 模型常用 **加粗** 标重点,成对的标记渲染成 <strong>,不再把星号显示出来。
  */
 export function AnswerText({ content, citations, onCitationClick }: AnswerTextProps) {
   const known = new Set(citations.map((c) => c.citation_id));
@@ -43,7 +45,17 @@ export function AnswerText({ content, citations, onCitationClick }: AnswerTextPr
             {part}
           </button>
         ) : (
-          <Fragment key={i}>{part}</Fragment>
+          <Fragment key={i}>
+            {splitBold(part).map((segment, j) =>
+              segment.bold ? (
+                <strong key={j} className="font-semibold">
+                  {segment.text}
+                </strong>
+              ) : (
+                <Fragment key={j}>{segment.text}</Fragment>
+              ),
+            )}
+          </Fragment>
         ),
       )}
     </p>
